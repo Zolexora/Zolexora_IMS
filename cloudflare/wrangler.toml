@@ -1,0 +1,7 @@
+name = "zolexora-ims-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "ims.zolexora.com/*", zone_name = "zolexora.com" }
+]
