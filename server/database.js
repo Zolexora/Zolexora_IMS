@@ -594,6 +594,35 @@ function validateUserSession(email, orgId) {
  * Lists all existing organization database folders inside root Drive folder
  */
 function listOrganizations() {
+  let email = '';
+  try {
+    email = Session.getActiveUser().getEmail();
+  } catch (e) {}
+
+  let currentUser = null;
+  if (email) {
+    currentUser = findUserByEmail(email);
+  }
+
+  // Tenant Isolation: Org Admins only see their own organization
+  if (currentUser && currentUser.role !== 'SuperAdmin') {
+    if (currentUser.orgId) {
+      try {
+        const folder = DriveApp.getFolderById(currentUser.orgId);
+        return [{
+          id: folder.getId(),
+          name: folder.getName(),
+          url: folder.getUrl(),
+          lastUpdated: folder.getLastUpdated().toISOString()
+        }];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  // SuperAdmin sees all tenants
   const rootFolder = getDriveFolder();
   const subfolders = rootFolder.getFolders();
   const orgs = [];

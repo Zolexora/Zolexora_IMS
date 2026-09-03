@@ -340,6 +340,18 @@ function getInitialData() {
  * Server entry point to switch active organization
  */
 function switchOrganization(orgId) {
+  let email = '';
+  try {
+    email = Session.getActiveUser().getEmail();
+  } catch (e) {}
+
+  if (email) {
+    const user = findUserByEmail(email);
+    if (user && user.role !== 'SuperAdmin' && user.orgId !== orgId) {
+      throw new Error('Access Denied: You do not have permission to access another organization.');
+    }
+  }
+
   setActiveOrganization(orgId);
   return getInitialData();
 }
