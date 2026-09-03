@@ -1446,16 +1446,13 @@ const app = {
           <!-- Actions -->
           <td class="py-3 px-4 text-center">
             <div class="inline-flex items-center space-x-1">
-              <button onclick="app.quickRestock('${item.id}')" title="Stock In" class="p-1 rounded bg-secondary-container/20 hover:bg-secondary-container/30 text-secondary transition">
-                <span class="material-symbols-outlined text-[16px]">add_circle</span>
+              <button onclick="app.openPurchaseInvoiceModal('${item.id}')" title="Purchase Entry Invoice" class="p-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition">
+                <span class="material-symbols-outlined text-[16px]">receipt_long</span>
               </button>
-              <button onclick="app.quickStockOut('${item.id}')" title="Stock Out / Disburse" class="p-1 rounded bg-tertiary-container/20 hover:bg-tertiary-container/30 text-tertiary transition">
-                <span class="material-symbols-outlined text-[16px]">remove_circle</span>
-              </button>
-              <button onclick="app.quickTransfer('${item.id}')" title="Transfer Store" class="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary transition">
+              <button onclick="app.openTransferInvoiceModal('${item.id}')" title="Transfer Entry Invoice" class="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 transition">
                 <span class="material-symbols-outlined text-[16px]">sync_alt</span>
               </button>
-              <button onclick="app.openBarcodeModal('${item.id}')" title="Print Barcode" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition">
+              <button onclick="app.openBarcodeModal('${item.id}')" title="Print Barcode" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition border border-white/10">
                 <span class="material-symbols-outlined text-[16px]">qr_code</span>
               </button>
               <button onclick="app.editItem('${item.id}')" title="Edit Item" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition">
@@ -1953,240 +1950,760 @@ const app = {
     }
   },
 
-  // STOCK IN MODAL
-  openStockInModal: function(defaultItemId = null) {
-    document.getElementById('stockInForm').reset();
-    if (defaultItemId) {
-      document.getElementById('stockInItemId').value = defaultItemId;
+  // ==============================================================
+  // 1. PURCHASE ENTRY INVOICE ENGINE (MULTI-ITEM INVOICE)
+  // ==============================================================
+  purchaseInvoiceCounter: 0,
+  purchaseInvoiceRows: [],
+
+  openPurchaseInvoiceModal: function(defaultItemId = null) {
+    // 1. Pre-fetch check: Ensure all items and suppliers are in memory
+    if (!this.state.items || this.state.items.length === 0) {
+      this.loadInitialData(false);
     }
-    this.openModal('stockInModal');
+
+    // 2. Generate invoice number with InvN_ prefix
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const rand = Math.floor(100 + Math.random() * 900);
+    const invoiceNo = 'InvN_' + dateStr + '_' + rand;
+    
+    const invInput = document.getElementById('piInvoiceNo');
+    if (invInput) invInput.value = invoiceNo;
+
+    const dateInput = document.getElementById('piDate');
+    if (dateInput) dateInput.value = now.toISOString().slice(0, 10);
+
+    // 3. Populate Suppliers
+    const supSelect = document.getElementById('piSupplier');
+    if (supSelect) {
+      const sups = this.state.suppliers || [];
+      supSelect.innerHTML = `<option value="">-- Select Registered Supplier --</option>` +
+        sups.map(s => `<option value="${s.name}" data-code="${s.code || s.id}">[${s.code || s.id}] ${s.name} (${s.category || 'General'})</option>`).join('') +
+        `<option value="Direct / Local Vendor" data-code="SUP_LOCAL">Direct / Local Vendor</option>`;
+    }
+
+    // 4. Populate Receiving Stores
+    const storeSelect = document.getElementById('piStore');
+    if (storeSelect) {
+      const stores = (this.state.stores && this.state.stores.length > 0) ? this.state.stores : [
+        { code: 'S_000', name: 'Central Depot Warehouse' },
+        { code: 'S_001', name: 'Store 1 - Main Branch' },
+        { code: 'S_002', name: 'Store 2 - Outlet Branch' }
+      ];
+      storeSelect.innerHTML = stores.map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+    }
+
+    // 5. Reset line items & add initial row
+    this.purchaseInvoiceCounter = 0;
+    this.purchaseInvoiceRows = [];
+    const tbody = document.getElementById('piTableBody');
+    if (tbody) tbody.innerHTML = '';
+
+    this.addPurchaseInvoiceRow(defaultItemId);
+    this.openModal('purchaseInvoiceModal');
   },
 
   quickRestock: function(itemId) {
-    this.openStockInModal(itemId);
+    this.openPurchaseInvoiceModal(itemId);
   },
 
-  handleStockInSubmit: function(e) {
-    e.preventDefault();
-    const supVal = document.getElementById('stockInSupplier').value;
-    const supObj = this.state.suppliers.find(s => s.name === supVal || s.code === supVal);
-    const storeVal = document.getElementById('stockInDest').value;
-    const storeObj = (this.state.stores || []).find(st => st.code === storeVal || st.name === storeVal);
-
-    const data = {
-      type: 'STOCK_IN',
-      itemId: document.getElementById('stockInItemId').value,
-      itemCode: document.getElementById('stockInItemId').value,
-      destLocation: storeVal,
-      storeCode: storeObj ? storeObj.code : storeVal,
-      storeName: storeObj ? storeObj.name : storeVal,
-      supplierCode: supObj ? supObj.code : '',
-      supplierName: supObj ? supObj.name : supVal,
-      sourceLocation: supObj ? supObj.name : supVal,
-      quantity: Number(document.getElementById('stockInQty').value),
-      rate: Number(document.getElementById('stockInUnitPrice').value) || 0,
-      unitPrice: Number(document.getElementById('stockInUnitPrice').value) || 0,
-      reference: document.getElementById('stockInRef').value.trim(),
-      performedBy: document.getElementById('stockInStaff').value.trim() || 'Store Keeper',
-      notes: document.getElementById('stockInNotes').value.trim()
-    };
-
-    this.showLoading('Recording Supplier Purchase...', 'Updating Product_Master and Supplier_Transactions');
-
-    if (this.isGasEnv()) {
-      google.script.run
-        .withSuccessHandler(function(res) {
-          app.hideLoading();
-          app.closeModal('stockInModal');
-          app.showToast('Stock received and recorded in Supplier_Transactions');
-          app.loadInitialData(true);
-        })
-        .withFailureHandler(function(err) {
-          app.hideLoading();
-          app.showToast('Stock In error: ' + err.message, 'error');
-        })
-        .processStockTransaction(data);
-    } else {
-      this.hideLoading();
-      this.closeModal('stockInModal');
-      this.showToast('Stock In recorded (local mode)');
-    }
+  openStockInModal: function(itemId) {
+    this.openPurchaseInvoiceModal(itemId);
   },
 
-  // STOCK OUT MODAL
-  openStockOutModal: function(defaultItemId = null) {
-    document.getElementById('stockOutForm').reset();
-    if (defaultItemId) {
-      document.getElementById('stockOutItemId').value = defaultItemId;
-    }
-    this.updateStockOutItemInfo();
-    this.openModal('stockOutModal');
-  },
-
-  quickStockOut: function(itemId) {
-    this.openStockOutModal(itemId);
-  },
-
-  updateStockOutItemInfo: function() {
-    const itemId = document.getElementById('stockOutItemId').value;
-    const sourceLoc = document.getElementById('stockOutSource').value;
-    const item = this.state.items.find(i => i.id === itemId);
-    const infoEl = document.getElementById('stockOutAvailInfo');
-
-    if (!item || !infoEl) return;
-
-    let available = 0;
-    if (sourceLoc.includes('S_001') || sourceLoc.includes('Store 1')) available = item.stockS001 || 0;
-    else if (sourceLoc.includes('S_002') || sourceLoc.includes('Store 2')) available = item.stockS002 || 0;
-    else available = item.centralStock || 0;
-
-    infoEl.innerHTML = `Available in <span class="text-on-surface font-bold font-data-tabular">${sourceLoc}</span>: <span class="font-bold text-secondary font-data-tabular">${available} ${item.unit}</span> (Total across all stores: ${item.totalStock})`;
-  },
-
-  handleStockOutSubmit: function(e) {
-    e.preventDefault();
-    const itemId = document.getElementById('stockOutItemId').value;
-    const sourceLoc = document.getElementById('stockOutSource').value;
-    const qty = Number(document.getElementById('stockOutQty').value);
-    const destSp = document.getElementById('stockOutDept').value;
-
-    const item = this.state.items.find(i => i.id === itemId);
-    if (item) {
-      let available = 0;
-      if (sourceLoc.includes('S_001') || sourceLoc.includes('Store 1')) available = item.stockS001 || 0;
-      else if (sourceLoc.includes('S_002') || sourceLoc.includes('Store 2')) available = item.stockS002 || 0;
-      else available = item.centralStock || 0;
-
-      if (available < qty) {
-        this.showToast(`Insufficient stock in ${sourceLoc}. Available: ${available}, Requested: ${qty}`, 'error');
-        return;
+  // Extract unique categories from items catalog
+  getItemCategories: function() {
+    const items = this.state.items || [];
+    const set = new Set();
+    items.forEach(i => {
+      if (i.category && String(i.category).trim()) {
+        set.add(String(i.category).trim());
       }
-    }
-
-    const data = {
-      type: 'STOCK_OUT',
-      itemId: itemId,
-      itemCode: itemId,
-      sourceLocation: sourceLoc,
-      fromStore: sourceLoc,
-      destLocation: destSp,
-      toSellingPoint: destSp,
-      quantity: qty,
-      reference: document.getElementById('stockOutRef').value.trim(),
-      performedBy: document.getElementById('stockOutRequester').value.trim() || 'Store Incharge',
-      notes: document.getElementById('stockOutNotes').value.trim()
-    };
-
-    this.showLoading('Disbursing Stock...', 'Recording in Issuance_Transactions');
-
-    if (this.isGasEnv()) {
-      google.script.run
-        .withSuccessHandler(function(res) {
-          app.hideLoading();
-          app.closeModal('stockOutModal');
-          app.showToast(`Issued ${data.quantity} units to ${data.destLocation}`);
-          app.loadInitialData(true);
-        })
-        .withFailureHandler(function(err) {
-          app.hideLoading();
-          app.showToast('Stock Out error: ' + err.message, 'error');
-        })
-        .processStockTransaction(data);
-    } else {
-      this.hideLoading();
-      this.closeModal('stockOutModal');
-      this.showToast('Stock Out completed (local mode)');
-    }
+    });
+    return Array.from(set).sort();
   },
 
-  // TRANSFER MODAL
-  openTransferModal: function(defaultItemId = null) {
-    document.getElementById('transferForm').reset();
+  addPurchaseInvoiceRow: function(defaultItemId = null) {
+    this.purchaseInvoiceCounter++;
+    const rowId = 'pi_row_' + this.purchaseInvoiceCounter;
+    const categories = this.getItemCategories();
+    const items = this.state.items || [];
+
+    let targetItem = null;
     if (defaultItemId) {
-      document.getElementById('transferItemId').value = defaultItemId;
+      targetItem = items.find(i => i.id === defaultItemId || i.code === defaultItemId);
     }
-    this.updateTransferItemInfo();
-    this.openModal('transferModal');
+
+    const selectedCategory = targetItem ? targetItem.category : 'ALL';
+    
+    // Filter products for this row
+    const filteredItems = (selectedCategory && selectedCategory !== 'ALL')
+      ? items.filter(i => String(i.category).trim() === selectedCategory)
+      : items;
+
+    const rowObj = {
+      id: rowId,
+      selectedCategory: selectedCategory,
+      selectedItemCode: targetItem ? (targetItem.code || targetItem.id) : (filteredItems[0] ? (filteredItems[0].code || filteredItems[0].id) : ''),
+      qty: 1
+    };
+    this.purchaseInvoiceRows.push(rowObj);
+
+    const activeItem = items.find(i => (i.code || i.id) === rowObj.selectedItemCode) || filteredItems[0] || {};
+    const rate = activeItem.rate || activeItem.cost || 0;
+    const taxPct = activeItem.tax !== undefined ? activeItem.tax : (activeItem.taxPercent || 0);
+    const uom = activeItem.uom || activeItem.unit || 'Pcs';
+    const code = activeItem.code || activeItem.id || '';
+
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    tr.className = 'border-b border-white/5 hover:bg-white/[0.02] transition';
+
+    tr.innerHTML = `
+      <td class="py-2 px-2 text-center text-on-surface-variant font-mono text-[11px] row-number">${this.purchaseInvoiceRows.length}</td>
+      <td class="py-2 px-2">
+        <select onchange="app.onPiCategoryChange('${rowId}')" class="pi-cat-select w-full px-2 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs text-white focus:border-emerald-500 outline-none">
+          <option value="ALL">-- All Categories --</option>
+          ${categories.map(c => `<option value="${c}" ${c === selectedCategory ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td class="py-2 px-2">
+        <select onchange="app.onPiProductChange('${rowId}')" class="pi-prod-select w-full px-2 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs text-white focus:border-emerald-500 outline-none">
+          ${filteredItems.map(i => `<option value="${i.code || i.id}" ${(i.code || i.id) === rowObj.selectedItemCode ? 'selected' : ''}>[${i.code || i.id}] ${i.name || i.description}</option>`).join('')}
+        </select>
+      </td>
+      <td class="py-2 px-2">
+        <input type="text" readonly value="${code}" class="pi-code-input w-full px-2 py-1.5 bg-[#040406] border border-white/10 rounded text-[11px] font-mono font-bold text-on-surface-variant outline-none">
+      </td>
+      <td class="py-2 px-2">
+        <input type="text" readonly value="${uom}" class="pi-uom-input w-full px-1.5 py-1.5 bg-[#040406] border border-white/10 rounded text-[11px] text-center text-on-surface-variant outline-none">
+      </td>
+      <td class="py-2 px-2">
+        <input type="number" step="0.01" min="0" value="${rate}" oninput="app.recalcPiInvoice()" class="pi-rate-input w-full px-2 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs font-mono font-bold text-white text-right focus:border-emerald-500 outline-none">
+      </td>
+      <td class="py-2 px-2">
+        <input type="number" step="0.1" min="0" value="${taxPct}" oninput="app.recalcPiInvoice()" class="pi-tax-input w-full px-1.5 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs font-mono text-center text-white focus:border-emerald-500 outline-none">
+      </td>
+      <td class="py-2 px-2">
+        <input type="number" min="1" value="1" oninput="app.recalcPiInvoice()" class="pi-qty-input w-full px-2 py-1.5 bg-[#0a0a0e] border border-emerald-500/40 rounded text-xs font-mono font-bold text-emerald-300 text-right focus:border-emerald-500 outline-none">
+      </td>
+      <td class="py-2 px-2 text-right font-mono text-xs text-white pi-taxable-display">₹0.00</td>
+      <td class="py-2 px-2 text-right font-mono text-xs text-on-surface-variant pi-tax-display">₹0.00</td>
+      <td class="py-2 px-2 text-right font-mono font-bold text-xs text-emerald-400 pi-total-display">₹0.00</td>
+      <td class="py-2 px-2 text-center">
+        <button type="button" onclick="app.removePiRow('${rowId}')" title="Remove item" class="text-on-surface-variant hover:text-error transition font-bold px-1.5 py-0.5 rounded cursor-pointer">&times;</button>
+      </td>
+    `;
+
+    const tbody = document.getElementById('piTableBody');
+    if (tbody) tbody.appendChild(tr);
+
+    this.recalcPiInvoice();
   },
 
-  quickTransfer: function(itemId) {
-    this.openTransferModal(itemId);
+  onPiCategoryChange: function(rowId) {
+    const tr = document.getElementById(rowId);
+    if (!tr) return;
+    const catSelect = tr.querySelector('.pi-cat-select');
+    const prodSelect = tr.querySelector('.pi-prod-select');
+    if (!catSelect || !prodSelect) return;
+
+    const selectedCategory = catSelect.value;
+    const items = this.state.items || [];
+    const filtered = (selectedCategory && selectedCategory !== 'ALL')
+      ? items.filter(i => String(i.category).trim() === selectedCategory)
+      : items;
+
+    if (filtered.length === 0) {
+      prodSelect.innerHTML = `<option value="">-- No products in this category --</option>`;
+    } else {
+      prodSelect.innerHTML = filtered.map(i => `<option value="${i.code || i.id}">[${i.code || i.id}] ${i.name || i.description}</option>`).join('');
+    }
+
+    this.onPiProductChange(rowId);
   },
 
-  updateTransferItemInfo: function() {
-    const itemId = document.getElementById('transferItemId').value;
-    const sourceLoc = document.getElementById('transferSource').value;
-    const item = this.state.items.find(i => i.id === itemId);
-    const infoEl = document.getElementById('transferAvailInfo');
+  onPiProductChange: function(rowId) {
+    const tr = document.getElementById(rowId);
+    if (!tr) return;
+    const prodSelect = tr.querySelector('.pi-prod-select');
+    const codeInput = tr.querySelector('.pi-code-input');
+    const uomInput = tr.querySelector('.pi-uom-input');
+    const rateInput = tr.querySelector('.pi-rate-input');
+    const taxInput = tr.querySelector('.pi-tax-input');
 
-    if (!item || !infoEl) return;
+    if (!prodSelect) return;
+    const itemCode = prodSelect.value;
+    const item = (this.state.items || []).find(i => (i.code || i.id) === itemCode);
 
-    let available = 0;
-    if (sourceLoc.includes('S_001') || sourceLoc.includes('Store 1')) available = item.stockS001 || 0;
-    else if (sourceLoc.includes('S_002') || sourceLoc.includes('Store 2')) available = item.stockS002 || 0;
-    else available = item.centralStock || 0;
+    if (item) {
+      if (codeInput) codeInput.value = item.code || item.id || '';
+      if (uomInput) uomInput.value = item.uom || item.unit || 'Pcs';
+      if (rateInput) rateInput.value = item.rate || item.cost || 0;
+      if (taxInput) taxInput.value = item.tax !== undefined ? item.tax : (item.taxPercent || 0);
+    }
 
-    infoEl.innerHTML = `Available in source (<span class="font-bold text-on-surface font-data-tabular">${sourceLoc}</span>): <span class="font-bold text-primary font-data-tabular">${available} ${item.unit}</span>`;
+    this.recalcPiInvoice();
   },
 
-  handleTransferSubmit: function(e) {
-    e.preventDefault();
-    const itemId = document.getElementById('transferItemId').value;
-    const fromLoc = document.getElementById('transferSource').value;
-    const toLoc = document.getElementById('transferDest').value;
-    const qty = Number(document.getElementById('transferQty').value);
+  recalcPiInvoice: function() {
+    const tbody = document.getElementById('piTableBody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
 
-    if (fromLoc === toLoc) {
-      this.showToast('Source and Destination stores cannot be identical.', 'error');
+    let invoiceSubtotal = 0;
+    let invoiceTotalTax = 0;
+    let invoicePayable = 0;
+
+    rows.forEach((tr, index) => {
+      const numEl = tr.querySelector('.row-number');
+      if (numEl) numEl.innerText = index + 1;
+
+      const rateInput = tr.querySelector('.pi-rate-input');
+      const taxInput = tr.querySelector('.pi-tax-input');
+      const qtyInput = tr.querySelector('.pi-qty-input');
+      const taxableEl = tr.querySelector('.pi-taxable-display');
+      const taxEl = tr.querySelector('.pi-tax-display');
+      const totalEl = tr.querySelector('.pi-total-display');
+
+      const rate = parseFloat(rateInput ? rateInput.value : 0) || 0;
+      const taxPct = parseFloat(taxInput ? taxInput.value : 0) || 0;
+      const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+
+      const taxable = rate * qty;
+      const taxAmt = (taxable * taxPct) / 100;
+      const total = taxable + taxAmt;
+
+      if (taxableEl) taxableEl.innerText = app.formatCurrency(taxable);
+      if (taxEl) taxEl.innerText = app.formatCurrency(taxAmt);
+      if (totalEl) totalEl.innerText = app.formatCurrency(total);
+
+      invoiceSubtotal += taxable;
+      invoiceTotalTax += taxAmt;
+      invoicePayable += total;
+    });
+
+    const subtotalEl = document.getElementById('piSubtotal');
+    if (subtotalEl) subtotalEl.innerText = app.formatCurrency(invoiceSubtotal);
+
+    const taxTotalEl = document.getElementById('piTotalTax');
+    if (taxTotalEl) taxTotalEl.innerText = app.formatCurrency(invoiceTotalTax);
+
+    const payableEl = document.getElementById('piPayableAmount');
+    if (payableEl) payableEl.innerText = app.formatCurrency(invoicePayable);
+  },
+
+  removePiRow: function(rowId) {
+    const tr = document.getElementById(rowId);
+    if (tr) tr.remove();
+    this.purchaseInvoiceRows = this.purchaseInvoiceRows.filter(r => r.id !== rowId);
+
+    const tbody = document.getElementById('piTableBody');
+    if (tbody && tbody.children.length === 0) {
+      this.addPurchaseInvoiceRow();
+    } else {
+      this.recalcPiInvoice();
+    }
+  },
+
+  savePurchaseInvoice: function() {
+    const invoiceNo = document.getElementById('piInvoiceNo').value.trim();
+    if (!invoiceNo) {
+      this.showToast('Please enter an Invoice Number.', 'error');
+      return;
+    }
+    if (!invoiceNo.startsWith('InvN_')) {
+      this.showToast('Invoice Number must start with InvN_ prefix.', 'error');
       return;
     }
 
-    const item = this.state.items.find(i => i.id === itemId);
-    if (item) {
-      let available = 0;
-      if (fromLoc.includes('S_001') || fromLoc.includes('Store 1')) available = item.stockS001 || 0;
-      else if (fromLoc.includes('S_002') || fromLoc.includes('Store 2')) available = item.stockS002 || 0;
-      else available = item.centralStock || 0;
-
-      if (available < qty) {
-        this.showToast(`Insufficient stock in ${fromLoc}. Available: ${available}, Transfer: ${qty}`, 'error');
-        return;
-      }
+    const date = document.getElementById('piDate').value;
+    if (!date) {
+      this.showToast('Please select an Invoice Date.', 'error');
+      return;
     }
 
-    const data = {
-      type: 'TRANSFER',
-      itemId: itemId,
-      itemCode: itemId,
-      sourceLocation: fromLoc,
-      fromStore: fromLoc,
-      destLocation: toLoc,
-      toSellingPoint: toLoc,
-      quantity: qty,
-      reference: document.getElementById('transferRef').value.trim(),
-      performedBy: 'Logistics Coord',
-      notes: document.getElementById('transferNotes').value.trim()
+    const supSelect = document.getElementById('piSupplier');
+    const supplierName = supSelect.value;
+    if (!supplierName) {
+      this.showToast('Please select a Supplier.', 'error');
+      return;
+    }
+    const selectedSupOption = supSelect.options[supSelect.selectedIndex];
+    const supplierCode = selectedSupOption ? (selectedSupOption.getAttribute('data-code') || 'SUP_GEN') : 'SUP_GEN';
+
+    const storeSelect = document.getElementById('piStore');
+    const storeCode = storeSelect ? storeSelect.value : 'S_000';
+    const storeName = storeSelect && storeSelect.options[storeSelect.selectedIndex] ? storeSelect.options[storeSelect.selectedIndex].text : 'Store';
+
+    const notes = document.getElementById('piNotes').value.trim();
+    const receivedBy = document.getElementById('piReceivedBy').value.trim() || 'Store Incharge';
+
+    const tbody = document.getElementById('piTableBody');
+    const rows = tbody ? tbody.querySelectorAll('tr') : [];
+    const items = [];
+
+    rows.forEach(tr => {
+      const prodSelect = tr.querySelector('.pi-prod-select');
+      const catSelect = tr.querySelector('.pi-cat-select');
+      const codeInput = tr.querySelector('.pi-code-input');
+      const uomInput = tr.querySelector('.pi-uom-input');
+      const rateInput = tr.querySelector('.pi-rate-input');
+      const taxInput = tr.querySelector('.pi-tax-input');
+      const qtyInput = tr.querySelector('.pi-qty-input');
+
+      const itemCode = codeInput ? codeInput.value : (prodSelect ? prodSelect.value : '');
+      const itemName = prodSelect && prodSelect.options[prodSelect.selectedIndex] ? prodSelect.options[prodSelect.selectedIndex].text : itemCode;
+      const category = catSelect ? catSelect.value : '';
+      const uom = uomInput ? uomInput.value : 'Pcs';
+      const rate = parseFloat(rateInput ? rateInput.value : 0) || 0;
+      const taxPercent = parseFloat(taxInput ? taxInput.value : 0) || 0;
+      const quantity = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+
+      if (itemCode && quantity > 0) {
+        items.push({
+          itemCode: itemCode,
+          itemName: itemName,
+          category: category,
+          uom: uom,
+          rate: rate,
+          taxPercent: taxPercent,
+          quantity: quantity
+        });
+      }
+    });
+
+    if (items.length === 0) {
+      this.showToast('Please add at least one item with quantity greater than 0.', 'error');
+      return;
+    }
+
+    const payload = {
+      invoiceNo: invoiceNo,
+      date: date,
+      supplierCode: supplierCode,
+      supplierName: supplierName,
+      storeCode: storeCode,
+      storeName: storeName,
+      notes: notes,
+      performedBy: receivedBy,
+      items: items
     };
 
-    this.showLoading('Transferring Stock...', 'Moving stock between property hubs');
+    this.showLoading('Saving Purchase Invoice...', `Recording ${items.length} items to database & updating stock levels`);
 
     if (this.isGasEnv()) {
       google.script.run
         .withSuccessHandler(function(res) {
           app.hideLoading();
-          app.closeModal('transferModal');
-          app.showToast(`Transferred ${qty} units from ${fromLoc} to ${toLoc}`);
-          app.loadInitialData(true);
+          if (res && res.success) {
+            app.closeModal('purchaseInvoiceModal');
+            app.showToast(`Invoice ${res.invoiceNo} saved! Payable Amount: ${app.formatCurrency(res.payableAmount)}`);
+            if (res.data) {
+              app.showDashboard(res.data);
+            } else {
+              app.loadInitialData(true);
+            }
+          } else {
+            app.showToast((res && res.message) ? res.message : 'Failed to save purchase invoice.', 'error');
+          }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
-          app.showToast('Transfer error: ' + err.message, 'error');
+          app.showToast('Invoice Save Error: ' + err.message, 'error');
         })
-        .processStockTransaction(data);
+        .recordPurchaseInvoice(payload);
     } else {
-      this.hideLoading();
-      this.closeModal('transferModal');
-      this.showToast('Transfer completed (local mode)');
+      setTimeout(() => {
+        app.hideLoading();
+        app.closeModal('purchaseInvoiceModal');
+        app.showToast(`Purchase Invoice ${payload.invoiceNo} saved (local mode)!`);
+      }, 500);
+    }
+  },
+
+  // ==============================================================
+  // 2. STOCK TRANSFER INVOICE ENGINE (MULTI-ITEM INVOICE)
+  // ==============================================================
+  transferInvoiceCounter: 0,
+  transferInvoiceRows: [],
+
+  openTransferInvoiceModal: function(defaultItemId = null) {
+    if (!this.state.items || this.state.items.length === 0) {
+      this.loadInitialData(false);
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const rand = Math.floor(100 + Math.random() * 900);
+    const invoiceNo = 'InvN_TRF_' + dateStr + '_' + rand;
+
+    const invInput = document.getElementById('tiInvoiceNo');
+    if (invInput) invInput.value = invoiceNo;
+
+    const dateInput = document.getElementById('tiDate');
+    if (dateInput) dateInput.value = now.toISOString().slice(0, 10);
+
+    const fromStoreSelect = document.getElementById('tiFromStore');
+    if (fromStoreSelect) {
+      const stores = (this.state.stores && this.state.stores.length > 0) ? this.state.stores : [
+        { code: 'S_000', name: 'Central Depot Warehouse' },
+        { code: 'S_001', name: 'Store 1 - Main Branch' },
+        { code: 'S_002', name: 'Store 2 - Outlet Branch' }
+      ];
+      fromStoreSelect.innerHTML = stores.map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+    }
+
+    const spSelect = document.getElementById('tiSellingPoint');
+    if (spSelect) {
+      const sps = (this.state.sellingPoints && this.state.sellingPoints.length > 0) ? this.state.sellingPoints : [
+        { code: 'SP_001', name: 'Front Counter / Retail Sales', type: 'Sales Counter' },
+        { code: 'SP_002', name: 'Branch Dispenser Counter', type: 'Dispense Counter' },
+        { code: 'SP_003', name: 'Main Production / Operations', type: 'Production & Service' },
+        { code: 'SP_004', name: 'Customer Service & Dispatch', type: 'Dispatch Hub' }
+      ];
+      spSelect.innerHTML = sps.map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name} (${sp.type || 'Selling Point'})</option>`).join('') +
+        `<option value="S_001">[S_001] Store 1 - Main Branch (Store Branch)</option>` +
+        `<option value="S_002">[S_002] Store 2 - Outlet Branch (Store Branch)</option>`;
+    }
+
+    this.transferInvoiceCounter = 0;
+    this.transferInvoiceRows = [];
+    const tbody = document.getElementById('tiTableBody');
+    if (tbody) tbody.innerHTML = '';
+
+    this.addTransferInvoiceRow(defaultItemId);
+    this.openModal('transferInvoiceModal');
+  },
+
+  openTransferModal: function(itemId) {
+    this.openTransferInvoiceModal(itemId);
+  },
+
+  quickTransfer: function(itemId) {
+    this.openTransferInvoiceModal(itemId);
+  },
+
+  openStockOutModal: function(itemId) {
+    this.openTransferInvoiceModal(itemId);
+  },
+
+  quickStockOut: function(itemId) {
+    this.openTransferInvoiceModal(itemId);
+  },
+
+  addTransferInvoiceRow: function(defaultItemId = null) {
+    this.transferInvoiceCounter++;
+    const rowId = 'ti_row_' + this.transferInvoiceCounter;
+    const categories = this.getItemCategories();
+    const items = this.state.items || [];
+    const fromStoreCode = document.getElementById('tiFromStore') ? document.getElementById('tiFromStore').value : 'S_000';
+
+    let targetItem = null;
+    if (defaultItemId) {
+      targetItem = items.find(i => i.id === defaultItemId || i.code === defaultItemId);
+    }
+
+    const selectedCategory = targetItem ? targetItem.category : 'ALL';
+    const filteredItems = (selectedCategory && selectedCategory !== 'ALL')
+      ? items.filter(i => String(i.category).trim() === selectedCategory)
+      : items;
+
+    const rowObj = {
+      id: rowId,
+      selectedCategory: selectedCategory,
+      selectedItemCode: targetItem ? (targetItem.code || targetItem.id) : (filteredItems[0] ? (filteredItems[0].code || filteredItems[0].id) : ''),
+      qty: 1
+    };
+    this.transferInvoiceRows.push(rowObj);
+
+    const activeItem = items.find(i => (i.code || i.id) === rowObj.selectedItemCode) || filteredItems[0] || {};
+    const rate = activeItem.rate || activeItem.cost || 0;
+    const uom = activeItem.uom || activeItem.unit || 'Pcs';
+    const code = activeItem.code || activeItem.id || '';
+
+    let avail = 0;
+    if (fromStoreCode.includes('S_001')) avail = activeItem.stockS001 || 0;
+    else if (fromStoreCode.includes('S_002')) avail = activeItem.stockS002 || 0;
+    else avail = activeItem.centralStock || 0;
+
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    tr.className = 'border-b border-white/5 hover:bg-white/[0.02] transition';
+
+    tr.innerHTML = `
+      <td class="py-2 px-2 text-center text-on-surface-variant font-mono text-[11px] row-number">${this.transferInvoiceRows.length}</td>
+      <td class="py-2 px-2">
+        <select onchange="app.onTiCategoryChange('${rowId}')" class="ti-cat-select w-full px-2 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs text-white focus:border-primary outline-none">
+          <option value="ALL">-- All Categories --</option>
+          ${categories.map(c => `<option value="${c}" ${c === selectedCategory ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td class="py-2 px-2">
+        <select onchange="app.onTiProductChange('${rowId}')" class="ti-prod-select w-full px-2 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs text-white focus:border-primary outline-none">
+          ${filteredItems.map(i => `<option value="${i.code || i.id}" ${(i.code || i.id) === rowObj.selectedItemCode ? 'selected' : ''}>[${i.code || i.id}] ${i.name || i.description}</option>`).join('')}
+        </select>
+      </td>
+      <td class="py-2 px-2">
+        <input type="text" readonly value="${code}" class="ti-code-input w-full px-2 py-1.5 bg-[#040406] border border-white/10 rounded text-[11px] font-mono font-bold text-on-surface-variant outline-none">
+      </td>
+      <td class="py-2 px-2 text-center">
+        <span class="ti-avail-badge inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/20">${avail} ${uom}</span>
+      </td>
+      <td class="py-2 px-2">
+        <input type="text" readonly value="${uom}" class="ti-uom-input w-full px-1.5 py-1.5 bg-[#040406] border border-white/10 rounded text-[11px] text-center text-on-surface-variant outline-none">
+      </td>
+      <td class="py-2 px-2">
+        <input type="number" step="0.01" min="0" value="${rate}" oninput="app.recalcTiInvoice()" class="ti-rate-input w-full px-2 py-1.5 bg-[#0a0a0e] border border-white/15 rounded text-xs font-mono text-white text-right focus:border-primary outline-none">
+      </td>
+      <td class="py-2 px-2">
+        <input type="number" min="1" value="1" oninput="app.recalcTiInvoice()" class="ti-qty-input w-full px-2 py-1.5 bg-[#0a0a0e] border border-primary/40 rounded text-xs font-mono font-bold text-primary text-right focus:border-primary outline-none">
+      </td>
+      <td class="py-2 px-2 text-right font-mono font-bold text-xs text-primary ti-total-display">₹0.00</td>
+      <td class="py-2 px-2 text-center">
+        <button type="button" onclick="app.removeTiRow('${rowId}')" title="Remove item" class="text-on-surface-variant hover:text-error transition font-bold px-1.5 py-0.5 rounded cursor-pointer">&times;</button>
+      </td>
+    `;
+
+    const tbody = document.getElementById('tiTableBody');
+    if (tbody) tbody.appendChild(tr);
+
+    this.recalcTiInvoice();
+  },
+
+  onTiCategoryChange: function(rowId) {
+    const tr = document.getElementById(rowId);
+    if (!tr) return;
+    const catSelect = tr.querySelector('.ti-cat-select');
+    const prodSelect = tr.querySelector('.ti-prod-select');
+    if (!catSelect || !prodSelect) return;
+
+    const selectedCategory = catSelect.value;
+    const items = this.state.items || [];
+    const filtered = (selectedCategory && selectedCategory !== 'ALL')
+      ? items.filter(i => String(i.category).trim() === selectedCategory)
+      : items;
+
+    if (filtered.length === 0) {
+      prodSelect.innerHTML = `<option value="">-- No products in this category --</option>`;
+    } else {
+      prodSelect.innerHTML = filtered.map(i => `<option value="${i.code || i.id}">[${i.code || i.id}] ${i.name || i.description}</option>`).join('');
+    }
+
+    this.onTiProductChange(rowId);
+  },
+
+  onTiProductChange: function(rowId) {
+    const tr = document.getElementById(rowId);
+    if (!tr) return;
+    const prodSelect = tr.querySelector('.ti-prod-select');
+    const codeInput = tr.querySelector('.ti-code-input');
+    const uomInput = tr.querySelector('.ti-uom-input');
+    const rateInput = tr.querySelector('.ti-rate-input');
+    const availBadge = tr.querySelector('.ti-avail-badge');
+    const fromStoreCode = document.getElementById('tiFromStore') ? document.getElementById('tiFromStore').value : 'S_000';
+
+    if (!prodSelect) return;
+    const itemCode = prodSelect.value;
+    const item = (this.state.items || []).find(i => (i.code || i.id) === itemCode);
+
+    if (item) {
+      if (codeInput) codeInput.value = item.code || item.id || '';
+      const uom = item.uom || item.unit || 'Pcs';
+      if (uomInput) uomInput.value = uom;
+      if (rateInput) rateInput.value = item.rate || item.cost || 0;
+
+      let avail = 0;
+      if (fromStoreCode.includes('S_001')) avail = item.stockS001 || 0;
+      else if (fromStoreCode.includes('S_002')) avail = item.stockS002 || 0;
+      else avail = item.centralStock || 0;
+
+      if (availBadge) availBadge.innerText = `${avail} ${uom}`;
+    }
+
+    this.recalcTiInvoice();
+  },
+
+  onTiFromStoreChange: function() {
+    const tbody = document.getElementById('tiTableBody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(tr => {
+      this.onTiProductChange(tr.id);
+    });
+  },
+
+  recalcTiInvoice: function() {
+    const tbody = document.getElementById('tiTableBody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+
+    let totalTransferVal = 0;
+    let itemCount = 0;
+
+    rows.forEach((tr, index) => {
+      const numEl = tr.querySelector('.row-number');
+      if (numEl) numEl.innerText = index + 1;
+
+      const rateInput = tr.querySelector('.ti-rate-input');
+      const qtyInput = tr.querySelector('.ti-qty-input');
+      const totalEl = tr.querySelector('.ti-total-display');
+
+      const rate = parseFloat(rateInput ? rateInput.value : 0) || 0;
+      const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+      const total = rate * qty;
+
+      if (totalEl) totalEl.innerText = app.formatCurrency(total);
+      if (qty > 0) itemCount++;
+      totalTransferVal += total;
+    });
+
+    const itemsCountEl = document.getElementById('tiTotalItems');
+    if (itemsCountEl) itemsCountEl.innerText = `${itemCount} items`;
+
+    const payableEl = document.getElementById('tiPayableAmount');
+    if (payableEl) payableEl.innerText = app.formatCurrency(totalTransferVal);
+  },
+
+  removeTiRow: function(rowId) {
+    const tr = document.getElementById(rowId);
+    if (tr) tr.remove();
+    this.transferInvoiceRows = this.transferInvoiceRows.filter(r => r.id !== rowId);
+
+    const tbody = document.getElementById('tiTableBody');
+    if (tbody && tbody.children.length === 0) {
+      this.addTransferInvoiceRow();
+    } else {
+      this.recalcTiInvoice();
+    }
+  },
+
+  saveTransferInvoice: function() {
+    const invoiceNo = document.getElementById('tiInvoiceNo').value.trim();
+    if (!invoiceNo) {
+      this.showToast('Please enter a Transfer Invoice Number.', 'error');
+      return;
+    }
+    if (!invoiceNo.startsWith('InvN_')) {
+      this.showToast('Transfer Invoice Number must start with InvN_ prefix.', 'error');
+      return;
+    }
+
+    const date = document.getElementById('tiDate').value;
+    if (!date) {
+      this.showToast('Please select a Transfer Date.', 'error');
+      return;
+    }
+
+    const fromStoreSelect = document.getElementById('tiFromStore');
+    const fromStoreCode = fromStoreSelect ? fromStoreSelect.value : 'S_000';
+    const fromStoreName = fromStoreSelect && fromStoreSelect.options[fromStoreSelect.selectedIndex] ? fromStoreSelect.options[fromStoreSelect.selectedIndex].text : 'Central Depot';
+
+    const spSelect = document.getElementById('tiSellingPoint');
+    const toSellingPointCode = spSelect ? spSelect.value : 'SP_001';
+    const toSellingPointName = spSelect && spSelect.options[spSelect.selectedIndex] ? spSelect.options[spSelect.selectedIndex].text : 'Selling Point';
+
+    if (fromStoreCode === toSellingPointCode) {
+      this.showToast('Source store and destination selling point cannot be the same store.', 'error');
+      return;
+    }
+
+    const notes = document.getElementById('tiNotes').value.trim();
+    const dispatcher = document.getElementById('tiDispatcher').value.trim() || 'Store Keeper';
+
+    const tbody = document.getElementById('tiTableBody');
+    const rows = tbody ? tbody.querySelectorAll('tr') : [];
+    const items = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const tr = rows[i];
+      const prodSelect = tr.querySelector('.ti-prod-select');
+      const catSelect = tr.querySelector('.ti-cat-select');
+      const codeInput = tr.querySelector('.ti-code-input');
+      const uomInput = tr.querySelector('.ti-uom-input');
+      const rateInput = tr.querySelector('.ti-rate-input');
+      const qtyInput = tr.querySelector('.ti-qty-input');
+
+      const itemCode = codeInput ? codeInput.value : (prodSelect ? prodSelect.value : '');
+      const itemName = prodSelect && prodSelect.options[prodSelect.selectedIndex] ? prodSelect.options[prodSelect.selectedIndex].text : itemCode;
+      const category = catSelect ? catSelect.value : '';
+      const uom = uomInput ? uomInput.value : 'Pcs';
+      const rate = parseFloat(rateInput ? rateInput.value : 0) || 0;
+      const quantity = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+
+      if (itemCode && quantity > 0) {
+        // Validate stock availability
+        const prodObj = (this.state.items || []).find(it => (it.code || it.id) === itemCode);
+        if (prodObj) {
+          let avail = 0;
+          if (fromStoreCode.includes('S_001')) avail = prodObj.stockS001 || 0;
+          else if (fromStoreCode.includes('S_002')) avail = prodObj.stockS002 || 0;
+          else avail = prodObj.centralStock || 0;
+
+          if (avail < quantity) {
+            this.showToast(`Insufficient stock in ${fromStoreName} for ${prodObj.name || itemCode}. Available: ${avail}, Requested: ${quantity}`, 'error');
+            return;
+          }
+        }
+
+        items.push({
+          itemCode: itemCode,
+          itemName: itemName,
+          category: category,
+          uom: uom,
+          rate: rate,
+          quantity: quantity
+        });
+      }
+    }
+
+    if (items.length === 0) {
+      this.showToast('Please add at least one item with transfer quantity greater than 0.', 'error');
+      return;
+    }
+
+    const payload = {
+      invoiceNo: invoiceNo,
+      date: date,
+      fromStoreCode: fromStoreCode,
+      fromStoreName: fromStoreName,
+      toSellingPointCode: toSellingPointCode,
+      toSellingPointName: toSellingPointName,
+      notes: notes,
+      performedBy: dispatcher,
+      items: items
+    };
+
+    this.showLoading('Saving Transfer Invoice...', `Recording ${items.length} items to database & updating store ledgers`);
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res && res.success) {
+            app.closeModal('transferInvoiceModal');
+            app.showToast(`Transfer Invoice ${res.invoiceNo} saved! Valuation: ${app.formatCurrency(res.payableAmount)}`);
+            if (res.data) {
+              app.showDashboard(res.data);
+            } else {
+              app.loadInitialData(true);
+            }
+          } else {
+            app.showToast((res && res.message) ? res.message : 'Failed to save transfer invoice.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Transfer Save Error: ' + err.message, 'error');
+        })
+        .recordTransferInvoice(payload);
+    } else {
+      setTimeout(() => {
+        app.hideLoading();
+        app.closeModal('transferInvoiceModal');
+        app.showToast(`Transfer Invoice ${payload.invoiceNo} saved (local mode)!`);
+      }, 500);
     }
   },
 

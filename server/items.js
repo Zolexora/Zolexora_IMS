@@ -423,3 +423,37 @@ function processGoogleAuth(orgDetails) {
 function getGoogleAccountInfo() {
   return getGoogleUserIdentity();
 }
+
+/**
+ * Server entry point to record multi-item purchase invoice
+ */
+function recordPurchaseInvoice(invoiceData) {
+  const res = processPurchaseInvoice(invoiceData);
+  const updatedData = getInitialData();
+  return {
+    success: true,
+    invoiceNo: res.invoiceNo,
+    date: res.date,
+    itemsCount: res.itemsCount,
+    payableAmount: res.payableAmount,
+    data: updatedData,
+    message: res.message
+  };
+}
+
+/**
+ * Server entry point to record multi-item stock transfer invoice
+ */
+function recordTransferInvoice(transferData) {
+  const res = processTransferInvoice(transferData);
+  const updatedData = getInitialData();
+  return {
+    success: true,
+    invoiceNo: res.invoiceNo,
+    date: res.date,
+    itemsCount: res.itemsCount,
+    payableAmount: res.payableAmount,
+    data: updatedData,
+    message: res.message
+  };
+}

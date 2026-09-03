@@ -341,3 +341,299 @@ function getIssuanceTransactions(limit) {
 function getTransactions(limit) {
   return getIssuanceTransactions(limit || 100);
 }
+
+/**
+ * 3. BATCH PURCHASE INVOICE ENTRY
+ * Records multi-line item purchase invoice with InvN_ prefix, updates product master stock & appends to Supplier_Transactions
+ */
+function processPurchaseInvoice(invoiceData) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (e) {
+    throw new Error('Server busy with concurrent transaction. Please retry.');
+  }
+
+  try {
+    const prodWb = getWorkbook(WORKBOOKS.PRODUCT_MASTER);
+    const prodSheet = prodWb.getSheetByName('Product_Master');
+    const supTxnWb = getWorkbook(WORKBOOKS.SUPPLIER_TXNS);
+    const supTxnSheet = supTxnWb.getSheetByName('Supplier_Transactions');
+
+    const invoiceNo = String(invoiceData.invoiceNo || ('InvN_' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyyMMdd_HHmmss'))).trim();
+    const invoiceDate = invoiceData.date || Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd');
+    const supplierName = String(invoiceData.supplierName || 'Direct / Local Supplier');
+    const supplierCode = String(invoiceData.supplierCode || 'SUP_GEN');
+    const storeCode = String(invoiceData.storeCode || 'S_000').toUpperCase();
+    const storeName = invoiceData.storeName || (storeCode === 'S_001' ? 'Store 1 (Main Branch)' : storeCode === 'S_002' ? 'Store 2 (Outlet Branch)' : 'Central Depot Warehouse');
+    const notes = invoiceData.notes || '';
+    const performedBy = invoiceData.performedBy || 'Store Manager';
+    const items = invoiceData.items || [];
+
+    if (!items || items.length === 0) {
+      throw new Error('Invoice must contain at least one item.');
+    }
+
+    const prodData = prodSheet.getDataRange().getValues();
+    const nowIso = new Date().toISOString();
+    const rowsToAppend = [];
+    let grandTotal = 0;
+
+    for (let j = 0; j < items.length; j++) {
+      const itm = items[j];
+      const itemCode = String(itm.itemCode || itm.sku).trim().toUpperCase();
+      const qty = Math.abs(Number(itm.quantity));
+      if (isNaN(qty) || qty <= 0) continue;
+
+      let targetRow = -1;
+      let itemRow = null;
+
+      for (let i = 1; i < prodData.length; i++) {
+        if (String(prodData[i][0]).toUpperCase() === itemCode) {
+          targetRow = i + 1;
+          itemRow = prodData[i];
+          break;
+        }
+      }
+
+      if (targetRow === -1 || !itemRow) {
+        throw new Error('Product not found for Item Code: ' + itemCode);
+      }
+
+      const itemDesc = String(itemRow[1]);
+      const category = String(itemRow[2]);
+      const uom = String(itemRow[4] || 'Pcs');
+      let rate = Number(itm.rate) || Number(itemRow[5]) || 0;
+      let taxPct = Number(itm.taxPercent) !== undefined && !isNaN(Number(itm.taxPercent)) ? Number(itm.taxPercent) : (Number(itemRow[6]) || 0);
+      const minStock = Number(itemRow[7]) || 0;
+      let stockS001 = Number(itemRow[8]) || 0;
+      let stockS002 = Number(itemRow[9]) || 0;
+      let centralStock = Number(itemRow[10]) || 0;
+
+      if (storeCode.includes('S_001') || storeCode.includes('STORE 1')) {
+        stockS001 += qty;
+      } else if (storeCode.includes('S_002') || storeCode.includes('STORE 2')) {
+        stockS002 += qty;
+      } else {
+        centralStock += qty;
+      }
+
+      const totalStock = stockS001 + stockS002 + centralStock;
+      const totalVal = totalStock * rate;
+      const lineSubtotal = qty * rate;
+      const lineTax = (lineSubtotal * taxPct) / 100;
+      const lineTotal = lineSubtotal + lineTax;
+      grandTotal += lineTotal;
+
+      // Update in memory prodData array
+      itemRow[5] = rate;
+      itemRow[6] = taxPct;
+      itemRow[8] = stockS001;
+      itemRow[9] = stockS002;
+      itemRow[10] = centralStock;
+      itemRow[11] = totalStock;
+      itemRow[12] = totalVal;
+
+      // Write updated product row
+      prodSheet.getRange(targetRow, 6, 1, 8).setValues([[
+        rate,
+        taxPct,
+        minStock,
+        stockS001,
+        stockS002,
+        centralStock,
+        totalStock,
+        totalVal
+      ]]);
+      prodSheet.getRange(targetRow, 16).setValue(nowIso);
+
+      // Prepare row for Supplier_Transactions
+      const txnId = 'TXN_PUR_' + invoiceNo.replace(/[^a-zA-Z0-9_]/g, '') + '_' + (j + 1);
+      rowsToAppend.push([
+        txnId,
+        nowIso,
+        supplierCode,
+        supplierName,
+        itemCode,
+        itemDesc,
+        category,
+        qty,
+        uom,
+        rate,
+        taxPct,
+        lineTotal,
+        storeCode,
+        storeName,
+        invoiceNo,
+        performedBy,
+        notes
+      ]);
+    }
+
+    // Append rows to Supplier_Transactions
+    for (let r = 0; r < rowsToAppend.length; r++) {
+      supTxnSheet.appendRow(rowsToAppend[r]);
+    }
+
+    return {
+      success: true,
+      invoiceNo: invoiceNo,
+      date: invoiceDate,
+      itemsCount: rowsToAppend.length,
+      payableAmount: grandTotal,
+      message: `Invoice ${invoiceNo} recorded successfully with ${rowsToAppend.length} items.`
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 4. BATCH STOCK TRANSFER INVOICE ENTRY
+ * Records multi-line item transfer invoice to selling point / store branch
+ */
+function processTransferInvoice(transferData) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (e) {
+    throw new Error('Server busy with concurrent transaction. Please retry.');
+  }
+
+  try {
+    const prodWb = getWorkbook(WORKBOOKS.PRODUCT_MASTER);
+    const prodSheet = prodWb.getSheetByName('Product_Master');
+    const issueWb = getWorkbook(WORKBOOKS.ISSUANCE_TXNS);
+    const issueSheet = issueWb.getSheetByName('Issuance_Transactions');
+
+    const invoiceNo = String(transferData.invoiceNo || ('InvN_TRF_' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyyMMdd_HHmmss'))).trim();
+    const transferDate = transferData.date || Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd');
+    const fromStoreCode = String(transferData.fromStoreCode || 'S_000').toUpperCase();
+    const fromStoreName = transferData.fromStoreName || (fromStoreCode === 'S_001' ? 'Store 1 (Main Branch)' : fromStoreCode === 'S_002' ? 'Store 2 (Outlet Branch)' : 'Central Depot Warehouse');
+    const toSellingPointCode = String(transferData.toSellingPointCode || transferData.sellingPoint || 'SP_001');
+    const toSellingPointName = transferData.toSellingPointName || transferData.sellingPointName || 'Selling Point';
+    const notes = transferData.notes || '';
+    const performedBy = transferData.performedBy || 'Store Keeper';
+    const items = transferData.items || [];
+
+    if (!items || items.length === 0) {
+      throw new Error('Transfer invoice must contain at least one item.');
+    }
+
+    const prodData = prodSheet.getDataRange().getValues();
+    const nowIso = new Date().toISOString();
+    const rowsToAppend = [];
+    let grandTotal = 0;
+
+    for (let j = 0; j < items.length; j++) {
+      const itm = items[j];
+      const itemCode = String(itm.itemCode || itm.sku).trim().toUpperCase();
+      const qty = Math.abs(Number(itm.quantity));
+      if (isNaN(qty) || qty <= 0) continue;
+
+      let targetRow = -1;
+      let itemRow = null;
+
+      for (let i = 1; i < prodData.length; i++) {
+        if (String(prodData[i][0]).toUpperCase() === itemCode) {
+          targetRow = i + 1;
+          itemRow = prodData[i];
+          break;
+        }
+      }
+
+      if (targetRow === -1 || !itemRow) {
+        throw new Error('Product not found for Item Code: ' + itemCode);
+      }
+
+      const itemDesc = String(itemRow[1]);
+      const uom = String(itemRow[4] || 'Pcs');
+      const rate = Number(itm.rate) || Number(itemRow[5]) || 0;
+      let stockS001 = Number(itemRow[8]) || 0;
+      let stockS002 = Number(itemRow[9]) || 0;
+      let centralStock = Number(itemRow[10]) || 0;
+
+      // Deduct from source store
+      if (fromStoreCode.includes('S_001') || fromStoreCode.includes('STORE 1')) {
+        if (stockS001 < qty) throw new Error(`Insufficient stock in Store 1 for ${itemDesc} (${itemCode}). Available: ${stockS001}, Required: ${qty}`);
+        stockS001 -= qty;
+      } else if (fromStoreCode.includes('S_002') || fromStoreCode.includes('STORE 2')) {
+        if (stockS002 < qty) throw new Error(`Insufficient stock in Store 2 for ${itemDesc} (${itemCode}). Available: ${stockS002}, Required: ${qty}`);
+        stockS002 -= qty;
+      } else {
+        if (centralStock < qty) throw new Error(`Insufficient stock in Central Depot for ${itemDesc} (${itemCode}). Available: ${centralStock}, Required: ${qty}`);
+        centralStock -= qty;
+      }
+
+      // If destination selling point is another store branch (e.g. S_001 or S_002), add to destination
+      const destCode = toSellingPointCode.toUpperCase();
+      if (destCode.includes('S_001') || destCode.includes('STORE 1')) {
+        stockS001 += qty;
+      } else if (destCode.includes('S_002') || destCode.includes('STORE 2')) {
+        stockS002 += qty;
+      } else if (destCode.includes('S_000') || destCode.includes('CENTRAL')) {
+        centralStock += qty;
+      }
+
+      const totalStock = stockS001 + stockS002 + centralStock;
+      const totalVal = totalStock * rate;
+      const lineTotal = qty * rate;
+      grandTotal += lineTotal;
+
+      // Update in memory prodData array
+      itemRow[8] = stockS001;
+      itemRow[9] = stockS002;
+      itemRow[10] = centralStock;
+      itemRow[11] = totalStock;
+      itemRow[12] = totalVal;
+
+      // Write updated product row
+      prodSheet.getRange(targetRow, 9, 1, 5).setValues([[
+        stockS001,
+        stockS002,
+        centralStock,
+        totalStock,
+        totalVal
+      ]]);
+      prodSheet.getRange(targetRow, 16).setValue(nowIso);
+
+      // Prepare row for Issuance_Transactions
+      const txnId = 'TXN_TRF_' + invoiceNo.replace(/[^a-zA-Z0-9_]/g, '') + '_' + (j + 1);
+      rowsToAppend.push([
+        txnId,
+        nowIso,
+        'TRANSFER',
+        itemCode,
+        itemDesc,
+        qty,
+        uom,
+        fromStoreCode,
+        fromStoreName,
+        toSellingPointCode,
+        toSellingPointName,
+        rate,
+        lineTotal,
+        invoiceNo,
+        performedBy,
+        'Completed',
+        notes
+      ]);
+    }
+
+    // Append rows to Issuance_Transactions
+    for (let r = 0; r < rowsToAppend.length; r++) {
+      issueSheet.appendRow(rowsToAppend[r]);
+    }
+
+    return {
+      success: true,
+      invoiceNo: invoiceNo,
+      date: transferDate,
+      itemsCount: rowsToAppend.length,
+      payableAmount: grandTotal,
+      message: `Transfer invoice ${invoiceNo} recorded successfully with ${rowsToAppend.length} items.`
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
