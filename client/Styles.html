@@ -64,6 +64,18 @@
     backdrop-filter: blur(12px) !important;
   }
 
+  /* 10px gap from sidepanel to card, and 10px gap from upper panel (header) to card */
+  #appDashboardContainer main {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-top: 74px !important; /* 64px fixed header + 10px gap */
+    padding-bottom: 10px !important;
+  }
+
+  #appDashboardContainer .tab-pane {
+    gap: 10px !important;
+  }
+
   /* Main background inside dashboard */
   #appDashboardContainer .bg-surface,
   #appDashboardContainer .bg-surface-container,
