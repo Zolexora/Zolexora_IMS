@@ -642,6 +642,7 @@ function initIssuanceTransactions(ss) {
 function initUsersAndSettings(ss, orgData) {
   const orgName = (orgData && orgData.name && orgData.name.trim()) ? orgData.name.trim() : 'Zolexora IMS';
   const currency = (orgData && orgData.currency && orgData.currency.trim()) ? orgData.currency.trim() : '₹';
+  const industry = (orgData && orgData.industry && orgData.industry.trim()) ? orgData.industry.trim() : 'General Enterprise';
   const adminName = (orgData && orgData.adminName && orgData.adminName.trim()) ? orgData.adminName.trim() : 'Zolexora Admin';
   const adminEmail = (orgData && orgData.adminEmail && orgData.adminEmail.trim()) ? orgData.adminEmail.trim() : 'aboishekofficial4577@gmail.com';
 
@@ -668,6 +669,8 @@ function initUsersAndSettings(ss, orgData) {
     settingsSheet.appendRow(['Key', 'Value', 'Description']);
     formatHeaderRow(settingsSheet, 3);
     settingsSheet.appendRow(['HOTEL_NAME', orgName, 'Organization Brand Name']);
+    settingsSheet.appendRow(['INDUSTRY', industry, 'SaaS Tenant Industry Sector']);
+    settingsSheet.appendRow(['PLAN_TIER', 'Enterprise Cloud SaaS', 'Active SaaS Subscription Tier']);
     settingsSheet.appendRow(['CURRENCY_SYMBOL', currency, 'Display Currency Symbol']);
     settingsSheet.appendRow(['DRIVE_FOLDER_ID', DEFAULT_DRIVE_FOLDER_ID, 'Designated Database Drive Folder']);
   }

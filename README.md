@@ -1,49 +1,53 @@
-# Zolexora IMS
+# Zolexora IMS — Cloud Inventory SaaS
 
-**Zolexora IMS** is a pure Google Sheets and Google Drive-driven enterprise Inventory Management System (IMS) built on Google Apps Script and modern web technologies.
-
----
-
-## 🌟 Key Features
-
-- **Multi-Workbook Architecture**: Decentralized architecture separating Location Master, Product Master, Supplier Directory, Purchase Transactions, Issuances, and System Settings.
-- **Dedicated Google Drive Integration**: All files, workbooks, reports, invoices, and backups are strictly organized inside designated Google Drive folder `1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx`.
-- **Live Google Sheets Synchronization**: Reads and writes directly from Google Sheets with transactional concurrency locking.
-- **Barcode & QR Code Scanning**: Integrated camera-based barcode/QR scanner and printable barcode labels.
-- **Auditing & Analytics**: Real-time stock valuation, consumption tracking, and export to CSV.
+**Zolexora IMS** is a modern, pure Google Sheets and Google Drive-powered multi-tenant **Software-as-a-Service (SaaS)** Inventory Management Web Application built on Google Apps Script and modern responsive web technologies.
 
 ---
 
-## 📁 Google Drive Directory Tree Structure
+## 🌟 SaaS Platform Capabilities
 
-All files and subfolders reside within:
-👉 [Google Drive Folder: `1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx`](https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)
+- **Multi-Tenant Architecture**: Each client organization or business tenant enjoys an isolated, dedicated database workspace inside Google Drive.
+- **Automated Tenant Database Provisioning**: In seconds, a new tenant database is provisioned with 6 structured subdirectories and clean Google Sheets workbooks.
+- **Cross-Industry Support**: Built for Hospitality & Hotels, Restaurants & F&B, Retail & E-Commerce, Warehousing & Logistics, Corporate Offices, and Healthcare.
+- **Dynamic Multi-Tenant Switcher**: Seamlessly switch between client organizations or spin up new tenant databases with 1 click.
+- **Enterprise Concurrency Locking**: Multi-user real-time transactions with transactional concurrency locks directly on Google Sheets.
+- **Barcode & QR Engine**: Live camera scanning and printable asset barcodes.
+- **Live Google Drive & Sheets Integration**: All tenant databases, reports, invoices, and backups are strictly organized in dedicated Google Drive storage.
+
+---
+
+## 🌳 Multi-Tenant Google Drive Directory Architecture
+
+All tenant databases and resources reside within the root cloud storage:  
+👉 [Root Drive Database: `1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx`](https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)
 
 ```text
-📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/  (Root Database Folder)
+📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/  (Root Cloud Database)
 │
-├── 📁 01_Master_Databases/
-│   ├── 📊 Location_Master             (Sheets: Store, Selling_Point)
-│   ├── 📊 Product_Master              (Sheet: Product_Master)
-│   └── 📊 Supplier_Master             (Sheet: Supplier_Master)
-│
-├── 📁 02_Transactions/
-│   ├── 📊 Supplier_Transactions       (Stock-In & Purchase Orders)
-│   └── 📊 Issuance_Transactions       (Store-to-Department Disbursements)
-│
-├── 📁 03_Settings_and_Users/
-│   └── 📊 Users_and_Settings          (Sheets: Users, Settings)
-│
-├── 📁 04_Invoices_and_Attachments/
-│   ├── 📁 Purchase_Orders/
-│   └── 📁 Delivery_Challans/
-│
-├── 📁 05_Reports_and_Exports/
-│   ├── 📁 Daily_Summaries/
-│   ├── 📁 Monthly_Valuation/
-│   └── 📁 Supplier_Audits/
-│
-└── 📁 06_System_Backups/
+└── 📁 [Tenant Organization Name]/      (e.g., Acme Retail, Zolexora Resorts)
+    │
+    ├── 📁 01_Master_Databases/
+    │   ├── 📊 Location_Master         (Sheets: Store, Selling_Point)
+    │   ├── 📊 Product_Master          (Sheet: Product_Master)
+    │   └── 📊 Supplier_Master         (Sheet: Supplier_Master - 28 Vendors)
+    │
+    ├── 📁 02_Transactions/
+    │   ├── 📊 Supplier_Transactions   (Stock-In & Purchase Orders)
+    │   └── 📊 Issuance_Transactions   (Store-to-Department Disbursements)
+    │
+    ├── 📁 03_Settings_and_Users/
+    │   └── 📊 Users_and_Settings      (Sheets: Users, Settings)
+    │
+    ├── 📁 04_Invoices_and_Attachments/
+    │   ├── 📁 Purchase_Orders/        (Uploaded PO PDFs / Challans)
+    │   └── 📁 Delivery_Challans/      (Goods Receipt documentation)
+    │
+    ├── 📁 05_Reports_and_Exports/
+    │   ├── 📁 Daily_Summaries/        (Daily consumption snapshots)
+    │   ├── 📁 Monthly_Valuation/      (Inventory valuation reports)
+    │   └── 📁 Supplier_Audits/        (Vendor performance audits)
+    │
+    └── 📁 06_System_Backups/          (Automated periodic sheet archives)
 ```
 
 ---

@@ -270,6 +270,7 @@ const app = {
     if (e) e.preventDefault();
     const name = document.getElementById('newOrgName').value.trim();
     const storeName = document.getElementById('newOrgStoreName').value.trim();
+    const industry = document.getElementById('newOrgIndustry') ? document.getElementById('newOrgIndustry').value : 'Hospitality & Hotels';
     const currency = document.getElementById('newOrgCurrency').value;
     const adminName = document.getElementById('newOrgAdminName').value.trim();
     const adminEmail = document.getElementById('newOrgAdminEmail').value.trim();
@@ -284,6 +285,7 @@ const app = {
     const orgData = {
       name: name,
       storeName: storeName || 'Main Central Warehouse',
+      industry: industry,
       currency: currency || '₹',
       adminName: adminName || 'Zolexora Admin',
       adminEmail: adminEmail || 'aboishekofficial4577@gmail.com'
@@ -1386,17 +1388,17 @@ const app = {
   },
 
   reseedDemoData: function() {
-    if (!confirm('Re-seed demo hotel inventory data into current spreadsheet? This will populate standard hotel catalog items.')) {
+    if (!confirm('Re-seed standard enterprise inventory catalog data into current spreadsheet? This will populate standard product catalog items.')) {
       return;
     }
 
-    this.showLoading('Refreshing demo data...', 'Inserting hotel catalog items');
+    this.showLoading('Refreshing demo data...', 'Inserting enterprise catalog items');
 
     if (this.isGasEnv()) {
       google.script.run
         .withSuccessHandler(function(res) {
           app.hideLoading();
-          app.showToast('Sample hotel data re-seeded!');
+          app.showToast('Standard inventory catalog data re-seeded!');
           app.loadInitialData(true);
         })
         .withFailureHandler(function(err) {
