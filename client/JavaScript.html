@@ -263,20 +263,6 @@ const app = {
     }
   },
 
-  toggleManualAuth: function() {
-    const el = document.getElementById('manualAuthContainer');
-    const text = document.getElementById('manualAuthToggleText');
-    if (el) {
-      const isHidden = el.classList.contains('hidden');
-      if (isHidden) {
-        el.classList.remove('hidden');
-        if (text) text.innerText = 'Hide password / demo login form';
-      } else {
-        el.classList.add('hidden');
-        if (text) text.innerText = 'Need password login or test demo account? Click here';
-      }
-    }
-  },
 
   showDashboard: function(data) {
     const landingView = document.getElementById('commercialLandingView');
@@ -299,123 +285,7 @@ const app = {
     this.handleInitialDataSuccess(data);
   },
 
-  handleSignInSubmit: function(e) {
-    if (e) e.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
 
-    if (!email || !password) {
-      this.showToast('Please enter both email and password.', 'error');
-      return;
-    }
-
-    this.showLoading('Signing in...', 'Authenticating credentials against Zolexora database');
-
-    if (this.isGasEnv()) {
-      google.script.run
-        .withSuccessHandler(function(res) {
-          app.hideLoading();
-          if (res && res.success) {
-            app.state.authUser = res.user;
-            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
-            app.showDashboard(res.data);
-            app.showToast('Welcome back, ' + (res.user.name || res.user.email) + '!');
-          } else {
-            app.showToast((res && res.message) ? res.message : 'Invalid credentials. Please try again.', 'error');
-          }
-        })
-        .withFailureHandler(function(err) {
-          app.hideLoading();
-          app.showToast('Authentication error: ' + err.message, 'error');
-        })
-        .loginUser({ email: email, password: password });
-    } else {
-      setTimeout(() => {
-        app.hideLoading();
-        const mockUser = {
-          id: 'USR_LOCAL',
-          email: email,
-          name: 'Demo Admin',
-          role: 'OrgAdmin',
-          orgId: 'mock_org',
-          orgName: 'Zolexora IMS'
-        };
-        app.state.authUser = mockUser;
-        localStorage.setItem('zolexora_auth_user', JSON.stringify(mockUser));
-        app.showDashboard(app.getMockData());
-        app.showToast('Signed in in local simulation mode.');
-      }, 800);
-    }
-  },
-
-  handleRegisterSubmit: function(e) {
-    if (e) e.preventDefault();
-    const name = document.getElementById('regFullName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const password = document.getElementById('regPassword').value.trim();
-    const orgName = document.getElementById('regOrgName').value.trim();
-    const industry = document.getElementById('regIndustry').value;
-    const storeName = document.getElementById('regStoreName').value.trim();
-    const currency = document.getElementById('regCurrency').value;
-
-    if (!email || !password || !orgName) {
-      this.showToast('Please complete all required fields.', 'error');
-      return;
-    }
-
-    if (password.length < 6) {
-      this.showToast('Password must be at least 6 characters long.', 'error');
-      return;
-    }
-
-    this.showLoading('Creating Account & Provisioning Workspace...', 'Building folder & 6 structured databases in Zolexora cloud');
-
-    const regData = {
-      name: name,
-      email: email,
-      password: password,
-      orgName: orgName,
-      industry: industry,
-      storeName: storeName || 'Main Central Warehouse',
-      currency: currency || '₹'
-    };
-
-    if (this.isGasEnv()) {
-      google.script.run
-        .withSuccessHandler(function(res) {
-          app.hideLoading();
-          if (res && res.success) {
-            app.state.authUser = res.user;
-            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
-            app.showDashboard(res.data);
-            app.showToast(res.message || 'Account created successfully!');
-          } else {
-            app.showToast((res && res.message) ? res.message : 'Registration failed.', 'error');
-          }
-        })
-        .withFailureHandler(function(err) {
-          app.hideLoading();
-          app.showToast('Registration error: ' + err.message, 'error');
-        })
-        .registerUser(regData);
-    } else {
-      setTimeout(() => {
-        app.hideLoading();
-        const mockUser = {
-          id: 'USR_NEW',
-          email: email,
-          name: name,
-          role: 'OrgAdmin',
-          orgId: 'mock_org',
-          orgName: orgName
-        };
-        app.state.authUser = mockUser;
-        localStorage.setItem('zolexora_auth_user', JSON.stringify(mockUser));
-        app.showDashboard(app.getMockData());
-        app.showToast('Account registered (local simulation)!');
-      }, 1000);
-    }
-  },
 
   logoutUser: function() {
     localStorage.removeItem('zolexora_auth_user');
