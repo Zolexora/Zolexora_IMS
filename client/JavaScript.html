@@ -21,7 +21,133 @@ const app = {
 
   // Initialize App
   init: function() {
+    const sessionOrgId = sessionStorage.getItem('zolexora_active_org_id');
+    if (!sessionOrgId) {
+      this.showOnboardingView();
+    }
     this.loadInitialData();
+  },
+
+  showOnboardingView: function() {
+    const landing = document.getElementById('onboardingLandingView');
+    const appDash = document.getElementById('appDashboardContainer');
+    if (landing) landing.classList.remove('hidden');
+    if (appDash) appDash.classList.add('hidden');
+    this.renderOnboardingOrgList();
+  },
+
+  hideOnboardingView: function() {
+    const landing = document.getElementById('onboardingLandingView');
+    const appDash = document.getElementById('appDashboardContainer');
+    if (landing) landing.classList.add('hidden');
+    if (appDash) appDash.classList.remove('hidden');
+  },
+
+  renderOnboardingOrgList: function() {
+    const container = document.getElementById('onboardingOrgsList');
+    if (!container) return;
+
+    const orgs = this.state.organizations || [];
+    if (orgs.length === 0) {
+      container.innerHTML = `<div class="p-3 bg-surface-container-high rounded-xl text-center text-on-surface-variant text-xs">No previous organizations found in this Google Drive folder yet.</div>`;
+      return;
+    }
+
+    container.innerHTML = orgs.map(org => {
+      return `
+        <div class="flex items-center justify-between p-3 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 rounded-xl transition">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-[22px]">corporate_fare</span>
+            <div>
+              <div class="font-bold text-on-surface text-xs">${org.name}</div>
+              <div class="text-[10px] text-on-surface-variant font-mono truncate max-w-[200px]">${org.id}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="${org.url}" target="_blank" class="p-1.5 text-on-surface-variant hover:text-primary transition" title="View Drive Folder">
+              <span class="material-symbols-outlined text-[16px]">folder_open</span>
+            </a>
+            <button onclick="app.selectOnboardingOrg('${org.id}')" class="px-3 py-1.5 bg-primary/20 hover:bg-primary text-primary hover:text-on-primary font-bold text-xs rounded-lg transition cursor-pointer">
+              Open Dashboard
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  selectOnboardingOrg: function(orgId) {
+    this.showLoading('Loading Organization...', 'Opening database workbooks');
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          app.hideLoading();
+          sessionStorage.setItem('zolexora_active_org_id', orgId);
+          app.hideOnboardingView();
+          app.handleInitialDataSuccess(data);
+          app.showToast('Switched to ' + (data.activeOrganization ? data.activeOrganization.name : 'organization'));
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error opening organization: ' + err.message, 'error');
+        })
+        .switchOrganization(orgId);
+    } else {
+      this.hideLoading();
+      sessionStorage.setItem('zolexora_active_org_id', orgId);
+      this.hideOnboardingView();
+    }
+  },
+
+  handleOnboardingSubmit: function(e) {
+    if (e) e.preventDefault();
+    const name = document.getElementById('onboardOrgName').value.trim();
+    const industry = document.getElementById('onboardOrgIndustry').value;
+    const storeName = document.getElementById('onboardOrgStoreName').value.trim();
+    const currency = document.getElementById('onboardOrgCurrency').value;
+    const adminName = document.getElementById('onboardOrgAdminName').value.trim();
+    const adminEmail = document.getElementById('onboardOrgAdminEmail').value.trim();
+
+    if (!name) {
+      this.showToast('Please enter an organization name.', 'error');
+      return;
+    }
+
+    this.showLoading('Provisioning Organization Database...', 'Creating folder "' + name + '" & structured tree in Google Drive');
+
+    const orgData = {
+      name: name,
+      industry: industry,
+      storeName: storeName || 'Main Central Warehouse',
+      currency: currency || '₹',
+      adminName: adminName || 'Zolexora Admin',
+      adminEmail: adminEmail || 'aboishekofficial4577@gmail.com'
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          app.hideLoading();
+          if (data && data.activeOrganization) {
+            sessionStorage.setItem('zolexora_active_org_id', data.activeOrganization.id);
+          }
+          app.hideOnboardingView();
+          app.handleInitialDataSuccess(data);
+          app.showToast('Organization "' + name + '" provisioned successfully with 6 structured subdirectories!');
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Failed to create organization: ' + err.message, 'error');
+        })
+        .createNewOrganization(orgData);
+    } else {
+      setTimeout(() => {
+        app.hideLoading();
+        sessionStorage.setItem('zolexora_active_org_id', 'mock_id');
+        app.hideOnboardingView();
+        app.showToast('Mock Organization provisioned!');
+      }, 1000);
+    }
   },
 
   // Check if running inside Google Apps Script environment
@@ -113,6 +239,20 @@ const app = {
     this.state.organizations = data.organizations || (data.workbooksInfo ? data.workbooksInfo.organizations : []);
     this.state.hasOrganization = data.hasOrganization !== false;
 
+    // Populate onboarding organization list if visible
+    this.renderOnboardingOrgList();
+
+    const sessionOrgId = sessionStorage.getItem('zolexora_active_org_id');
+
+    // If user has not selected an organization for this session, stay on the onboarding landing page
+    if (!sessionOrgId || !this.state.hasOrganization || !this.state.activeOrganization) {
+      this.showOnboardingView();
+      return;
+    }
+
+    // Otherwise reveal the dashboard
+    this.hideOnboardingView();
+
     this.state.metrics = data.metrics || {};
     this.state.items = data.items || [];
     this.state.suppliers = data.suppliers || [];
@@ -153,11 +293,6 @@ const app = {
     this.renderSuppliers();
     this.renderDepartmentsAndLocations();
     this.renderSettingsTab();
-
-    // If no organization exists or hasOrganization is false, trigger the onboarding modal
-    if (!this.state.hasOrganization || !this.state.activeOrganization) {
-      this.openOrgModal('create', false);
-    }
   },
 
   // ==========================================
@@ -318,6 +453,10 @@ const app = {
         .withSuccessHandler(function(data) {
           app.hideLoading();
           app.closeOrgModal();
+          if (data && data.activeOrganization) {
+            sessionStorage.setItem('zolexora_active_org_id', data.activeOrganization.id);
+          }
+          app.hideOnboardingView();
           app.handleInitialDataSuccess(data);
           app.showToast('Organization "' + name + '" provisioned successfully with 6 structured subdirectories!');
         })
@@ -330,6 +469,8 @@ const app = {
       setTimeout(() => {
         app.hideLoading();
         app.closeOrgModal();
+        sessionStorage.setItem('zolexora_active_org_id', 'mock_id');
+        app.hideOnboardingView();
         app.state.activeOrganization = { id: 'mock_org_' + Date.now(), name: name, url: '#' };
         app.state.organizations.push(app.state.activeOrganization);
         app.state.settings.HOTEL_NAME = name;
@@ -346,6 +487,8 @@ const app = {
         .withSuccessHandler(function(data) {
           app.hideLoading();
           app.closeOrgModal();
+          sessionStorage.setItem('zolexora_active_org_id', orgId);
+          app.hideOnboardingView();
           app.handleInitialDataSuccess(data);
           app.showToast('Switched organization to ' + (data.activeOrganization ? data.activeOrganization.name : 'new database'));
         })
