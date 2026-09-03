@@ -220,18 +220,44 @@ function initAuthRegistry(ss) {
     usersSheet = ss.getSheets()[0];
     usersSheet.setName('Users');
   }
-  if (usersSheet.getLastRow() === 0) {
-    usersSheet.appendRow(['User ID', 'Email', 'Password Hash', 'Full Name', 'Role', 'Organization ID', 'Organization Name', 'Created At', 'Last Login', 'Status']);
-    formatHeaderRow(usersSheet, 10);
+  if (usersSheet.getLastRow() <= 1) {
+    if (usersSheet.getLastRow() === 0) {
+      usersSheet.appendRow(['User ID', 'Email', 'Password Hash', 'Full Name', 'Role', 'Organization ID', 'Organization Name', 'Created At', 'Last Login', 'Status']);
+      formatHeaderRow(usersSheet, 10);
+    }
+    const defaultOrgId = 'ORG_ZOLEXORA_001';
+    const now = new Date().toISOString();
+    usersSheet.appendRow([
+      'USR_SUPER_001',
+      'abhishekofficial4577@gmail.com',
+      hashPassword('Admin@123'),
+      'Abhishek Sharma',
+      'SuperAdmin',
+      defaultOrgId,
+      'Zolexora Enterprise',
+      now,
+      now,
+      'Active'
+    ]);
   }
 
   let orgsSheet = ss.getSheetByName('Organizations');
   if (!orgsSheet) {
     orgsSheet = ss.insertSheet('Organizations');
   }
-  if (orgsSheet.getLastRow() === 0) {
-    orgsSheet.appendRow(['Organization ID', 'Organization Name', 'Industry', 'Owner Email', 'Created At', 'Status']);
-    formatHeaderRow(orgsSheet, 6);
+  if (orgsSheet.getLastRow() <= 1) {
+    if (orgsSheet.getLastRow() === 0) {
+      orgsSheet.appendRow(['Organization ID', 'Organization Name', 'Industry', 'Owner Email', 'Created At', 'Status']);
+      formatHeaderRow(orgsSheet, 6);
+    }
+    orgsSheet.appendRow([
+      'ORG_ZOLEXORA_001',
+      'Zolexora Enterprise',
+      'Retail & E-Commerce',
+      'abhishekofficial4577@gmail.com',
+      new Date().toISOString(),
+      'Active'
+    ]);
   }
 
   // Clean out any legacy Deneb & Pollux rows from registry

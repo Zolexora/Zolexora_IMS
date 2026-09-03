@@ -74,3 +74,27 @@ function cleanupLegacyDenebAndPollux() {
 
   Logger.log('✅ Legacy Deneb & Pollux purged from Google Drive and Registry');
 }
+
+/**
+ * Quick Admin Provisioning Helper
+ * Run this in Apps Script IDE if you ever want to quickly create an Admin account
+ */
+function createAdminAccount(email, password, name, orgName) {
+  const regEmail = email || 'abhishekofficial4577@gmail.com';
+  const regPassword = password || 'Admin@123';
+  const regName = name || 'Abhishek Sharma';
+  const regOrg = orgName || 'Zolexora Enterprise';
+
+  const res = createAccountAndProvision({
+    name: regName,
+    email: regEmail,
+    password: regPassword,
+    orgName: regOrg,
+    industry: 'Retail & E-Commerce',
+    currency: '₹',
+    storeName: 'Main Central Warehouse'
+  });
+
+  Logger.log('Admin Provisioning Result: ' + JSON.stringify(res));
+  return res;
+}
