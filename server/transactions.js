@@ -52,15 +52,15 @@ function processSupplierPurchase(txn) {
     const storeCode = String(txn.storeCode || txn.destLocation || 'S_001').toUpperCase();
     let storeName = txn.storeName || 'Store';
 
-    if (storeCode.includes('S_001') || storeCode.includes('21 GUN') || storeCode.includes('DENEB')) {
+    if (storeCode.includes('S_001') || storeCode.includes('STORE 1')) {
       stockS001 += qty;
-      storeName = '21 GUN SOLUTE GGN SEC 29';
-    } else if (storeCode.includes('S_002') || storeCode.includes('PAHLE') || storeCode.includes('POLLUX')) {
+      storeName = txn.storeName || 'Store 1 (Main Branch)';
+    } else if (storeCode.includes('S_002') || storeCode.includes('STORE 2')) {
       stockS002 += qty;
-      storeName = 'PAHLE CHAI GGN Sec 27';
+      storeName = txn.storeName || 'Store 2 (Outlet Branch)';
     } else {
       centralStock += qty;
-      storeName = 'Central Depot Warehouse';
+      storeName = txn.storeName || 'Central Depot Warehouse';
     }
 
     const totalStock = stockS001 + stockS002 + centralStock;
@@ -166,11 +166,11 @@ function processStockIssuance(txn) {
     const toSp = String(txn.destLocation || txn.toSellingPoint || 'SP_001');
 
     // Validate available stock in source store
-    if (fromStore.includes('S_001') || fromStore.includes('21 GUN')) {
-      if (stockS001 < qty) throw new Error(`Insufficient stock in 21 GUN SOLUTE GGN SEC 29 (Available: ${stockS001}, Requested: ${qty})`);
+    if (fromStore.includes('S_001') || fromStore.includes('STORE 1')) {
+      if (stockS001 < qty) throw new Error(`Insufficient stock in Store 1 (Available: ${stockS001}, Requested: ${qty})`);
       stockS001 -= qty;
-    } else if (fromStore.includes('S_002') || fromStore.includes('PAHLE')) {
-      if (stockS002 < qty) throw new Error(`Insufficient stock in PAHLE CHAI GGN Sec 27 (Available: ${stockS002}, Requested: ${qty})`);
+    } else if (fromStore.includes('S_002') || fromStore.includes('STORE 2')) {
+      if (stockS002 < qty) throw new Error(`Insufficient stock in Store 2 (Available: ${stockS002}, Requested: ${qty})`);
       stockS002 -= qty;
     } else {
       if (centralStock < qty) throw new Error(`Insufficient stock in Central Depot (Available: ${centralStock}, Requested: ${qty})`);
@@ -181,9 +181,9 @@ function processStockIssuance(txn) {
     const type = String(txn.type || 'DISBURSEMENT').toUpperCase();
     if (type === 'TRANSFER') {
       const dest = toSp.toUpperCase();
-      if (dest.includes('S_001') || dest.includes('21 GUN')) {
+      if (dest.includes('S_001') || dest.includes('STORE 1')) {
         stockS001 += qty;
-      } else if (dest.includes('S_002') || dest.includes('PAHLE')) {
+      } else if (dest.includes('S_002') || dest.includes('STORE 2')) {
         stockS002 += qty;
       } else {
         centralStock += qty;

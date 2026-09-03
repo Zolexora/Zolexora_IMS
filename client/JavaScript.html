@@ -1019,8 +1019,8 @@ const app = {
     let prop = 'ALL';
     const l = locName.toUpperCase();
     if (l.includes('CENTRAL')) prop = 'CENTRAL';
-    else if (l.includes('DENEB')) prop = 'DENEB';
-    else if (l.includes('POLLUX')) prop = 'POLLUX';
+    else if (l.includes('S_001') || l.includes('STORE 1')) prop = 'S_001';
+    else if (l.includes('S_002') || l.includes('STORE 2')) prop = 'S_002';
 
     const filter = document.getElementById('headerPropertyFilter');
     if (filter) filter.value = prop;
@@ -1086,14 +1086,13 @@ const app = {
       if (roleEl) roleEl.innerText = u.role || 'Inventory Incharge';
     }
 
-    // Update hotel title from Settings sheet
-    let hotelName = (this.state.settings && this.state.settings.HOTEL_NAME) ? this.state.settings.HOTEL_NAME : 'Zolexora IMS';
-    if (!hotelName || hotelName.includes('DNP') || hotelName.includes('21 Gun Salute')) {
-      hotelName = 'Zolexora IMS';
-      if (this.state.settings) this.state.settings.HOTEL_NAME = 'Zolexora IMS';
+    // Update organization title from Settings sheet
+    let orgTitle = (this.state.settings && (this.state.settings.ORGANIZATION_NAME || this.state.settings.HOTEL_NAME)) ? (this.state.settings.ORGANIZATION_NAME || this.state.settings.HOTEL_NAME) : 'Zolexora IMS';
+    if (!orgTitle || orgTitle.includes('DNP') || orgTitle.includes('21 Gun') || orgTitle.includes('Deneb') || orgTitle.includes('Pollux')) {
+      orgTitle = 'Zolexora IMS';
     }
     const hEl = document.getElementById('sidebarHotelName');
-    if (hEl) hEl.innerText = hotelName;
+    if (hEl) hEl.innerText = orgTitle;
 
     // Dynamic Middle Row
     this.renderCategoryBars(m.categoryBreakdown || {});
@@ -1347,14 +1346,14 @@ const app = {
     const cUnits = document.getElementById('repUnitsCentral');
     if (cUnits) cUnits.innerText = `${this.formatNumber(central.units)} physical units`;
 
-    const dVal = document.getElementById('repValDeneb');
+    const dVal = document.getElementById('repValStore1');
     if (dVal) dVal.innerText = this.formatCurrency(s001.valuation);
-    const dUnits = document.getElementById('repUnitsDeneb');
+    const dUnits = document.getElementById('repUnitsStore1');
     if (dUnits) dUnits.innerText = `${this.formatNumber(s001.units)} physical units`;
 
-    const pVal = document.getElementById('repValPollux');
+    const pVal = document.getElementById('repValStore2');
     if (pVal) pVal.innerText = this.formatCurrency(s002.valuation);
-    const pUnits = document.getElementById('repUnitsPollux');
+    const pUnits = document.getElementById('repUnitsStore2');
     if (pUnits) pUnits.innerText = `${this.formatNumber(s002.units)} physical units`;
   },
 
@@ -1469,8 +1468,8 @@ const app = {
 
       // Property specific non-zero check if selected
       if (propFilter === 'CENTRAL' && stockVal !== 'ALL' && item.centralStock <= 0) return false;
-      if (propFilter === 'DENEB' && stockVal !== 'ALL' && item.denebStock <= 0) return false;
-      if (propFilter === 'POLLUX' && stockVal !== 'ALL' && item.polluxStock <= 0) return false;
+      if (propFilter === 'S_001' && stockVal !== 'ALL' && (item.stockS001 || 0) <= 0) return false;
+      if (propFilter === 'S_002' && stockVal !== 'ALL' && (item.stockS002 || 0) <= 0) return false;
 
       return true;
     });
@@ -1526,8 +1525,8 @@ const app = {
 
           <!-- Property Stocks -->
           <td class="py-3 px-3 text-center font-data-tabular font-bold text-primary">${item.centralStock}</td>
-          <td class="py-3 px-3 text-center font-data-tabular font-bold text-secondary">${item.denebStock}</td>
-          <td class="py-3 px-3 text-center font-data-tabular font-bold text-tertiary">${item.polluxStock}</td>
+          <td class="py-3 px-3 text-center font-data-tabular font-bold text-secondary">${item.stockS001 || 0}</td>
+          <td class="py-3 px-3 text-center font-data-tabular font-bold text-tertiary">${item.stockS002 || 0}</td>
 
           <!-- Total Stock -->
           <td class="py-3 px-3 text-center font-data-tabular font-extrabold text-sm ${isOut ? 'text-error' : isLow ? 'text-tertiary' : 'text-on-surface'}">
@@ -1939,8 +1938,8 @@ const app = {
 
     // Populate Stores in Stock In, Stock Out & Transfer forms
     const storeOptions = (this.state.stores && this.state.stores.length > 0 ? this.state.stores : [
-      { code: 'S_001', name: '21 GUN SOLUTE GGN SEC 29' },
-      { code: 'S_002', name: 'PAHLE CHAI GGN Sec 27' },
+      { code: 'S_001', name: 'Store 1 - Main Branch' },
+      { code: 'S_002', name: 'Store 2 - Outlet Branch' },
       { code: 'S_000', name: 'Central Depot Warehouse' }
     ]).map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
 
@@ -1951,10 +1950,10 @@ const app = {
 
     // Populate Selling Points & Departments in Stock Out / Requisitions form
     const spOptions = (this.state.sellingPoints && this.state.sellingPoints.length > 0 ? this.state.sellingPoints : [
-      { code: 'SP_001', name: '21 GUN SOLUTE GGN SEC 29', type: 'Dining & Bar' },
-      { code: 'SP_002', name: 'PAHLE CHAI GGN Sec 27', type: 'Chai Counter' },
-      { code: 'SP_003', name: '21 Gun Salute - Kitchen Store', type: 'F&B Production' },
-      { code: 'SP_004', name: '21 Gun Salute - Bar & Lounge', type: 'Beverage Counter' }
+      { code: 'SP_001', name: 'Front Counter / Retail Sales', type: 'Sales Counter' },
+      { code: 'SP_002', name: 'Branch Dispenser Counter', type: 'Dispense Counter' },
+      { code: 'SP_003', name: 'Main Production / Operations', type: 'Production & Service' },
+      { code: 'SP_004', name: 'Customer Service & Dispatch', type: 'Dispatch Hub' }
     ]).map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name} (${sp.type})</option>`).join('');
 
     const stockOutDept = document.getElementById('stockOutDept');
@@ -1976,9 +1975,9 @@ const app = {
       document.getElementById('itemUnit').value = item.unit;
       document.getElementById('itemMinStock').value = item.minStock;
       document.getElementById('itemUnitCost').value = item.unitCost;
-      document.getElementById('itemCentralStock').value = item.centralStock;
-      document.getElementById('itemDenebStock').value = item.denebStock;
-      document.getElementById('itemPolluxStock').value = item.polluxStock;
+      document.getElementById('itemCentralStock').value = item.centralStock || 0;
+      document.getElementById('itemStore1Stock').value = item.stockS001 || 0;
+      document.getElementById('itemStore2Stock').value = item.stockS002 || 0;
       document.getElementById('itemSupplier').value = item.supplier || '';
       document.getElementById('itemStorageLocation').value = item.storageLocation || '';
     } else {
@@ -2005,8 +2004,8 @@ const app = {
       minStock: Number(document.getElementById('itemMinStock').value) || 0,
       unitCost: Number(document.getElementById('itemUnitCost').value) || 0,
       centralStock: Number(document.getElementById('itemCentralStock').value) || 0,
-      denebStock: Number(document.getElementById('itemDenebStock').value) || 0,
-      polluxStock: Number(document.getElementById('itemPolluxStock').value) || 0,
+      stockS001: Number(document.getElementById('itemStore1Stock').value) || 0,
+      stockS002: Number(document.getElementById('itemStore2Stock').value) || 0,
       supplier: document.getElementById('itemSupplier').value,
       storageLocation: document.getElementById('itemStorageLocation').value.trim()
     };
@@ -2142,8 +2141,8 @@ const app = {
     if (!item || !infoEl) return;
 
     let available = 0;
-    if (sourceLoc.includes('S_001') || sourceLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
-    else if (sourceLoc.includes('S_002') || sourceLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+    if (sourceLoc.includes('S_001') || sourceLoc.includes('Store 1')) available = item.stockS001 || 0;
+    else if (sourceLoc.includes('S_002') || sourceLoc.includes('Store 2')) available = item.stockS002 || 0;
     else available = item.centralStock || 0;
 
     infoEl.innerHTML = `Available in <span class="text-on-surface font-bold font-data-tabular">${sourceLoc}</span>: <span class="font-bold text-secondary font-data-tabular">${available} ${item.unit}</span> (Total across all stores: ${item.totalStock})`;
@@ -2159,8 +2158,8 @@ const app = {
     const item = this.state.items.find(i => i.id === itemId);
     if (item) {
       let available = 0;
-      if (sourceLoc.includes('S_001') || sourceLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
-      else if (sourceLoc.includes('S_002') || sourceLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+      if (sourceLoc.includes('S_001') || sourceLoc.includes('Store 1')) available = item.stockS001 || 0;
+      else if (sourceLoc.includes('S_002') || sourceLoc.includes('Store 2')) available = item.stockS002 || 0;
       else available = item.centralStock || 0;
 
       if (available < qty) {
@@ -2228,8 +2227,8 @@ const app = {
     if (!item || !infoEl) return;
 
     let available = 0;
-    if (sourceLoc.includes('S_001') || sourceLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
-    else if (sourceLoc.includes('S_002') || sourceLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+    if (sourceLoc.includes('S_001') || sourceLoc.includes('Store 1')) available = item.stockS001 || 0;
+    else if (sourceLoc.includes('S_002') || sourceLoc.includes('Store 2')) available = item.stockS002 || 0;
     else available = item.centralStock || 0;
 
     infoEl.innerHTML = `Available in source (<span class="font-bold text-on-surface font-data-tabular">${sourceLoc}</span>): <span class="font-bold text-primary font-data-tabular">${available} ${item.unit}</span>`;
@@ -2250,8 +2249,8 @@ const app = {
     const item = this.state.items.find(i => i.id === itemId);
     if (item) {
       let available = 0;
-      if (fromLoc.includes('S_001') || fromLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
-      else if (fromLoc.includes('S_002') || fromLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+      if (fromLoc.includes('S_001') || fromLoc.includes('Store 1')) available = item.stockS001 || 0;
+      else if (fromLoc.includes('S_002') || fromLoc.includes('Store 2')) available = item.stockS002 || 0;
       else available = item.centralStock || 0;
 
       if (available < qty) {
@@ -2315,9 +2314,9 @@ const app = {
     if (!item || !infoEl) return;
 
     let current = 0;
-    if (loc.includes('Central')) current = item.centralStock;
-    else if (loc.includes('Deneb')) current = item.denebStock;
-    else if (loc.includes('Pollux')) current = item.polluxStock;
+    if (loc.includes('Central')) current = item.centralStock || 0;
+    else if (loc.includes('S_001') || loc.includes('Store 1')) current = item.stockS001 || 0;
+    else if (loc.includes('S_002') || loc.includes('Store 2')) current = item.stockS002 || 0;
 
     infoEl.innerHTML = `System recorded stock at <span class="font-bold text-slate-800">${loc}</span>: <span class="font-bold text-purple-700">${current} ${item.unit}</span>. Entering a physical count will recalculate discrepancy automatically.`;
   },
@@ -2552,17 +2551,17 @@ const app = {
       return;
     }
 
-    const headers = ['Item ID', 'SKU', 'Item Name', 'Category', 'Unit', 'Central Stock', 'Deneb Stock', 'Pollux Stock', 'Total Stock', 'Min Stock', 'Unit Cost', 'Total Valuation', 'Supplier'];
+    const headers = ['Item ID', 'SKU', 'Item Name', 'Category', 'Unit', 'Central Stock', 'Store 1 Stock', 'Store 2 Stock', 'Total Stock', 'Min Stock', 'Unit Cost', 'Total Valuation', 'Supplier'];
     const rows = this.state.items.map(i => [
       `"${i.id}"`,
       `"${i.sku}"`,
       `"${(i.name || '').replace(/"/g, '""')}"`,
       `"${i.category}"`,
       `"${i.unit}"`,
-      i.centralStock,
-      i.denebStock,
-      i.polluxStock,
-      i.totalStock,
+      i.centralStock || 0,
+      i.stockS001 || 0,
+      i.stockS002 || 0,
+      i.totalStock || 0,
       i.minStock,
       i.unitCost,
       i.totalValue,

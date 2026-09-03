@@ -408,9 +408,9 @@
           <span class="font-label-caps text-label-caps text-on-surface-variant px-sm">Store:</span>
           <select id="headerPropertyFilter" onchange="app.handlePropertyFilterChange(this.value)" class="bg-transparent text-xs font-semibold text-on-surface outline-none cursor-pointer pr-sm">
             <option value="ALL" class="bg-surface-container-high text-on-surface">All Stores &amp; Outlets</option>
-            <option value="S_001" class="bg-surface-container-high text-on-surface">21 GUN SOLUTE GGN SEC 29 (S_001)</option>
-            <option value="S_002" class="bg-surface-container-high text-on-surface">PAHLE CHAI GGN Sec 27 (S_002)</option>
-            <option value="S_000" class="bg-surface-container-high text-on-surface">Central Depot Warehouse</option>
+            <option value="S_001" class="bg-surface-container-high text-on-surface">Store 1 - Main Branch (S_001)</option>
+            <option value="S_002" class="bg-surface-container-high text-on-surface">Store 2 - Outlet Branch (S_002)</option>
+            <option value="S_000" class="bg-surface-container-high text-on-surface">Central Depot Warehouse (S_000)</option>
           </select>
         </div>
 
@@ -891,18 +891,18 @@
 
               <div class="p-md bg-surface-container-high rounded-xl border border-outline-variant/10">
                 <div class="flex justify-between items-center">
-                  <span class="font-body-md text-secondary font-semibold flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">storefront</span> 21 GUN SOLUTE GGN SEC 29</span>
-                  <span id="repValDeneb" class="font-data-tabular text-data-tabular font-bold text-on-surface">--</span>
+                  <span class="font-body-md text-secondary font-semibold flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">storefront</span> Store 1 (Main Branch)</span>
+                  <span id="repValStore1" class="font-data-tabular text-data-tabular font-bold text-on-surface">--</span>
                 </div>
-                <div class="text-xs text-on-surface-variant mt-1" id="repUnitsDeneb">-- units</div>
+                <div class="text-xs text-on-surface-variant mt-1" id="repUnitsStore1">-- units</div>
               </div>
 
               <div class="p-md bg-surface-container-high rounded-xl border border-outline-variant/10">
                 <div class="flex justify-between items-center">
-                  <span class="font-body-md text-tertiary font-semibold flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">local_cafe</span> PAHLE CHAI GGN Sec 27</span>
-                  <span id="repValPollux" class="font-data-tabular text-data-tabular font-bold text-on-surface">--</span>
+                  <span class="font-body-md text-tertiary font-semibold flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">local_cafe</span> Store 2 (Outlet Branch)</span>
+                  <span id="repValStore2" class="font-data-tabular text-data-tabular font-bold text-on-surface">--</span>
                 </div>
-                <div class="text-xs text-on-surface-variant mt-1" id="repUnitsPollux">-- units</div>
+                <div class="text-xs text-on-surface-variant mt-1" id="repUnitsStore2">-- units</div>
               </div>
             </div>
           </div>
@@ -1094,12 +1094,12 @@
               <input type="number" id="itemCentralStock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
             </div>
             <div>
-              <span class="text-secondary text-[11px] block font-medium">21 Gun Sec 29:</span>
-              <input type="number" id="itemDenebStock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
+              <span class="text-secondary text-[11px] block font-medium">Store 1 (Main):</span>
+              <input type="number" id="itemStore1Stock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
             </div>
             <div>
-              <span class="text-tertiary text-[11px] block font-medium">Pahle Chai Sec 27:</span>
-              <input type="number" id="itemPolluxStock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
+              <span class="text-tertiary text-[11px] block font-medium">Store 2 (Outlet):</span>
+              <input type="number" id="itemStore2Stock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
             </div>
           </div>
         </div>

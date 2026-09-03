@@ -19,8 +19,8 @@ function getItemsInternal(ss) {
   const rateIdx = headers.findIndex(h => h.includes('rate') || h.includes('price') || h.includes('cost'));
   const taxIdx = headers.findIndex(h => h.includes('tax'));
   const minIdx = headers.findIndex(h => h.includes('min'));
-  const s001Idx = headers.findIndex(h => h.includes('s_001') || h.includes('sec 29') || h.includes('deneb'));
-  const s002Idx = headers.findIndex(h => h.includes('s_002') || h.includes('sec 27') || h.includes('pollux'));
+  const s001Idx = headers.findIndex(h => h.includes('s_001') || h.includes('store 1') || h.includes('branch 1'));
+  const s002Idx = headers.findIndex(h => h.includes('s_002') || h.includes('store 2') || h.includes('branch 2'));
   const centralIdx = headers.findIndex(h => h.includes('central') || h.includes('depot'));
   const totalStockIdx = headers.findIndex(h => h.includes('total stock') || h.includes('current stock') || h.includes('stock'));
   const supIdx = headers.findIndex(h => h.includes('supplier'));
@@ -102,8 +102,8 @@ function saveItem(itemData) {
   const rate = Number(itemData.rate || itemData.unitCost) || 0;
   const tax = Number(itemData.taxPercent) || 0;
   const minStock = Number(itemData.minStock) || 0;
-  const stockS001 = Number(itemData.stockS001 || itemData.denebStock) || 0;
-  const stockS002 = Number(itemData.stockS002 || itemData.polluxStock) || 0;
+  const stockS001 = Number(itemData.stockS001) || 0;
+  const stockS002 = Number(itemData.stockS002) || 0;
   const centralStock = Number(itemData.centralStock) || 0;
   const totalStock = stockS001 + stockS002 + centralStock;
   const totalVal = totalStock * rate;

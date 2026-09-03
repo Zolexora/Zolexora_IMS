@@ -223,19 +223,6 @@ function initAuthRegistry(ss) {
   if (usersSheet.getLastRow() === 0) {
     usersSheet.appendRow(['User ID', 'Email', 'Password Hash', 'Full Name', 'Role', 'Organization ID', 'Organization Name', 'Created At', 'Last Login', 'Status']);
     formatHeaderRow(usersSheet, 10);
-    // Seed default admin account
-    usersSheet.appendRow([
-      'USR_DEFAULT_001',
-      'abhishekofficial4577@gmail.com',
-      hashPassword('admin123'),
-      'Zolexora Administrator',
-      'SuperAdmin',
-      '1rI5Oj3ZoxqRYdw_eX7pkVrMf-Rlw_BpL',
-      'Deneb & Pollux Hotels Pvt. Ltd.',
-      new Date().toISOString(),
-      new Date().toISOString(),
-      'Active'
-    ]);
   }
 
   let orgsSheet = ss.getSheetByName('Organizations');
@@ -245,14 +232,26 @@ function initAuthRegistry(ss) {
   if (orgsSheet.getLastRow() === 0) {
     orgsSheet.appendRow(['Organization ID', 'Organization Name', 'Industry', 'Owner Email', 'Created At', 'Status']);
     formatHeaderRow(orgsSheet, 6);
-    orgsSheet.appendRow([
-      '1rI5Oj3ZoxqRYdw_eX7pkVrMf-Rlw_BpL',
-      'Deneb & Pollux Hotels Pvt. Ltd.',
-      'Hospitality & Hotels',
-      'abhishekofficial4577@gmail.com',
-      new Date().toISOString(),
-      'Active'
-    ]);
+  }
+
+  // Clean out any legacy Deneb & Pollux rows from registry
+  try {
+    const uData = usersSheet.getDataRange().getValues();
+    for (let i = uData.length - 1; i >= 1; i--) {
+      const orgNameVal = String(uData[i][6] || '').toLowerCase();
+      if (orgNameVal.includes('deneb') || orgNameVal.includes('pollux') || orgNameVal.includes('dnp')) {
+        usersSheet.deleteRow(i + 1);
+      }
+    }
+    const oData = orgsSheet.getDataRange().getValues();
+    for (let i = oData.length - 1; i >= 1; i--) {
+      const nameVal = String(oData[i][1] || '').toLowerCase();
+      if (nameVal.includes('deneb') || nameVal.includes('pollux') || nameVal.includes('dnp')) {
+        orgsSheet.deleteRow(i + 1);
+      }
+    }
+  } catch (e) {
+    console.warn('Could not clean legacy rows', e);
   }
 }
 
@@ -1015,10 +1014,10 @@ function initSupplierTransactions(ss) {
 
     const now = new Date();
     const demoTxns = [
-      ['TXN_SUP_001', new Date(now.getTime() - 86400000 * 3).toISOString(), 'SUP_004', 'Bankey Behari Dairy & Paneer Bhandar', 'ITM_003', 'Fresh Malai Paneer Block', 'Dairy & Fresh', 30, 'Kg', 380, 0, 11400, 'S_001', '21 GUN SOLUTE GGN SEC 29', 'INV-BBD-991', 'Head Chef', 'Morning delivery received in cold crate'],
-      ['TXN_SUP_002', new Date(now.getTime() - 86400000 * 2).toISOString(), 'SUP_021', 'Pindi Kirana Store', 'ITM_001', 'Special Assam Orthodox Tea Leaves', 'Tea & Beverages', 40, 'Kg', 650, 5, 27300, 'S_000', 'Central Depot Warehouse', 'PO-2026-441', 'Store Keeper', 'Monthly bulk tea consignment'],
-      ['TXN_SUP_003', new Date(now.getTime() - 86400000 * 1).toISOString(), 'SUP_023', 'Sms Commercial', 'ITM_012', 'Signature Chai Cardboard Cups 150ml (Pack 100)', 'Packaging & Disposables', 50, 'Pack', 180, 18, 10620, 'S_002', 'PAHLE CHAI GGN Sec 27', 'INV-SMS-802', 'Outlet Mgr', 'Restock for takeaway chai counter'],
-      ['TXN_SUP_004', new Date(now.getTime() - 3600000 * 4).toISOString(), 'SUP_008', 'Essel Charcoals', 'ITM_006', 'Hardwood Charcoal Briquettes 10kg', 'Kitchen Fuel', 20, 'Bags', 850, 18, 20060, 'S_001', '21 GUN SOLUTE GGN SEC 29', 'INV-EC-109', 'Tandoor Chef', 'High calorific value coal batch']
+      ['TXN_SUP_001', new Date(now.getTime() - 86400000 * 3).toISOString(), 'SUP_004', 'Bankey Behari Dairy & Provisions', 'ITM_003', 'Fresh Dairy Raw Material Block', 'Dairy & Fresh', 30, 'Kg', 380, 0, 11400, 'S_001', 'Store 1 - Main Branch', 'INV-BBD-991', 'Head Chef', 'Morning delivery received in cold crate'],
+      ['TXN_SUP_002', new Date(now.getTime() - 86400000 * 2).toISOString(), 'SUP_021', 'Pindi Kirana Store', 'ITM_001', 'Special Assam Orthodox Tea Leaves', 'Tea & Beverages', 40, 'Kg', 650, 5, 27300, 'S_000', 'Central Depot Warehouse', 'PO-2026-441', 'Store Keeper', 'Monthly bulk consignment'],
+      ['TXN_SUP_003', new Date(now.getTime() - 86400000 * 1).toISOString(), 'SUP_023', 'Sms Commercial', 'ITM_012', 'Standard Cardboard Packaging 150ml (Pack 100)', 'Packaging & Disposables', 50, 'Pack', 180, 18, 10620, 'S_002', 'Store 2 - Outlet Branch', 'INV-SMS-802', 'Outlet Mgr', 'Restock for takeaway counter'],
+      ['TXN_SUP_004', new Date(now.getTime() - 3600000 * 4).toISOString(), 'SUP_008', 'Essel Charcoals', 'ITM_006', 'Hardwood Charcoal Briquettes 10kg', 'Kitchen Fuel', 20, 'Bags', 850, 18, 20060, 'S_001', 'Store 1 - Main Branch', 'INV-EC-109', 'Production Head', 'Standard production batch']
     ];
 
     sheet.getRange(2, 1, demoTxns.length, demoTxns[0].length).setValues(demoTxns);
@@ -1059,9 +1058,9 @@ function initIssuanceTransactions(ss) {
 
     const now = new Date();
     const demoIssues = [
-      ['ISS_001', new Date(now.getTime() - 86400000 * 2).toISOString(), 'DISBURSEMENT', 'ITM_003', 'Fresh Malai Paneer Block', 15, 'Kg', 'S_001', '21 GUN SOLUTE GGN SEC 29', 'SP_003', '21 Gun Salute - Kitchen Store', 380, 5700, 'REQ-8812', 'Store Keeper', 'Approved', 'Daily dinner prep issuance'],
-      ['ISS_002', new Date(now.getTime() - 86400000 * 1).toISOString(), 'DISBURSEMENT', 'ITM_001', 'Special Assam Orthodox Tea Leaves', 10, 'Kg', 'S_000', 'Central Depot Warehouse', 'SP_002', 'PAHLE CHAI GGN Sec 27', 650, 6500, 'REQ-6812', 'Logistics Mgr', 'Shipped', 'Replenishment for Pahle Chai Sec 27'],
-      ['ISS_003', new Date(now.getTime() - 3600000 * 6).toISOString(), 'DISBURSEMENT', 'ITM_012', 'Signature Chai Cardboard Cups 150ml', 15, 'Pack', 'S_002', 'PAHLE CHAI GGN Sec 27', 'SP_002', 'PAHLE CHAI GGN Sec 27', 180, 2700, 'REQ-6815', 'Supervisor', 'Approved', 'Counter dispensers reload']
+      ['ISS_001', new Date(now.getTime() - 86400000 * 2).toISOString(), 'DISBURSEMENT', 'ITM_003', 'Fresh Dairy Raw Material Block', 15, 'Kg', 'S_001', 'Store 1 - Main Branch', 'SP_003', 'Main Production / Kitchen', 380, 5700, 'REQ-8812', 'Store Keeper', 'Approved', 'Daily production prep issuance'],
+      ['ISS_002', new Date(now.getTime() - 86400000 * 1).toISOString(), 'DISBURSEMENT', 'ITM_001', 'Special Assam Orthodox Tea Leaves', 10, 'Kg', 'S_000', 'Central Depot Warehouse', 'SP_002', 'Store 2 - Outlet Branch', 650, 6500, 'REQ-6812', 'Logistics Mgr', 'Shipped', 'Replenishment for Store 2'],
+      ['ISS_003', new Date(now.getTime() - 3600000 * 6).toISOString(), 'DISBURSEMENT', 'ITM_012', 'Standard Cardboard Packaging 150ml', 15, 'Pack', 'S_002', 'Store 2 - Outlet Branch', 'SP_002', 'Store 2 - Outlet Branch', 180, 2700, 'REQ-6815', 'Supervisor', 'Approved', 'Counter dispensers reload']
     ];
 
     sheet.getRange(2, 1, demoIssues.length, demoIssues[0].length).setValues(demoIssues);
