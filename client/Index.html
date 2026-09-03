@@ -754,6 +754,26 @@
             </div>
           </div>
 
+          <!-- Directory Tree Section -->
+          <div class="space-y-sm pt-md border-t border-outline-variant/10">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold uppercase text-on-surface flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-primary">account_tree</span>
+                  Google Drive Directory Tree:
+                </span>
+                <p class="text-[11px] text-on-surface-variant">Hierarchical directory structure inside Drive folder (1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)</p>
+              </div>
+              <button onclick="app.provisionDriveDirectoryTree()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition self-start sm:self-auto">
+                <span id="buildTreeIcon" class="material-symbols-outlined text-[16px]">folder_special</span>
+                <span>Build / Organize Directory Tree</span>
+              </button>
+            </div>
+            <div id="driveDirectoryTreeContainer" class="bg-surface-container-high rounded-xl p-md border border-outline-variant/10 text-xs overflow-x-auto font-mono">
+              <div class="text-on-surface-variant text-center py-2">Click "Build / Organize Directory Tree" or sync database to view the Drive folder tree.</div>
+            </div>
+          </div>
+
           <!-- Re-link Drive Folder -->
           <div class="space-y-xs pt-md border-t border-outline-variant/10">
             <label class="block text-xs font-bold uppercase text-on-surface">Change / Re-link Drive Folder (URL or ID):</label>

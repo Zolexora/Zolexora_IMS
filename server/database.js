@@ -109,7 +109,67 @@ function formatHeaderRow(sheet, numCols) {
 }
 
 /**
- * Gets or creates a specific workbook strictly inside the designated Google Drive folder
+ * Structured Directory Layout for Drive Folder 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx
+ */
+const DRIVE_DIRECTORY_STRUCTURE = {
+  '01_Master_Databases': [
+    WORKBOOKS.LOCATION_MASTER,
+    WORKBOOKS.PRODUCT_MASTER,
+    WORKBOOKS.SUPPLIER_MASTER
+  ],
+  '02_Transactions': [
+    WORKBOOKS.SUPPLIER_TXNS,
+    WORKBOOKS.ISSUANCE_TXNS
+  ],
+  '03_Settings_and_Users': [
+    WORKBOOKS.USERS_SETTINGS
+  ],
+  '04_Invoices_and_Attachments': [],
+  '05_Reports_and_Exports': [],
+  '06_System_Backups': []
+};
+
+/**
+ * Gets or creates a child folder inside parent
+ */
+function getOrCreateChildFolder(parentFolder, childName) {
+  const folders = parentFolder.getFoldersByName(childName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return parentFolder.createFolder(childName);
+}
+
+/**
+ * Returns the target subfolder for a workbook based on structure
+ */
+function getTargetSubfolderForWorkbook(name, rootFolder) {
+  for (const [subName, workbooks] of Object.entries(DRIVE_DIRECTORY_STRUCTURE)) {
+    if (workbooks.includes(name)) {
+      return getOrCreateChildFolder(rootFolder, subName);
+    }
+  }
+  return rootFolder;
+}
+
+/**
+ * Searches for a file by name recursively inside a folder and its subfolders
+ */
+function findFileInFolderRecursively(folder, fileName) {
+  const files = folder.getFilesByName(fileName);
+  if (files.hasNext()) return files.next();
+
+  const subfolders = folder.getFolders();
+  while (subfolders.hasNext()) {
+    const sub = subfolders.next();
+    const found = findFileInFolderRecursively(sub, fileName);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Gets or creates a specific workbook strictly inside the designated Google Drive folder (including subfolders)
  */
 function getWorkbook(name) {
   const folder = getDriveFolder();
@@ -119,10 +179,6 @@ function getWorkbook(name) {
   if (cachedId) {
     try {
       const ss = SpreadsheetApp.openById(cachedId);
-      // Verify and guarantee file is inside the designated Drive folder
-      if (folder) {
-        ensureFileInFolder(DriveApp.getFileById(cachedId), folder);
-      }
       return ss;
     } catch (e) {
       // Cached ID was deleted or inaccessible, will re-fetch
@@ -130,34 +186,34 @@ function getWorkbook(name) {
   }
 
   if (folder) {
-    const files = folder.getFilesByName(name);
-    if (files.hasNext()) {
-      const file = files.next();
+    const file = findFileInFolderRecursively(folder, name);
+    if (file) {
       const ss = SpreadsheetApp.openById(file.getId());
       props.setProperty('WB_ID_' + name, ss.getId());
       return ss;
     }
   }
 
-  // Not found in folder, create and initialize it strictly in the designated folder
+  // Not found in folder, create and initialize it strictly in the designated folder/subfolder
   return createAndInitWorkbook(name);
 }
 
 /**
- * Creates and sets up initial schema & sample data for a workbook strictly inside the Drive folder
+ * Creates and sets up initial schema & sample data for a workbook strictly inside its proper subfolder
  */
 function createAndInitWorkbook(name) {
   const folder = getDriveFolder();
+  const targetFolder = getTargetSubfolderForWorkbook(name, folder);
   const ss = SpreadsheetApp.create(name);
   const ssId = ss.getId();
   PropertiesService.getScriptProperties().setProperty('WB_ID_' + name, ssId);
 
-  // Strictly move into the designated Drive folder
+  // Strictly move into the designated target subfolder
   try {
     const file = DriveApp.getFileById(ssId);
-    file.moveTo(folder);
+    file.moveTo(targetFolder);
   } catch (err) {
-    console.warn('Could not move workbook to Drive folder: ' + err.message, err);
+    console.warn('Could not move workbook to target folder: ' + err.message, err);
   }
 
   // Schema initialization based on workbook type
@@ -491,8 +547,120 @@ function getWorkbooksInfo() {
       name: folder ? folder.getName() : 'DNP Database Drive Folder',
       url: folder ? folder.getUrl() : 'https://drive.google.com/drive/folders/' + folderId
     },
-    workbooks: workbooks
+    workbooks: workbooks,
+    directoryTree: getDriveDirectoryTree()
   };
+}
+
+/**
+ * Creates the complete directory tree inside Google Drive folder 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx
+ * and organizes all existing/new workbooks into their respective subdirectories.
+ */
+function createDriveDirectoryTree() {
+  const rootFolder = getDriveFolder();
+  const result = {
+    success: true,
+    rootFolderId: rootFolder.getId(),
+    rootFolderName: rootFolder.getName(),
+    rootFolderUrl: rootFolder.getUrl(),
+    subfolders: {},
+    organizedFiles: []
+  };
+
+  // 1. Create main categories & relocate workbooks
+  for (const [subName, expectedWorkbooks] of Object.entries(DRIVE_DIRECTORY_STRUCTURE)) {
+    const subFolder = getOrCreateChildFolder(rootFolder, subName);
+    result.subfolders[subName] = {
+      id: subFolder.getId(),
+      name: subFolder.getName(),
+      url: subFolder.getUrl()
+    };
+
+    if (expectedWorkbooks && expectedWorkbooks.length > 0) {
+      expectedWorkbooks.forEach(wbName => {
+        try {
+          const wb = getWorkbook(wbName);
+          if (wb) {
+            const file = DriveApp.getFileById(wb.getId());
+            ensureFileInFolder(file, subFolder);
+            result.organizedFiles.push({
+              name: wbName,
+              folder: subName,
+              id: wb.getId(),
+              url: wb.getUrl()
+            });
+          }
+        } catch (e) {
+          console.warn('Could not organize workbook: ' + wbName, e);
+        }
+      });
+    }
+  }
+
+  // 2. Provision nested subfolders for Receipts and Reports
+  const invFolder = getOrCreateChildFolder(rootFolder, '04_Invoices_and_Attachments');
+  getOrCreateChildFolder(invFolder, 'Purchase_Orders');
+  getOrCreateChildFolder(invFolder, 'Delivery_Challans');
+
+  const repFolder = getOrCreateChildFolder(rootFolder, '05_Reports_and_Exports');
+  getOrCreateChildFolder(repFolder, 'Daily_Summaries');
+  getOrCreateChildFolder(repFolder, 'Monthly_Valuation');
+  getOrCreateChildFolder(repFolder, 'Supplier_Audits');
+
+  result.directoryTree = getDriveDirectoryTree();
+  return result;
+}
+
+/**
+ * Returns the hierarchical tree structure of the designated Google Drive folder
+ */
+function getDriveDirectoryTree() {
+  try {
+    const rootFolder = getDriveFolder();
+    return scanFolderTree(rootFolder, 0, 3);
+  } catch (err) {
+    console.warn('Could not scan drive directory tree: ' + err.message);
+    return null;
+  }
+}
+
+function scanFolderTree(folder, currentDepth, maxDepth) {
+  const node = {
+    id: folder.getId(),
+    name: folder.getName(),
+    url: folder.getUrl(),
+    type: 'folder',
+    subfolders: [],
+    files: []
+  };
+
+  try {
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const f = files.next();
+      node.files.push({
+        id: f.getId(),
+        name: f.getName(),
+        url: f.getUrl(),
+        mimeType: f.getMimeType(),
+        size: f.getSize(),
+        lastUpdated: f.getLastUpdated().toISOString(),
+        type: 'file'
+      });
+    }
+  } catch (e) {}
+
+  if (currentDepth < maxDepth) {
+    try {
+      const subfolders = folder.getFolders();
+      while (subfolders.hasNext()) {
+        const sub = subfolders.next();
+        node.subfolders.push(scanFolderTree(sub, currentDepth + 1, maxDepth));
+      }
+    } catch (e) {}
+  }
+
+  return node;
 }
 
 /**
