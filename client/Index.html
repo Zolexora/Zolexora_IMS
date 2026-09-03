@@ -789,10 +789,7 @@
       </div>
       <div class="flex-1 min-w-0">
         <span id="sidebarHotelName" class="font-display-lg text-headline-md tracking-tight text-on-surface block leading-tight truncate">Zolexora IMS</span>
-        <div class="flex items-center justify-between mt-0.5">
-          <span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider uppercase">Active Org</span>
-          <button type="button" onclick="event.stopPropagation(); app.openOrgModal();" class="text-[11px] text-primary hover:underline font-bold">Switch</button>
-        </div>
+        <span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider uppercase block mt-0.5">Active Org</span>
       </div>
     </div>
 
@@ -903,28 +900,9 @@
         </button>
 
         <!-- Top Right Corner: Only First Letter of Active Org -->
-        <div class="relative group pl-md border-l border-outline-variant/20">
-          <button onclick="app.openOrgModal()" title="Active Organization" class="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center transition shadow-sm cursor-pointer">
+        <div class="pl-md border-l border-outline-variant/20 flex items-center">
+          <div class="w-9 h-9 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center shadow-sm select-none">
             <span id="headerOrgAvatarLetter">S</span>
-          </button>
-          <!-- Organization Details on Hover / Focus -->
-          <div class="absolute right-0 mt-2 w-56 bg-[#0c0c12] border border-white/15 rounded-xl shadow-2xl py-2.5 px-3 hidden group-hover:block z-50 text-xs space-y-2">
-            <div class="border-b border-white/10 pb-2">
-              <span class="text-[10px] text-on-surface-variant uppercase block font-semibold">Active Organization</span>
-              <span id="dropdownOrgName" class="font-bold text-white block truncate text-sm">Sibban Restorents</span>
-            </div>
-            <div class="border-b border-white/10 pb-2">
-              <span class="text-[10px] text-on-surface-variant uppercase block font-semibold">Signed In User</span>
-              <span id="dropdownUserName" class="font-bold text-white block truncate">Sibban</span>
-              <span id="dropdownUserRole" class="text-[11px] text-on-surface-variant block truncate">System Administrator &amp; Manager</span>
-            </div>
-            <div class="pt-1 flex items-center justify-between">
-              <button onclick="app.openOrgModal()" class="text-primary hover:underline font-bold text-xs">Switch Org</button>
-              <button onclick="app.logoutUser()" class="text-rose-400 hover:underline font-bold text-xs flex items-center gap-1 cursor-pointer">
-                <span class="material-symbols-outlined text-[13px]">logout</span>
-                <span>Sign Out</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
