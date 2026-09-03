@@ -1184,7 +1184,7 @@
 
   <!-- 8. ORGANIZATION SWITCHER & CREATION MODAL -->
   <div id="orgModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-    <div class="modal-backdrop fixed inset-0 bg-background/80 backdrop-blur-sm" onclick="app.closeOrgModal()"></div>
+    <div id="orgModalBackdrop" class="modal-backdrop fixed inset-0 bg-background/90 backdrop-blur-md" onclick="app.handleOrgBackdropClick()"></div>
     <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-2xl w-full z-10 border border-outline-variant/20 overflow-hidden flex flex-col max-h-[90vh]">
       <!-- Header -->
       <div class="bg-surface-container-high px-6 py-4 flex items-center justify-between border-b border-outline-variant/10">
@@ -1197,7 +1197,7 @@
             <p class="text-xs text-on-surface-variant">Switch company database or provision a new structured tree inside Google Drive</p>
           </div>
         </div>
-        <button onclick="app.closeOrgModal()" class="text-on-surface-variant hover:text-on-surface text-xl">&times;</button>
+        <button id="orgModalCloseBtn" onclick="app.closeOrgModal()" class="text-on-surface-variant hover:text-on-surface text-xl">&times;</button>
       </div>
 
       <!-- Modal Body (Scrollable) -->

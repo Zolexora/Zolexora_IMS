@@ -198,8 +198,7 @@ function listOrganizations() {
  */
 function getActiveOrganization() {
   const userProps = PropertiesService.getUserProperties();
-  const scriptProps = PropertiesService.getScriptProperties();
-  const orgId = userProps.getProperty('ACTIVE_ORG_ID') || scriptProps.getProperty('ACTIVE_ORG_ID');
+  const orgId = userProps.getProperty('ACTIVE_ORG_ID');
   
   if (orgId) {
     try {
@@ -211,20 +210,8 @@ function getActiveOrganization() {
       };
     } catch (e) {
       console.warn('Active org folder not accessible: ' + orgId);
+      userProps.deleteProperty('ACTIVE_ORG_ID');
     }
-  }
-
-  // Auto-discover first available organization folder if any
-  const rootFolder = getDriveFolder();
-  const subfolders = rootFolder.getFolders();
-  if (subfolders.hasNext()) {
-    const firstFolder = subfolders.next();
-    setActiveOrganization(firstFolder.getId(), firstFolder.getName());
-    return {
-      id: firstFolder.getId(),
-      name: firstFolder.getName(),
-      url: firstFolder.getUrl()
-    };
   }
 
   return null;

@@ -274,13 +274,13 @@ function getInitialData() {
   const activeOrg = getActiveOrganization();
   const orgList = listOrganizations();
 
-  // If no active organization exists and no folders exist in root
-  if (!activeOrg && orgList.length === 0) {
+  // If no active organization has been selected or created, return onboarding state
+  if (!activeOrg) {
     return {
       success: true,
       hasOrganization: false,
       activeOrganization: null,
-      organizations: [],
+      organizations: orgList,
       workbooksInfo: {
         rootFolder: { id: DEFAULT_DRIVE_FOLDER_ID, name: 'Zolexora IMS Database', url: 'https://drive.google.com/drive/folders/' + DEFAULT_DRIVE_FOLDER_ID },
         folder: { id: DEFAULT_DRIVE_FOLDER_ID, name: 'Zolexora IMS Database', url: 'https://drive.google.com/drive/folders/' + DEFAULT_DRIVE_FOLDER_ID },
@@ -300,7 +300,7 @@ function getInitialData() {
   }
 
   // Current active organization
-  const currentOrg = getActiveOrganization();
+  const currentOrg = activeOrg;
 
   // Provision / verify workbooks for the active organization
   initAllWorkbooks();

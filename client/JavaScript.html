@@ -156,24 +156,46 @@ const app = {
 
     // If no organization exists or hasOrganization is false, trigger the onboarding modal
     if (!this.state.hasOrganization || !this.state.activeOrganization) {
-      this.openOrgModal('create');
+      this.openOrgModal('create', false);
     }
   },
 
   // ==========================================
   // MULTI-ORGANIZATION MANAGEMENT
   // ==========================================
-  openOrgModal: function(defaultTab = 'switch') {
+  openOrgModal: function(defaultTab = 'create', allowClose = true) {
     const modal = document.getElementById('orgModal');
     if (!modal) return;
     modal.classList.remove('hidden');
+
+    const closeBtn = document.getElementById('orgModalCloseBtn');
+    const isLocked = !allowClose || (!this.state.activeOrganization || !this.state.hasOrganization);
+    if (closeBtn) {
+      if (isLocked) {
+        closeBtn.classList.add('hidden');
+      } else {
+        closeBtn.classList.remove('hidden');
+      }
+    }
+
     this.switchOrgTab(defaultTab);
     this.renderOrgList();
   },
 
   closeOrgModal: function() {
+    if (!this.state.hasOrganization || !this.state.activeOrganization) {
+      this.showToast('Please create or select an organization database first.', 'warning');
+      return;
+    }
     const modal = document.getElementById('orgModal');
     if (modal) modal.classList.add('hidden');
+  },
+
+  handleOrgBackdropClick: function() {
+    if (!this.state.hasOrganization || !this.state.activeOrganization) {
+      return;
+    }
+    this.closeOrgModal();
   },
 
   switchOrgTab: function(tab) {
