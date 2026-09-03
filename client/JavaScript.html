@@ -901,9 +901,10 @@ const app = {
       targetPane.classList.remove('hidden');
     }
 
-    // Trigger Chart Resize if Reports
-    if (tabId === 'reports' && this.state.categoryChart) {
-      this.state.categoryChart.resize();
+    // Trigger Chart Resize and Report render if Reports
+    if (tabId === 'reports') {
+      if (this.state.categoryChart) this.state.categoryChart.resize();
+      this.renderCurrentReport();
     }
   },
 
@@ -1058,6 +1059,7 @@ const app = {
     // Reports Breakdown
     this.renderCategoryChart(m.categoryBreakdown || {});
     this.renderReportsLocations();
+    this.renderCurrentReport();
   },
 
   renderCategoryBars: function(categoryMap) {
@@ -1307,6 +1309,697 @@ const app = {
     if (pVal) pVal.innerText = this.formatCurrency(s002.valuation);
     const pUnits = document.getElementById('repUnitsStore2');
     if (pUnits) pUnits.innerText = `${this.formatNumber(s002.units)} physical units`;
+  },
+
+  // ==========================================
+  // ENTERPRISE REPORTS & DOWNLOAD CENTER
+  // ==========================================
+  setReportType: function(type) {
+    this.state.currentReportType = type;
+    const pBtn = document.getElementById('repTypeBtn-purchase');
+    const tBtn = document.getElementById('repTypeBtn-transfer');
+    const pLabel = document.getElementById('repFormatLabel-primary');
+
+    if (type === 'purchase') {
+      if (pBtn) {
+        pBtn.className = "px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-primary text-on-primary shadow-sm cursor-pointer";
+      }
+      if (tBtn) {
+        tBtn.className = "px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface cursor-pointer";
+      }
+      if (pLabel) pLabel.innerText = 'Supplier Wise';
+    } else {
+      if (pBtn) {
+        pBtn.className = "px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface cursor-pointer";
+      }
+      if (tBtn) {
+        tBtn.className = "px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-primary text-on-primary shadow-sm cursor-pointer";
+      }
+      if (pLabel) pLabel.innerText = 'Store / Outlet Wise';
+    }
+
+    this.renderCurrentReport();
+  },
+
+  setReportFormat: function(format) {
+    this.state.currentReportFormat = format;
+    const supBtn = document.getElementById('repFormatBtn-supplier');
+    const itmBtn = document.getElementById('repFormatBtn-item');
+    const catBtn = document.getElementById('repFormatBtn-category');
+
+    const activeClass = "px-3 py-1.5 rounded-md text-xs font-semibold transition border border-primary/40 bg-primary/20 text-primary cursor-pointer";
+    const inactiveClass = "px-3 py-1.5 rounded-md text-xs font-semibold transition border border-transparent text-on-surface-variant hover:bg-surface-container-highest cursor-pointer";
+
+    if (supBtn) supBtn.className = format === 'supplier' ? activeClass : inactiveClass;
+    if (itmBtn) itmBtn.className = format === 'item' ? activeClass : inactiveClass;
+    if (catBtn) catBtn.className = format === 'category' ? activeClass : inactiveClass;
+
+    this.renderCurrentReport();
+  },
+
+  onReportSearchChange: function(val) {
+    this.state.reportSearchQuery = (val || '').toLowerCase().trim();
+    this.renderCurrentReport();
+  },
+
+  refreshReportData: function() {
+    const icon = document.getElementById('reportSyncIcon');
+    if (icon) icon.classList.add('animate-spin');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (icon) icon.classList.remove('animate-spin');
+          if (res && res.success) {
+            if (res.supplierTransactions) app.state.supplierTransactions = res.supplierTransactions;
+            if (res.issuanceTransactions) app.state.issuanceTransactions = res.issuanceTransactions;
+            app.renderCurrentReport();
+            app.showToast('Full ledger synced for reports!');
+          } else {
+            app.renderCurrentReport();
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (icon) icon.classList.remove('animate-spin');
+          app.showToast('Sync error: ' + err.message, 'error');
+          app.renderCurrentReport();
+        })
+        .fetchFullReportsData();
+    } else {
+      setTimeout(() => {
+        if (icon) icon.classList.remove('animate-spin');
+        this.renderCurrentReport();
+        this.showToast('Local report records refreshed!');
+      }, 300);
+    }
+  },
+
+  getReportData: function() {
+    const reportType = this.state.currentReportType || 'purchase';
+    const reportFormat = this.state.currentReportFormat || 'supplier';
+    const query = this.state.reportSearchQuery || '';
+
+    if (reportType === 'purchase') {
+      return this.computePurchaseReport(reportFormat, query);
+    } else {
+      return this.computeTransferReport(reportFormat, query);
+    }
+  },
+
+  computePurchaseReport: function(format, query) {
+    const txns = this.state.supplierTransactions || [];
+    let totalSpend = 0;
+    let totalQty = 0;
+    let totalTxns = txns.length;
+
+    txns.forEach(t => {
+      totalSpend += Number(t.totalAmount) || 0;
+      totalQty += Number(t.quantity) || 0;
+    });
+
+    if (format === 'supplier') {
+      // 1. Supplier Wise
+      const map = {};
+      txns.forEach(t => {
+        const key = String(t.supplierName || t.supplierCode || 'Unassigned Supplier').trim();
+        if (!map[key]) {
+          map[key] = {
+            supplierCode: t.supplierCode || 'SUP',
+            supplierName: key,
+            invoices: new Set(),
+            quantity: 0,
+            taxAmount: 0,
+            totalAmount: 0,
+            lastDate: t.timestamp || ''
+          };
+        }
+        if (t.id || t.reference) map[key].invoices.add(t.id || t.reference);
+        map[key].quantity += Number(t.quantity) || 0;
+        const taxRate = Number(t.taxPercent) || 0;
+        const amt = Number(t.totalAmount) || 0;
+        map[key].taxAmount += amt * (taxRate / (100 + taxRate));
+        map[key].totalAmount += amt;
+        if (t.timestamp && t.timestamp > map[key].lastDate) map[key].lastDate = t.timestamp;
+      });
+
+      let rows = Object.values(map).map(s => ({
+        code: s.supplierCode,
+        name: s.supplierName,
+        invoicesCount: s.invoices.size,
+        quantity: s.quantity,
+        taxAmount: s.taxAmount,
+        amount: s.totalAmount,
+        share: totalSpend > 0 ? (s.totalAmount / totalSpend) * 100 : 0,
+        lastDate: s.lastDate ? new Date(s.lastDate).toLocaleDateString('en-IN') : '--'
+      }));
+
+      if (query) {
+        rows = rows.filter(r => r.name.toLowerCase().includes(query) || r.code.toLowerCase().includes(query));
+      }
+      rows.sort((a, b) => b.amount - a.amount);
+
+      return {
+        type: 'purchase',
+        format: 'supplier',
+        title: 'Purchase Report (Supplier Wise)',
+        entityTitle: 'Total Suppliers',
+        entityCount: rows.length,
+        totalRecords: totalTxns,
+        totalQuantity: totalQty,
+        totalAmount: totalSpend,
+        columns: [
+          { key: 'code', label: 'Supplier Code', align: 'left' },
+          { key: 'name', label: 'Supplier Name', align: 'left' },
+          { key: 'invoicesCount', label: 'Invoices', align: 'center' },
+          { key: 'quantity', label: 'Total Units', align: 'right', isNumber: true },
+          { key: 'taxAmount', label: 'Est. Tax (₹)', align: 'right', isCurrency: true },
+          { key: 'amount', label: 'Total Value (₹)', align: 'right', isCurrency: true, isBold: true },
+          { key: 'share', label: 'Spend Share %', align: 'right', isPercent: true },
+          { key: 'lastDate', label: 'Last Purchase', align: 'center' }
+        ],
+        rows: rows
+      };
+    } else if (format === 'item') {
+      // 2. Item Wise
+      const map = {};
+      txns.forEach(t => {
+        const key = String(t.itemCode || t.sku || t.itemName || 'PRD').trim();
+        if (!map[key]) {
+          map[key] = {
+            itemCode: key,
+            itemName: t.itemName || 'Product',
+            category: t.category || 'General',
+            unit: t.unit || 'Pcs',
+            invoices: new Set(),
+            quantity: 0,
+            totalAmount: 0
+          };
+        }
+        if (t.id || t.reference) map[key].invoices.add(t.id || t.reference);
+        map[key].quantity += Number(t.quantity) || 0;
+        map[key].totalAmount += Number(t.totalAmount) || 0;
+      });
+
+      let rows = Object.values(map).map(it => {
+        const avgRate = it.quantity > 0 ? it.totalAmount / it.quantity : 0;
+        return {
+          code: it.itemCode,
+          name: it.itemName,
+          category: it.category,
+          unit: it.unit,
+          invoicesCount: it.invoices.size,
+          quantity: it.quantity,
+          avgRate: avgRate,
+          amount: it.totalAmount,
+          share: totalSpend > 0 ? (it.totalAmount / totalSpend) * 100 : 0
+        };
+      });
+
+      if (query) {
+        rows = rows.filter(r => r.name.toLowerCase().includes(query) || r.code.toLowerCase().includes(query) || r.category.toLowerCase().includes(query));
+      }
+      rows.sort((a, b) => b.amount - a.amount);
+
+      return {
+        type: 'purchase',
+        format: 'item',
+        title: 'Purchase Report (Item Wise)',
+        entityTitle: 'Purchased Products',
+        entityCount: rows.length,
+        totalRecords: totalTxns,
+        totalQuantity: totalQty,
+        totalAmount: totalSpend,
+        columns: [
+          { key: 'code', label: 'Item Code', align: 'left' },
+          { key: 'name', label: 'Product Name', align: 'left' },
+          { key: 'category', label: 'Category', align: 'left' },
+          { key: 'unit', label: 'UOM', align: 'center' },
+          { key: 'invoicesCount', label: 'Orders', align: 'center' },
+          { key: 'quantity', label: 'Qty Purchased', align: 'right', isNumber: true },
+          { key: 'avgRate', label: 'Avg Rate (₹)', align: 'right', isCurrency: true },
+          { key: 'amount', label: 'Total Value (₹)', align: 'right', isCurrency: true, isBold: true },
+          { key: 'share', label: 'Share %', align: 'right', isPercent: true }
+        ],
+        rows: rows
+      };
+    } else {
+      // 3. Category Wise
+      const map = {};
+      txns.forEach(t => {
+        const key = String(t.category || 'Uncategorized').trim();
+        if (!map[key]) {
+          map[key] = {
+            category: key,
+            items: new Set(),
+            invoices: new Set(),
+            quantity: 0,
+            totalAmount: 0
+          };
+        }
+        if (t.itemCode) map[key].items.add(t.itemCode);
+        if (t.id || t.reference) map[key].invoices.add(t.id || t.reference);
+        map[key].quantity += Number(t.quantity) || 0;
+        map[key].totalAmount += Number(t.totalAmount) || 0;
+      });
+
+      let rows = Object.values(map).map(c => ({
+        category: c.category,
+        productsCount: c.items.size,
+        invoicesCount: c.invoices.size,
+        quantity: c.quantity,
+        amount: c.totalAmount,
+        share: totalSpend > 0 ? (c.totalAmount / totalSpend) * 100 : 0
+      }));
+
+      if (query) {
+        rows = rows.filter(r => r.category.toLowerCase().includes(query));
+      }
+      rows.sort((a, b) => b.amount - a.amount);
+
+      return {
+        type: 'purchase',
+        format: 'category',
+        title: 'Purchase Report (Category Wise)',
+        entityTitle: 'Categories',
+        entityCount: rows.length,
+        totalRecords: totalTxns,
+        totalQuantity: totalQty,
+        totalAmount: totalSpend,
+        columns: [
+          { key: 'category', label: 'Category Name', align: 'left' },
+          { key: 'productsCount', label: 'Products Count', align: 'center' },
+          { key: 'invoicesCount', label: 'Purchase Invoices', align: 'center' },
+          { key: 'quantity', label: 'Total Qty Units', align: 'right', isNumber: true },
+          { key: 'amount', label: 'Total Valuation (₹)', align: 'right', isCurrency: true, isBold: true },
+          { key: 'share', label: 'Spend Share %', align: 'right', isPercent: true }
+        ],
+        rows: rows
+      };
+    }
+  },
+
+  computeTransferReport: function(format, query) {
+    const txns = this.state.issuanceTransactions || [];
+    let totalVal = 0;
+    let totalQty = 0;
+    let totalTxns = txns.length;
+
+    txns.forEach(t => {
+      const val = Number(t.totalCost) || (Number(t.quantity) * Number(t.rate || t.unitPrice || 0));
+      totalVal += val;
+      totalQty += Number(t.quantity) || 0;
+    });
+
+    // Helper item map for category lookup
+    const itemCatMap = {};
+    (this.state.items || []).forEach(it => {
+      const code = String(it.code || it.id || it.sku || '').toUpperCase();
+      itemCatMap[code] = it.category || 'General';
+    });
+
+    if (format === 'supplier') {
+      // 1. Store / Outlet Wise
+      const map = {};
+      txns.forEach(t => {
+        const dest = String(t.destLocation || t.toSellingPointCode || 'Store 1 (Main Branch)').trim();
+        if (!map[dest]) {
+          map[dest] = {
+            destCode: t.toSellingPointCode || 'STORE',
+            destName: dest,
+            source: t.sourceLocation || 'Central Depot (S_000)',
+            transfers: new Set(),
+            quantity: 0,
+            totalValuation: 0,
+            lastDate: t.timestamp || ''
+          };
+        }
+        if (t.id || t.reference) map[dest].transfers.add(t.id || t.reference);
+        map[dest].quantity += Number(t.quantity) || 0;
+        const val = Number(t.totalCost) || (Number(t.quantity) * Number(t.rate || t.unitPrice || 0));
+        map[dest].totalValuation += val;
+        if (t.timestamp && t.timestamp > map[dest].lastDate) map[dest].lastDate = t.timestamp;
+      });
+
+      let rows = Object.values(map).map(s => ({
+        code: s.destCode,
+        name: s.destName,
+        source: s.source,
+        transfersCount: s.transfers.size,
+        quantity: s.quantity,
+        amount: s.totalValuation,
+        share: totalVal > 0 ? (s.totalValuation / totalVal) * 100 : 0,
+        lastDate: s.lastDate ? new Date(s.lastDate).toLocaleDateString('en-IN') : '--'
+      }));
+
+      if (query) {
+        rows = rows.filter(r => r.name.toLowerCase().includes(query) || r.code.toLowerCase().includes(query));
+      }
+      rows.sort((a, b) => b.amount - a.amount);
+
+      return {
+        type: 'transfer',
+        format: 'store',
+        title: 'Transfer Report (Store / Outlet Wise)',
+        entityTitle: 'Stores & Outlets',
+        entityCount: rows.length,
+        totalRecords: totalTxns,
+        totalQuantity: totalQty,
+        totalAmount: totalVal,
+        columns: [
+          { key: 'code', label: 'Store Code', align: 'left' },
+          { key: 'name', label: 'Destination Outlet', align: 'left' },
+          { key: 'source', label: 'Source Depot', align: 'left' },
+          { key: 'transfersCount', label: 'Challans', align: 'center' },
+          { key: 'quantity', label: 'Qty Transferred', align: 'right', isNumber: true },
+          { key: 'amount', label: 'Transfer Valuation (₹)', align: 'right', isCurrency: true, isBold: true },
+          { key: 'share', label: 'Volume Share %', align: 'right', isPercent: true },
+          { key: 'lastDate', label: 'Last Transfer', align: 'center' }
+        ],
+        rows: rows
+      };
+    } else if (format === 'item') {
+      // 2. Item Wise
+      const map = {};
+      txns.forEach(t => {
+        const key = String(t.itemCode || t.sku || t.itemName || 'PRD').trim();
+        if (!map[key]) {
+          const itemLookupCode = key.toUpperCase();
+          map[key] = {
+            itemCode: key,
+            itemName: t.itemName || 'Product',
+            category: itemCatMap[itemLookupCode] || t.category || 'General',
+            unit: t.unit || 'Pcs',
+            transfers: new Set(),
+            quantity: 0,
+            totalValuation: 0
+          };
+        }
+        if (t.id || t.reference) map[key].transfers.add(t.id || t.reference);
+        map[key].quantity += Number(t.quantity) || 0;
+        const val = Number(t.totalCost) || (Number(t.quantity) * Number(t.rate || t.unitPrice || 0));
+        map[key].totalValuation += val;
+      });
+
+      let rows = Object.values(map).map(it => {
+        const unitRate = it.quantity > 0 ? it.totalValuation / it.quantity : 0;
+        return {
+          code: it.itemCode,
+          name: it.itemName,
+          category: it.category,
+          unit: it.unit,
+          transfersCount: it.transfers.size,
+          quantity: it.quantity,
+          avgRate: unitRate,
+          amount: it.totalValuation,
+          share: totalVal > 0 ? (it.totalValuation / totalVal) * 100 : 0
+        };
+      });
+
+      if (query) {
+        rows = rows.filter(r => r.name.toLowerCase().includes(query) || r.code.toLowerCase().includes(query) || r.category.toLowerCase().includes(query));
+      }
+      rows.sort((a, b) => b.amount - a.amount);
+
+      return {
+        type: 'transfer',
+        format: 'item',
+        title: 'Transfer Report (Item Wise)',
+        entityTitle: 'Transferred Products',
+        entityCount: rows.length,
+        totalRecords: totalTxns,
+        totalQuantity: totalQty,
+        totalAmount: totalVal,
+        columns: [
+          { key: 'code', label: 'Item Code', align: 'left' },
+          { key: 'name', label: 'Product Name', align: 'left' },
+          { key: 'category', label: 'Category', align: 'left' },
+          { key: 'unit', label: 'UOM', align: 'center' },
+          { key: 'transfersCount', label: 'Challans', align: 'center' },
+          { key: 'quantity', label: 'Qty Transferred', align: 'right', isNumber: true },
+          { key: 'avgRate', label: 'Unit Rate (₹)', align: 'right', isCurrency: true },
+          { key: 'amount', label: 'Total Valuation (₹)', align: 'right', isCurrency: true, isBold: true },
+          { key: 'share', label: 'Share %', align: 'right', isPercent: true }
+        ],
+        rows: rows
+      };
+    } else {
+      // 3. Category Wise
+      const map = {};
+      txns.forEach(t => {
+        const itemLookupCode = String(t.itemCode || t.sku || '').toUpperCase();
+        const cat = String(itemCatMap[itemLookupCode] || t.category || 'Uncategorized').trim();
+        if (!map[cat]) {
+          map[cat] = {
+            category: cat,
+            items: new Set(),
+            transfers: new Set(),
+            quantity: 0,
+            totalValuation: 0
+          };
+        }
+        if (t.itemCode) map[cat].items.add(t.itemCode);
+        if (t.id || t.reference) map[cat].transfers.add(t.id || t.reference);
+        map[cat].quantity += Number(t.quantity) || 0;
+        const val = Number(t.totalCost) || (Number(t.quantity) * Number(t.rate || t.unitPrice || 0));
+        map[cat].totalValuation += val;
+      });
+
+      let rows = Object.values(map).map(c => ({
+        category: c.category,
+        productsCount: c.items.size,
+        transfersCount: c.transfers.size,
+        quantity: c.quantity,
+        amount: c.totalValuation,
+        share: totalVal > 0 ? (c.totalValuation / totalVal) * 100 : 0
+      }));
+
+      if (query) {
+        rows = rows.filter(r => r.category.toLowerCase().includes(query));
+      }
+      rows.sort((a, b) => b.amount - a.amount);
+
+      return {
+        type: 'transfer',
+        format: 'category',
+        title: 'Transfer Report (Category Wise)',
+        entityTitle: 'Categories',
+        entityCount: rows.length,
+        totalRecords: totalTxns,
+        totalQuantity: totalQty,
+        totalAmount: totalVal,
+        columns: [
+          { key: 'category', label: 'Category Name', align: 'left' },
+          { key: 'productsCount', label: 'Distinct Items', align: 'center' },
+          { key: 'transfersCount', label: 'Transfer Challans', align: 'center' },
+          { key: 'quantity', label: 'Total Units Transferred', align: 'right', isNumber: true },
+          { key: 'amount', label: 'Total Valuation (₹)', align: 'right', isCurrency: true, isBold: true },
+          { key: 'share', label: 'Share %', align: 'right', isPercent: true }
+        ],
+        rows: rows
+      };
+    }
+  },
+
+  renderCurrentReport: function() {
+    const data = this.getReportData();
+    if (!data) return;
+
+    // Update KPI Cards
+    const kpiTitle1 = document.getElementById('repKpiTitle1');
+    const kpiVal1 = document.getElementById('repKpiVal1');
+    if (kpiTitle1) kpiTitle1.innerText = data.entityTitle;
+    if (kpiVal1) kpiVal1.innerText = this.formatNumber(data.entityCount);
+
+    const kpiTitle2 = document.getElementById('repKpiTitle2');
+    const kpiVal2 = document.getElementById('repKpiVal2');
+    if (kpiTitle2) kpiTitle2.innerText = data.type === 'purchase' ? 'Purchase Invoices' : 'Transfer Challans';
+    if (kpiVal2) kpiVal2.innerText = this.formatNumber(data.totalRecords);
+
+    const kpiVal3 = document.getElementById('repKpiVal3');
+    if (kpiVal3) kpiVal3.innerText = `${this.formatNumber(data.totalQuantity)} units`;
+
+    const kpiTitle4 = document.getElementById('repKpiTitle4');
+    const kpiVal4 = document.getElementById('repKpiVal4');
+    if (kpiTitle4) kpiTitle4.innerText = data.type === 'purchase' ? 'Total Purchase Spend' : 'Total Transfer Value';
+    if (kpiVal4) kpiVal4.innerText = this.formatCurrency(data.totalAmount);
+
+    const countEl = document.getElementById('reportRowCount');
+    if (countEl) countEl.innerText = `Showing ${data.rows.length} rows (${data.totalRecords} transactions logged)`;
+
+    // Render Table Head
+    const thead = document.getElementById('reportTableHead');
+    if (thead) {
+      thead.innerHTML = `
+        <tr>
+          ${data.columns.map(c => `<th class="px-3 py-2.5 text-${c.align}">${c.label}</th>`).join('')}
+        </tr>
+      `;
+    }
+
+    // Render Table Body
+    const tbody = document.getElementById('reportTableBody');
+    if (tbody) {
+      if (data.rows.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${data.columns.length}" class="text-center py-8 text-on-surface-variant">
+              <span class="material-symbols-outlined text-[32px] text-outline block mb-1">inventory_2</span>
+              No records found for ${data.title}. Try changing your search or record new transactions.
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = data.rows.map((row, idx) => {
+          return `
+            <tr class="hover:bg-surface-container-high transition ${idx % 2 === 0 ? 'bg-surface-container-low' : 'bg-surface-container/40'}">
+              ${data.columns.map(c => {
+                const rawVal = row[c.key];
+                let displayVal = rawVal;
+                if (c.isCurrency) displayVal = this.formatCurrency(rawVal);
+                else if (c.isNumber) displayVal = this.formatNumber(rawVal);
+                else if (c.isPercent) {
+                  const pct = Number(rawVal || 0).toFixed(1);
+                  displayVal = `
+                    <div class="flex items-center justify-end gap-2">
+                      <div class="w-12 bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-primary h-full rounded-full" style="width: ${Math.min(100, pct)}%"></div>
+                      </div>
+                      <span class="font-data-tabular">${pct}%</span>
+                    </div>
+                  `;
+                }
+
+                const boldClass = c.isBold ? 'font-bold text-on-surface' : '';
+                return `<td class="px-3 py-2.5 text-${c.align} ${boldClass}">${displayVal}</td>`;
+              }).join('')}
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+  },
+
+  downloadCurrentReport: function(type = 'csv') {
+    const data = this.getReportData();
+    if (!data || !data.rows || data.rows.length === 0) {
+      this.showToast('No data available to download in current report view.', 'error');
+      return;
+    }
+
+    const headers = data.columns.map(c => c.label);
+    const rows = data.rows.map(row => {
+      return data.columns.map(c => {
+        let val = row[c.key];
+        if (c.isPercent) return Number(val || 0).toFixed(2) + '%';
+        if (c.isCurrency) return Number(val || 0).toFixed(2);
+        return val !== undefined && val !== null ? val : '';
+      });
+    });
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const cleanTitle = data.title.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `Zolexora_${cleanTitle}_${dateStr}.csv`;
+
+    let csvContent = "\uFEFF"; // UTF-8 BOM for Microsoft Excel
+    csvContent += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(",") + "\r\n";
+    rows.forEach(r => {
+      csvContent += r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",") + "\r\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    this.showToast(`Report downloaded: ${filename}`);
+  },
+
+  printCurrentReport: function() {
+    const data = this.getReportData();
+    if (!data) return;
+
+    const printWin = window.open('', '_blank', 'width=900,height=700');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+
+    const orgName = (this.state.activeOrganization && this.state.activeOrganization.name) || 'Zolexora IMS';
+    const dateStr = new Date().toLocaleString('en-IN');
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${data.title} - ${orgName}</title>
+        <style>
+          body { font-family: Cambria, 'Times New Roman', serif; margin: 24px; color: #111; font-size: 11pt; }
+          .header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 16px; }
+          .title { font-size: 18pt; font-weight: bold; margin: 0; }
+          .meta { font-size: 10pt; color: #555; margin-top: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+          th { border-bottom: 2px solid #333; text-align: left; padding: 6px 8px; font-size: 9pt; text-transform: uppercase; background: #f3f3f3; }
+          td { border-bottom: 1px solid #ddd; padding: 6px 8px; font-size: 10pt; }
+          .kpis { display: flex; gap: 16px; margin-bottom: 16px; }
+          .kpi { border: 1px solid #ddd; padding: 8px 12px; border-radius: 6px; flex: 1; }
+          .kpi-title { font-size: 8pt; text-transform: uppercase; color: #666; }
+          .kpi-val { font-size: 12pt; font-weight: bold; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .footer { margin-top: 24px; font-size: 9pt; color: #777; border-top: 1px solid #ddd; padding-top: 8px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">${orgName}</div>
+          <div style="font-size: 13pt; font-weight: bold; margin-top: 4px;">${data.title}</div>
+          <div class="meta">Generated on: ${dateStr} | Total Transactions: ${data.totalRecords}</div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="kpi-title">${data.entityTitle}</div><div class="kpi-val">${data.entityCount}</div></div>
+          <div class="kpi"><div class="kpi-title">Total Transactions</div><div class="kpi-val">${data.totalRecords}</div></div>
+          <div class="kpi"><div class="kpi-title">Total Units</div><div class="kpi-val">${data.totalQuantity}</div></div>
+          <div class="kpi"><div class="kpi-title">Total Value</div><div class="kpi-val">₹${Number(data.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              ${data.columns.map(c => `<th class="text-${c.align}">${c.label}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${data.rows.map(r => `
+              <tr>
+                ${data.columns.map(c => {
+                  let val = r[c.key];
+                  if (c.isCurrency) val = '₹' + Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  else if (c.isPercent) val = Number(val || 0).toFixed(1) + '%';
+                  return `<td class="text-${c.align}">${val}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          Zolexora IMS Enterprise Ledger &amp; Inventory Audit Report &copy; 2026
+        </div>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+    }, 400);
   },
 
   renderCategoryChart: function(categoryMap) {

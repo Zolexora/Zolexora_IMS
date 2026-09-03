@@ -347,6 +347,19 @@ function getTransactions(limit) {
 }
 
 /**
+ * Server endpoint to fetch comprehensive transactions for reporting
+ */
+function fetchFullReportsData() {
+  const supTxns = getSupplierTransactions(2000);
+  const issTxns = getIssuanceTransactions(2000);
+  return {
+    success: true,
+    supplierTransactions: supTxns,
+    issuanceTransactions: issTxns
+  };
+}
+
+/**
  * 3. BATCH PURCHASE INVOICE ENTRY
  * Records multi-line item purchase invoice with InvN_ prefix, updates product master stock & appends to Supplier_Transactions
  */

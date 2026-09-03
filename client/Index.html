@@ -1327,6 +1327,108 @@
           <p class="font-body-sm text-on-surface-variant">Real-time asset valuation, turnaround velocity, and category allocation across locations</p>
         </div>
 
+        <!-- ====================================================== -->
+        <!-- ENTERPRISE REPORTS & DOWNLOAD CENTER -->
+        <!-- ====================================================== -->
+        <div class="bg-surface-container-low p-lg rounded-xl border border-outline-variant/10 flex flex-col gap-md">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-outline-variant/10 pb-md">
+            <div>
+              <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[24px]">download_for_offline</span>
+                <span>Download Reports &amp; Ledger Audits</span>
+              </h3>
+              <p class="font-body-sm text-on-surface-variant">Export and download Purchase and Transfer reports in 3 dedicated formats (Supplier/Store-wise, Item-wise, and Category-wise).</p>
+            </div>
+            
+            <!-- Quick Full Sync Button -->
+            <button onclick="app.refreshReportData()" class="self-start md:self-auto px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary border border-outline-variant/20 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Pull latest records from database">
+              <span id="reportSyncIcon" class="material-symbols-outlined text-[16px]">sync</span>
+              <span>Sync All Transactions</span>
+            </button>
+          </div>
+
+          <!-- Report Type & Format Navigation Bar -->
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-surface-container-high/60 p-sm rounded-xl border border-outline-variant/10">
+            <!-- 1. Report Mode Switcher (Purchase vs Transfer) -->
+            <div class="flex items-center gap-1 bg-surface-container-highest/60 p-1 rounded-lg">
+              <button id="repTypeBtn-purchase" onclick="app.setReportType('purchase')" class="px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 bg-primary text-on-primary shadow-sm cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">shopping_cart</span>
+                <span>1. Purchase Report</span>
+              </button>
+              <button id="repTypeBtn-transfer" onclick="app.setReportType('transfer')" class="px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">swap_horiz</span>
+                <span>2. Transfer Report</span>
+              </button>
+            </div>
+
+            <!-- 2. Three Format Buttons (Supplier/Store-wise, Item-wise, Category-wise) -->
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] font-semibold text-outline uppercase tracking-wider mr-1 hidden sm:inline">Format:</span>
+              <button id="repFormatBtn-supplier" onclick="app.setReportFormat('supplier')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition border border-primary/40 bg-primary/20 text-primary cursor-pointer">
+                <span id="repFormatLabel-primary">Supplier Wise</span>
+              </button>
+              <button id="repFormatBtn-item" onclick="app.setReportFormat('item')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition border border-transparent text-on-surface-variant hover:bg-surface-container-highest cursor-pointer">
+                <span>Item Wise</span>
+              </button>
+              <button id="repFormatBtn-category" onclick="app.setReportFormat('category')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition border border-transparent text-on-surface-variant hover:bg-surface-container-highest cursor-pointer">
+                <span>Category Wise</span>
+              </button>
+            </div>
+
+            <!-- 3. Export / Download Actions -->
+            <div class="flex items-center gap-2">
+              <button onclick="app.downloadCurrentReport('csv')" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Download formatted CSV spreadsheet">
+                <span class="material-symbols-outlined text-[16px]">download</span>
+                <span>Download CSV</span>
+              </button>
+              <button onclick="app.printCurrentReport()" class="p-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant/20 transition cursor-pointer" title="Print or Save as PDF">
+                <span class="material-symbols-outlined text-[18px]">print</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Report Quick Stats Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-[5px] text-xs">
+            <div class="p-3 bg-surface-container-high rounded-lg border border-outline-variant/10">
+              <span class="text-on-surface-variant block font-medium" id="repKpiTitle1">Total Entities</span>
+              <span class="text-base font-bold text-on-surface mt-0.5 block" id="repKpiVal1">0</span>
+            </div>
+            <div class="p-3 bg-surface-container-high rounded-lg border border-outline-variant/10">
+              <span class="text-on-surface-variant block font-medium" id="repKpiTitle2">Total Records</span>
+              <span class="text-base font-bold text-on-surface mt-0.5 block" id="repKpiVal2">0</span>
+            </div>
+            <div class="p-3 bg-surface-container-high rounded-lg border border-outline-variant/10">
+              <span class="text-on-surface-variant block font-medium" id="repKpiTitle3">Total Quantity</span>
+              <span class="text-base font-bold text-primary mt-0.5 block" id="repKpiVal3">0</span>
+            </div>
+            <div class="p-3 bg-surface-container-high rounded-lg border border-outline-variant/10">
+              <span class="text-on-surface-variant block font-medium" id="repKpiTitle4">Total Amount</span>
+              <span class="text-base font-bold text-emerald-400 mt-0.5 block" id="repKpiVal4">₹0</span>
+            </div>
+          </div>
+
+          <!-- Report Search & Filter Input -->
+          <div class="flex items-center justify-between gap-3">
+            <div class="relative flex-1 max-w-sm">
+              <span class="material-symbols-outlined absolute left-2.5 top-2 text-[16px] text-on-surface-variant">search</span>
+              <input id="reportSearchInput" oninput="app.onReportSearchChange(this.value)" type="text" placeholder="Search in report..." class="w-full pl-8 pr-3 py-1.5 bg-surface-container-high text-xs text-on-surface rounded-lg border border-outline-variant/20 focus:border-primary outline-none" />
+            </div>
+            <span id="reportRowCount" class="text-xs text-on-surface-variant">Showing 0 rows</span>
+          </div>
+
+          <!-- Interactive Report Table -->
+          <div class="overflow-x-auto rounded-lg border border-outline-variant/10 max-h-[500px]">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead id="reportTableHead" class="bg-surface-container-highest text-on-surface-variant font-label-caps uppercase text-[10px] tracking-wider sticky top-0 z-10">
+                <!-- Dynamically injected based on report type & format -->
+              </thead>
+              <tbody id="reportTableBody" class="divide-y divide-outline-variant/10 bg-surface-container-low text-on-surface">
+                <!-- Dynamically rendered rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-[5px]">
           <!-- Valuation Doughnut -->
           <div class="bg-surface-container-low p-lg rounded-xl border border-outline-variant/10 flex flex-col">
