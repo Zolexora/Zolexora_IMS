@@ -1,0 +1,1910 @@
+<script>
+/**
+ * DNP HOTELS - IMS CLIENT APPLICATION LOGIC
+ */
+
+const app = {
+  state: {
+    dbInfo: {},
+    metrics: {},
+    items: [],
+    suppliers: [],
+    departments: [],
+    locations: [],
+    settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'DNP HOTELS' },
+    recentTransactions: [],
+    activeTab: 'dashboard',
+    propertyFilter: 'ALL',
+    categoryChart: null,
+    html5QrScanner: null
+  },
+
+  // Initialize App
+  init: function() {
+    this.loadInitialData();
+  },
+
+  // Check if running inside Google Apps Script environment
+  isGasEnv: function() {
+    return typeof google !== 'undefined' && google.script && google.script.run;
+  },
+
+  // Show Global Loading
+  showLoading: function(title, subtitle) {
+    const el = document.getElementById('loadingOverlay');
+    if (el) {
+      if (title) document.getElementById('loadingTitle').innerText = title;
+      if (subtitle) document.getElementById('loadingSubtitle').innerText = subtitle;
+      el.classList.remove('hidden');
+    }
+  },
+
+  hideLoading: function() {
+    const el = document.getElementById('loadingOverlay');
+    if (el) el.classList.add('hidden');
+    const refreshIcon = document.getElementById('refreshIcon');
+    if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+  },
+
+  // Toast System
+  showToast: function(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast-enter pointer-events-auto px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2.5 max-w-sm border ${
+      type === 'success' ? 'bg-emerald-900 text-emerald-100 border-emerald-700' :
+      type === 'error' ? 'bg-rose-900 text-rose-100 border-rose-700' :
+      'bg-slate-900 text-slate-100 border-slate-700'
+    }`;
+
+    const icon = type === 'success' ? 'fa-circle-check text-emerald-400' :
+                 type === 'error' ? 'fa-circle-exclamation text-rose-400' :
+                 'fa-circle-info text-amber-400';
+
+    toast.innerHTML = `
+      <i class="fa-solid ${icon} text-base flex-shrink-0"></i>
+      <div class="flex-1">${message}</div>
+      <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white">&times;</button>
+    `;
+
+    container.appendChild(toast);
+    setTimeout(() => {
+      if (toast.parentElement) toast.remove();
+    }, 4500);
+  },
+
+  // Load Initial Data from Backend
+  loadInitialData: function(isRefresh = false) {
+    const refreshIcon = document.getElementById('refreshIcon');
+    if (refreshIcon) refreshIcon.classList.add('fa-spin');
+    
+    if (isRefresh) {
+      this.showToast('Refreshing inventory from Google Sheets...', 'info');
+    }
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(response) {
+          app.handleInitialDataSuccess(response);
+          if (isRefresh) app.showToast('Database up to date!');
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error loading database: ' + err.message, 'error');
+        })
+        .getInitialData();
+    } else {
+      // Local preview mock fallback
+      console.warn('Google Apps Script environment not detected. Using sample mock database.');
+      setTimeout(() => {
+        app.handleInitialDataSuccess(app.getMockData());
+      }, 300);
+    }
+  },
+
+  handleInitialDataSuccess: function(data) {
+    this.hideLoading();
+    if (!data) return;
+
+    this.state.workbooksInfo = data.workbooksInfo || {};
+    this.state.dbInfo = data.dbInfo || (data.workbooksInfo ? data.workbooksInfo.folder : {});
+    this.state.metrics = data.metrics || {};
+    this.state.items = data.items || [];
+    this.state.suppliers = data.suppliers || [];
+    this.state.stores = data.stores || [];
+    this.state.sellingPoints = data.sellingPoints || [];
+    this.state.departments = data.departments || [];
+    this.state.locations = data.locations || [];
+    this.state.users = data.users || [];
+    this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: '21 Gun Salute & Pahle Chai (DNP Hotels)' };
+    this.state.supplierTransactions = data.supplierTransactions || [];
+    this.state.issuanceTransactions = data.issuanceTransactions || [];
+    this.state.recentTransactions = data.issuanceTransactions || data.recentTransactions || [];
+
+    // Update Nav Count
+    const navBadge = document.getElementById('navTotalItemsBadge');
+    if (navBadge) navBadge.innerText = this.state.items.length;
+
+    // Update Google Sheet links and Multi-Workbook grid
+    this.updateGoogleSheetLinks();
+
+    // Populate dropdowns across modals with real 28 suppliers, stores, and selling points
+    this.populateAllSelectDropdowns();
+
+    // Render components
+    this.renderDashboard();
+    this.filterCatalog();
+    this.filterTransactions();
+    this.renderSuppliers();
+    this.renderDepartmentsAndLocations();
+    this.renderSettingsTab();
+  },
+
+  updateGoogleSheetLinks: function() {
+    const wbInfo = this.state.workbooksInfo || {};
+    const folder = wbInfo.folder || {
+      id: '1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx',
+      name: 'DNP Database Drive Folder',
+      url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx'
+    };
+
+    const headerDriveLink = document.getElementById('openDriveFolderBtn');
+    if (headerDriveLink && folder.url) {
+      headerDriveLink.href = folder.url;
+    }
+
+    const driveDirectLink = document.getElementById('openDriveFolderDirectLink');
+    if (driveDirectLink && folder.url) {
+      driveDirectLink.href = folder.url;
+    }
+
+    const folderNameEl = document.getElementById('driveFolderName');
+    if (folderNameEl) folderNameEl.innerText = folder.name || 'DNP Database Drive Folder';
+
+    const folderIdEl = document.getElementById('driveFolderId');
+    if (folderIdEl) folderIdEl.innerText = folder.id || '1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx';
+
+    this.renderWorkbooksGrid();
+  },
+
+  renderWorkbooksGrid: function() {
+    const container = document.getElementById('workbooksGrid');
+    if (!container) return;
+
+    const workbooks = (this.state.workbooksInfo && this.state.workbooksInfo.workbooks) ? this.state.workbooksInfo.workbooks : [
+      { key: 'Location_Master', name: 'Location_Master', sheets: ['Store', 'Selling_Point'], url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx' },
+      { key: 'Product_Master', name: 'Product_Master', sheets: ['Product_Master'], url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx' },
+      { key: 'Supplier_Master', name: 'Supplier_Master', sheets: ['Supplier_Master (28 Vendors)'], url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx' },
+      { key: 'Supplier_Transactions', name: 'Supplier_Transactions', sheets: ['Supplier_Transactions'], url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx' },
+      { key: 'Issuance_Transactions', name: 'Issuance_Transactions', sheets: ['Issuance_Transactions'], url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx' },
+      { key: 'Users_and_Settings', name: 'Users_and_Settings', sheets: ['Users', 'Settings'], url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx' }
+    ];
+
+    const iconMap = {
+      'Location_Master': 'storefront',
+      'Product_Master': 'inventory_2',
+      'Supplier_Master': 'local_shipping',
+      'Supplier_Transactions': 'receipt_long',
+      'Issuance_Transactions': 'outbox',
+      'Users_and_Settings': 'settings_suggest'
+    };
+
+    container.innerHTML = workbooks.map(wb => {
+      const icon = iconMap[wb.key] || 'table_view';
+      const sheetPills = (wb.sheets || []).map(s => 
+        `<span class="bg-surface-container-highest text-primary font-data-tabular px-1.5 py-0.5 rounded text-[10px]">${s}</span>`
+      ).join(' ');
+
+      return `
+        <div class="bg-surface-container-high rounded-xl p-md border border-outline-variant/10 flex flex-col justify-between hover:border-outline-variant/30 transition space-y-3">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="material-symbols-outlined text-primary text-[24px]">${icon}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary-container/20 text-secondary border border-secondary/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-secondary mr-1"></span> Live Sync
+              </span>
+            </div>
+            <div>
+              <h4 class="font-bold text-on-surface text-sm">${wb.name}</h4>
+              <p class="text-[11px] text-outline font-data-tabular truncate">ID: ${wb.id || 'Active Drive File'}</p>
+            </div>
+            <div class="flex flex-wrap gap-1 pt-1">
+              ${sheetPills}
+            </div>
+          </div>
+          <div class="pt-2 border-t border-outline-variant/10 flex items-center justify-between">
+            <a href="${wb.url}" target="_blank" class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+              <span>Open in Sheets</span>
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  // Number & Currency Formatters
+  formatCurrency: function(amount) {
+    const symbol = this.state.settings.CURRENCY_SYMBOL || '₹';
+    const num = Number(amount) || 0;
+    return symbol + ' ' + num.toLocaleString();
+  },
+
+  formatNumber: function(amount) {
+    return (Number(amount) || 0).toLocaleString();
+  },
+
+  // TAB NAVIGATION
+  switchTab: function(tabId) {
+    this.state.activeTab = tabId;
+
+    // Update Sidebar Nav Items
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+      item.className = 'nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group';
+    });
+
+    const activeBtn = document.getElementById('navBtn-' + tabId);
+    if (activeBtn) {
+      activeBtn.className = 'nav-item flex items-center px-md py-3 rounded-lg transition-all duration-200 group bg-primary-container text-on-primary-container font-semibold shadow-lg shadow-primary/20';
+    }
+
+    // Toggle Content Panes
+    const panes = document.querySelectorAll('.tab-pane');
+    panes.forEach(p => p.classList.add('hidden'));
+
+    const targetPane = document.getElementById('tabContent-' + tabId);
+    if (targetPane) {
+      targetPane.classList.remove('hidden');
+    }
+
+    // Trigger Chart Resize if Reports
+    if (tabId === 'reports' && this.state.categoryChart) {
+      this.state.categoryChart.resize();
+    }
+  },
+
+  handleGlobalSearch: function(query) {
+    const q = (query || '').trim();
+    if (!q) return;
+    if (this.state.activeTab !== 'products') {
+      this.switchTab('products');
+    }
+    const searchInput = document.getElementById('catalogSearchInput');
+    if (searchInput) {
+      searchInput.value = q;
+      this.filterCatalog();
+    }
+  },
+
+  filterByLocation: function(locName) {
+    let prop = 'ALL';
+    const l = locName.toUpperCase();
+    if (l.includes('CENTRAL')) prop = 'CENTRAL';
+    else if (l.includes('DENEB')) prop = 'DENEB';
+    else if (l.includes('POLLUX')) prop = 'POLLUX';
+
+    const filter = document.getElementById('headerPropertyFilter');
+    if (filter) filter.value = prop;
+    this.handlePropertyFilterChange(prop);
+    this.switchTab('products');
+  },
+
+  handlePropertyFilterChange: function(propertyCode) {
+    this.state.propertyFilter = propertyCode;
+    this.filterCatalog();
+    this.filterTransactions();
+    this.showToast(`View filtered to: ${propertyCode === 'ALL' ? 'All Properties' : propertyCode + ' Store'}`);
+  },
+
+  // ==========================================
+  // DASHBOARD RENDERING (MATERIAL 3)
+  // ==========================================
+  renderDashboard: function() {
+    const m = this.state.metrics || {};
+    const sym = this.state.settings.CURRENCY_SYMBOL || '₹';
+
+    // Live Timestamp
+    const now = new Date();
+    const tsEl = document.getElementById('liveTimestamp');
+    if (tsEl) {
+      const dStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const tStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      tsEl.innerText = `${dStr} | ${tStr}`;
+    }
+
+    // KPI Summary Cards
+    const skusEl = document.getElementById('dashTotalSkus');
+    if (skusEl) skusEl.innerText = this.formatNumber(m.totalSkus || 0);
+
+    const unitsEl = document.getElementById('dashTotalUnits');
+    if (unitsEl) unitsEl.innerText = `${this.formatNumber(m.totalUnits || 0)} units total`;
+
+    const lowEl = document.getElementById('dashLowStockCount');
+    if (lowEl) lowEl.innerText = this.formatNumber((m.lowStockCount || 0) + (m.outOfStockCount || 0));
+
+    const today = m.todaySummary || { txnCount: 0, stockIn: 0, stockOut: 0 };
+    const txnsEl = document.getElementById('dashTodayTxns');
+    if (txnsEl) txnsEl.innerText = this.formatNumber(today.txnCount || 0);
+
+    const inEl = document.getElementById('dashStockInToday');
+    if (inEl) inEl.innerText = `+${today.stockIn || 0} In`;
+
+    const outEl = document.getElementById('dashStockOutToday');
+    if (outEl) outEl.innerText = `-${today.stockOut || 0} Out`;
+
+    const valEl = document.getElementById('dashTotalValuation');
+    if (valEl) valEl.innerText = this.formatCurrency(m.totalValuation || 0);
+
+    const tipEl = document.getElementById('chartTooltipVal');
+    if (tipEl) tipEl.innerText = this.formatCurrency(m.totalValuation || 0);
+
+    // Update user profile from Users sheet
+    if (this.state.users && this.state.users.length > 0) {
+      const u = this.state.users[0];
+      const nameEl = document.getElementById('headerUserName');
+      if (nameEl) nameEl.innerText = u.name || 'Staff';
+      const roleEl = document.getElementById('headerUserRole');
+      if (roleEl) roleEl.innerText = u.role || 'Inventory Incharge';
+    }
+
+    // Update hotel title from Settings sheet
+    const hotelName = (this.state.settings && this.state.settings.HOTEL_NAME) ? this.state.settings.HOTEL_NAME : '';
+    if (hotelName) {
+      const hEl = document.getElementById('sidebarHotelName');
+      if (hEl) hEl.innerText = hotelName;
+    }
+
+    // Dynamic Middle Row
+    this.renderCategoryBars(m.categoryBreakdown || {});
+    this.renderTopIssuedItems();
+    this.renderRecentRequisitions();
+
+    // Dynamic Bottom Row
+    this.renderManagedProperties();
+    this.renderLowStockTable(m.lowStockItems || []);
+
+    // Reports Breakdown
+    this.renderCategoryChart(m.categoryBreakdown || {});
+    this.renderReportsLocations();
+  },
+
+  renderCategoryBars: function(categoryMap) {
+    const container = document.getElementById('categoryBarsContainer');
+    if (!container) return;
+
+    const categories = Object.keys(categoryMap || {});
+    let sorted = categories.map(c => ({
+      name: c,
+      units: categoryMap[c].units || 0,
+      value: categoryMap[c].value || 0
+    })).filter(item => item.units > 0).sort((a, b) => b.units - a.units).slice(0, 5);
+
+    if (sorted.length === 0) {
+      container.innerHTML = `<div class="py-12 text-center text-on-surface-variant text-xs w-full">No category stock recorded in Product_Master sheet yet.</div>`;
+      return;
+    }
+
+    const maxUnits = Math.max(...sorted.map(s => s.units), 10);
+    const barColors = ['bg-primary', 'bg-primary-fixed-dim', 'bg-secondary-fixed-dim', 'bg-secondary', 'bg-secondary-container'];
+    const yLabels = [Math.round(maxUnits), Math.round(maxUnits * 0.75), Math.round(maxUnits * 0.5), Math.round(maxUnits * 0.25), 0];
+
+    const barsHtml = sorted.map((item, idx) => {
+      const heightPct = Math.max(10, Math.round((item.units / maxUnits) * 92));
+      const colorClass = barColors[idx % barColors.length];
+      const shortName = item.name.split(' ')[0].replace('&', '');
+      return `
+        <div class="flex flex-col items-center gap-xs z-10 w-full group">
+          <span class="font-data-tabular text-data-tabular text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">${item.units}</span>
+          <div class="w-full ${colorClass} rounded-t-sm" style="height: ${heightPct}%; transition: height 0.8s ease-out;"></div>
+          <span class="font-label-caps text-label-caps text-outline mt-sm rotate-45 md:rotate-0 origin-left truncate w-full text-center" title="${item.name}">${shortName}</span>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
+        <div class="border-b border-outline-variant w-full"></div>
+        <div class="border-b border-outline-variant w-full"></div>
+        <div class="border-b border-outline-variant w-full"></div>
+        <div class="border-b border-outline-variant w-full"></div>
+        <div class="border-b border-outline-variant w-full"></div>
+      </div>
+      <div class="absolute -left-2 inset-y-0 flex flex-col justify-between items-end text-outline text-data-tabular font-data-tabular py-xs z-10 translate-x-[-100%]">
+        ${yLabels.map(y => `<span>${y}</span>`).join('')}
+      </div>
+      ${barsHtml}
+    `;
+  },
+
+  renderTopIssuedItems: function() {
+    const container = document.getElementById('topIssuedList');
+    if (!container) return;
+
+    const issueMap = {};
+    const txns = this.state.issuanceTransactions || this.state.recentTransactions || [];
+    txns.forEach(t => {
+      if (t.type === 'STOCK_OUT' || t.type === 'DISBURSEMENT') {
+        const key = t.itemCode || t.itemId || t.sku || t.itemName;
+        if (!issueMap[key]) {
+          issueMap[key] = {
+            name: t.itemName,
+            sku: t.sku || t.itemCode || key,
+            category: t.category || '',
+            qty: 0,
+            value: 0
+          };
+        }
+        issueMap[key].qty += Number(t.quantity) || 0;
+        issueMap[key].value += Number(t.totalCost || t.totalValue) || 0;
+      }
+    });
+
+    let list = Object.values(issueMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
+
+    if (list.length === 0) {
+      container.innerHTML = `<div class="py-8 text-center text-on-surface-variant text-xs w-full">No issued items recorded in Issuance_Transactions sheet yet.</div>`;
+      return;
+    }
+
+    container.innerHTML = list.map(item => {
+      const matched = this.state.items.find(i => i.sku === item.sku || i.name === item.name);
+      const stock = matched ? matched.totalStock : '--';
+      return `
+        <div onclick="app.openBarcodeModal('${matched ? matched.id : ''}')" class="flex items-center gap-md py-sm px-xs hover:bg-surface-container-high rounded-lg transition-colors group cursor-pointer relative">
+          <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="w-10 h-10 rounded-md overflow-hidden bg-surface flex-shrink-0 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-[20px]">inventory_2</span>
+          </div>
+          <span class="font-body-md text-body-md text-on-surface flex-1 truncate" title="${item.name}">${item.name}</span>
+          <span class="font-data-tabular text-data-tabular text-on-surface-variant w-24 truncate">${item.sku}</span>
+          <span class="font-data-tabular text-data-tabular text-on-surface w-16 text-right">${item.qty}</span>
+          <span class="font-data-tabular text-data-tabular text-on-surface w-20 text-right">${this.formatCurrency(item.value)}</span>
+          <span class="font-data-tabular text-data-tabular text-on-surface w-16 text-right font-bold">${stock}</span>
+        </div>
+      `;
+    }).join('');
+  },
+
+  renderRecentRequisitions: function() {
+    const container = document.getElementById('recentReqsList');
+    const tbody = document.getElementById('requisitionsTableBody');
+
+    const txns = this.state.issuanceTransactions || this.state.recentTransactions || [];
+    const reqs = txns.filter(t => t.type === 'STOCK_OUT' || t.type === 'DISBURSEMENT' || t.type === 'TRANSFER');
+
+    if (reqs.length === 0) {
+      if (container) container.innerHTML = `<div class="py-8 text-center text-on-surface-variant text-xs w-full">No requisitions or issues recorded in sheet yet.</div>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-on-surface-variant text-xs">No requisitions found in sheet.</td></tr>`;
+      return;
+    }
+
+    const displayReqs = reqs.slice(0, 4);
+
+    if (container) {
+      container.innerHTML = displayReqs.map(r => {
+        const d = r.timestamp ? new Date(r.timestamp).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 'Today';
+        const status = r.status || 'Approved';
+        const statusPill = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-container/20 text-secondary border border-secondary/20"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span><span class="font-label-caps text-label-caps">${status}</span></span>`;
+
+        return `
+          <div class="flex items-center gap-md py-sm px-xs hover:bg-surface-container-high rounded-lg transition-colors">
+            <span class="font-data-tabular text-data-tabular text-primary w-24 cursor-pointer hover:underline truncate">${r.reference || '#' + (r.id || r.issuanceId || 'REQ')}</span>
+            <span class="font-data-tabular text-data-tabular text-on-surface-variant w-16">${d}</span>
+            <div class="flex flex-col flex-1 truncate">
+              <span class="font-body-sm text-body-sm text-on-surface truncate">${r.destLocation || r.toSellingPointName || 'Selling Point'}</span>
+            </div>
+            <div class="w-20">
+              ${statusPill}
+            </div>
+            <span class="font-data-tabular text-data-tabular text-on-surface w-16 text-right">${r.quantity} Items</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (tbody) {
+      tbody.innerHTML = reqs.map(r => {
+        const d = r.timestamp ? new Date(r.timestamp).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 'Today';
+        return `
+          <tr class="hover:bg-surface-container-high transition">
+            <td class="py-3 px-4 font-data-tabular text-primary font-bold">${r.reference || r.id || '--'}</td>
+            <td class="py-3 px-3 font-data-tabular text-on-surface-variant">${d}</td>
+            <td class="py-3 px-4 font-bold text-on-surface">${r.itemName || r.itemDescription || '--'}</td>
+            <td class="py-3 px-3 text-center font-bold font-data-tabular text-secondary">${r.quantity}</td>
+            <td class="py-3 px-3 text-on-surface-variant">${r.sourceLocation || r.fromStoreName || '--'}</td>
+            <td class="py-3 px-3 font-medium text-on-surface">${r.destLocation || r.toSellingPointName || '--'}</td>
+            <td class="py-3 px-3 text-on-surface-variant">${r.performedBy || r.issuedBy || '--'}</td>
+            <td class="py-3 px-3 text-center">
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-container/20 text-secondary border border-secondary/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                <span class="font-label-caps text-label-caps">${r.status || 'Approved'}</span>
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  },
+
+  renderManagedProperties: function() {
+    const container = document.getElementById('managedPropertiesList');
+    if (!container) return;
+
+    const stores = this.state.stores || [];
+    if (stores.length === 0) {
+      container.innerHTML = `<div class="py-6 text-center text-on-surface-variant text-xs">No stores registered in Location_Master sheet.</div>`;
+      return;
+    }
+
+    const metricsStores = (this.state.metrics && this.state.metrics.stores) ? this.state.metrics.stores : {};
+
+    container.innerHTML = stores.map(st => {
+      const storeMetric = metricsStores[st.code] || { units: 0, valuation: 0 };
+      const units = storeMetric.units || 0;
+      const val = storeMetric.valuation || 0;
+      const isAlert = units === 0;
+
+      const badge = !isAlert
+        ? `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-container/20 text-secondary border border-secondary/20"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span><span class="font-label-caps text-label-caps">Active</span></span>`
+        : `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tertiary-container/20 text-tertiary border border-tertiary/20"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span><span class="font-label-caps text-label-caps">Low</span></span>`;
+
+      return `
+        <div onclick="app.filterByLocation('${st.name}')" class="flex items-center gap-md p-md bg-surface-container-high rounded-xl border border-transparent hover:border-outline-variant/30 transition-colors cursor-pointer">
+          <div class="w-12 h-12 rounded-lg overflow-hidden bg-surface flex-shrink-0 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-[26px]">storefront</span>
+          </div>
+          <div class="flex flex-col flex-1 min-w-0">
+            <span class="font-body-md text-body-md font-semibold text-on-surface truncate">[${st.code}] ${st.name}</span>
+            <span class="font-body-sm text-body-sm text-on-surface-variant truncate">Stock: <strong class="text-on-surface font-data-tabular">${this.formatNumber(units)} units</strong> | ${this.formatCurrency(val)}</span>
+          </div>
+          <div class="flex-shrink-0">
+            ${badge}
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  renderLowStockTable: function(items) {
+    const container = document.getElementById('dashLowStockTable');
+    if (!container) return;
+
+    const lowItems = (items && items.length > 0) ? items : this.state.items.filter(i => (Number(i.totalStock) || 0) <= (Number(i.minStock) || 0));
+
+    if (lowItems.length === 0) {
+      container.innerHTML = `<div class="py-8 text-center text-secondary text-xs flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">check_circle</span>All items in Product_Master are above minimum stock levels.</div>`;
+      return;
+    }
+
+    container.innerHTML = lowItems.slice(0, 5).map(item => {
+      const isCrit = (Number(item.totalStock) || 0) === 0;
+      const statusBadge = isCrit
+        ? `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-error/20 text-error border border-error/20"><span class="w-1.5 h-1.5 rounded-full bg-error"></span><span class="font-label-caps text-label-caps">Critical</span></span>`
+        : `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tertiary-container/20 text-tertiary border border-tertiary/20"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span><span class="font-label-caps text-label-caps">Alert</span></span>`;
+
+      return `
+        <div onclick="app.quickRestock('${item.id}')" class="flex items-center gap-md py-sm px-xs hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer ${isCrit ? 'bg-error-container/10' : ''}">
+          <span class="font-body-md text-body-md text-on-surface flex-1 truncate" title="${item.name}">${item.name}</span>
+          <span class="font-data-tabular text-data-tabular text-on-surface-variant w-20 truncate">${item.sku}</span>
+          <span class="font-data-tabular text-data-tabular text-on-surface w-12 text-right font-bold ${isCrit ? 'text-error' : 'text-tertiary'}">${item.totalStock}</span>
+          <div class="w-24 flex justify-end">
+            ${statusBadge}
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  renderReportsLocations: function() {
+    const metricsStores = (this.state.metrics && this.state.metrics.stores) ? this.state.metrics.stores : {};
+    const s001 = metricsStores['S_001'] || { units: 0, valuation: 0 };
+    const s002 = metricsStores['S_002'] || { units: 0, valuation: 0 };
+    const central = metricsStores['S_000'] || { units: 0, valuation: 0 };
+
+    const cVal = document.getElementById('repValCentral');
+    if (cVal) cVal.innerText = this.formatCurrency(central.valuation);
+    const cUnits = document.getElementById('repUnitsCentral');
+    if (cUnits) cUnits.innerText = `${this.formatNumber(central.units)} physical units`;
+
+    const dVal = document.getElementById('repValDeneb');
+    if (dVal) dVal.innerText = this.formatCurrency(s001.valuation);
+    const dUnits = document.getElementById('repUnitsDeneb');
+    if (dUnits) dUnits.innerText = `${this.formatNumber(s001.units)} physical units`;
+
+    const pVal = document.getElementById('repValPollux');
+    if (pVal) pVal.innerText = this.formatCurrency(s002.valuation);
+    const pUnits = document.getElementById('repUnitsPollux');
+    if (pUnits) pUnits.innerText = `${this.formatNumber(s002.units)} physical units`;
+  },
+
+  renderCategoryChart: function(categoryMap) {
+    const canvas = document.getElementById('categoryChart');
+    if (!canvas) return;
+
+    const labels = Object.keys(categoryMap);
+    const dataVals = labels.map(l => categoryMap[l].value || 0);
+
+    const colors = [
+      '#2563eb', // primary blue
+      '#4edea3', // secondary emerald
+      '#ffb95f', // tertiary amber
+      '#ffb4ab', // error red
+      '#b4c5ff', // primary dim
+      '#00a572', // dark secondary
+      '#8d90a0', // outline slate
+      '#e1e2ed'  // on-surface
+    ];
+
+    if (this.state.categoryChart) {
+      this.state.categoryChart.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    this.state.categoryChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: dataVals,
+          backgroundColor: colors.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#191b23'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 10,
+              font: { size: 11, family: 'Hanken Grotesk' },
+              color: '#c3c6d7'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw || 0;
+                return ` ${context.label}: ${app.formatCurrency(val)}`;
+              }
+            }
+          }
+        },
+        cutout: '68%'
+      }
+    });
+  },
+
+  getTypeBadge: function(type) {
+    const t = String(type).toUpperCase();
+    if (t === 'STOCK_IN') {
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container/20 text-secondary border border-secondary/20"><span class="w-1.5 h-1.5 rounded-full bg-secondary mr-1"></span>Stock In</span>`;
+    } else if (t === 'STOCK_OUT') {
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-tertiary-container/20 text-tertiary border border-tertiary/20"><span class="w-1.5 h-1.5 rounded-full bg-tertiary mr-1"></span>Stock Out</span>`;
+    } else if (t === 'TRANSFER') {
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary border border-primary/20"><span class="w-1.5 h-1.5 rounded-full bg-primary mr-1"></span>Transfer</span>`;
+    } else {
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container-highest text-on-surface-variant"><span class="w-1.5 h-1.5 rounded-full bg-outline mr-1"></span>Adjust</span>`;
+    }
+  },
+
+  // ==========================================
+  // INVENTORY CATALOG
+  // ==========================================
+  filterCatalogByLowStock: function() {
+    this.switchTab('products');
+    const filter = document.getElementById('catalogStockFilter');
+    if (filter) filter.value = 'LOW';
+    this.filterCatalog();
+  },
+
+  filterCatalog: function() {
+    const searchVal = (document.getElementById('catalogSearchInput')?.value || '').toLowerCase().trim();
+    const catVal = document.getElementById('catalogCategoryFilter')?.value || 'ALL';
+    const stockVal = document.getElementById('catalogStockFilter')?.value || 'ALL';
+    const propFilter = this.state.propertyFilter;
+
+    let items = this.state.items.filter(item => {
+      // Search match
+      const matchSearch = !searchVal || 
+        (item.name && item.name.toLowerCase().includes(searchVal)) ||
+        (item.sku && item.sku.toLowerCase().includes(searchVal)) ||
+        (item.category && item.category.toLowerCase().includes(searchVal)) ||
+        (item.supplier && item.supplier.toLowerCase().includes(searchVal));
+
+      if (!matchSearch) return false;
+
+      // Category match
+      if (catVal !== 'ALL' && item.category !== catVal) return false;
+
+      // Stock status filter
+      const total = Number(item.totalStock) || 0;
+      const min = Number(item.minStock) || 0;
+      if (stockVal === 'LOW' && (total > min || total === 0)) return false;
+      if (stockVal === 'OUT' && total !== 0) return false;
+      if (stockVal === 'OK' && total <= min) return false;
+
+      // Property specific non-zero check if selected
+      if (propFilter === 'CENTRAL' && stockVal !== 'ALL' && item.centralStock <= 0) return false;
+      if (propFilter === 'DENEB' && stockVal !== 'ALL' && item.denebStock <= 0) return false;
+      if (propFilter === 'POLLUX' && stockVal !== 'ALL' && item.polluxStock <= 0) return false;
+
+      return true;
+    });
+
+    this.renderCatalogTable(items);
+  },
+
+  renderCatalogTable: function(items) {
+    const tbody = document.getElementById('catalogTableBody');
+    const countLabel = document.getElementById('catalogCountLabel');
+    if (!tbody) return;
+
+    if (countLabel) countLabel.innerText = `Showing ${items.length} of ${this.state.items.length} items`;
+
+    if (!items || items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-on-surface-variant font-medium">No items found matching the current search &amp; filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+      const total = Number(item.totalStock) || 0;
+      const min = Number(item.minStock) || 0;
+      const isOut = total === 0;
+      const isLow = !isOut && total <= min;
+
+      let statusPill = isOut 
+        ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-error" title="Out of Stock"></span>`
+        : isLow 
+        ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-tertiary animate-pulse" title="Low Stock Warning"></span>`
+        : `<span class="inline-block w-2.5 h-2.5 rounded-full bg-secondary" title="Stock Healthy"></span>`;
+
+      return `
+        <tr class="hover:bg-surface-container-high transition border-b border-outline-variant/10 text-on-surface">
+          <!-- SKU / Barcode -->
+          <td class="py-3 px-4">
+            <div class="flex items-center space-x-2">
+              ${statusPill}
+              <button onclick="app.openBarcodeModal('${item.id}')" title="Click to view/print barcode" class="font-data-tabular text-xs font-bold text-primary hover:underline">
+                ${item.sku}
+              </button>
+            </div>
+            <div class="text-[10px] text-outline ml-4 font-mono">${item.id}</div>
+          </td>
+
+          <!-- Name & Category -->
+          <td class="py-3 px-4">
+            <div class="font-bold text-on-surface text-xs sm:text-sm">${item.name}</div>
+            <div class="flex items-center space-x-2 text-[11px] text-on-surface-variant mt-0.5">
+              <span class="bg-surface-container-highest text-on-surface-variant px-1.5 py-0.5 rounded text-[10px] font-medium">${item.category}</span>
+              ${item.supplier ? `<span class="truncate max-w-[140px] text-outline text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">local_shipping</span>${item.supplier}</span>` : ''}
+            </div>
+          </td>
+
+          <!-- Property Stocks -->
+          <td class="py-3 px-3 text-center font-data-tabular font-bold text-primary">${item.centralStock}</td>
+          <td class="py-3 px-3 text-center font-data-tabular font-bold text-secondary">${item.denebStock}</td>
+          <td class="py-3 px-3 text-center font-data-tabular font-bold text-tertiary">${item.polluxStock}</td>
+
+          <!-- Total Stock -->
+          <td class="py-3 px-3 text-center font-data-tabular font-extrabold text-sm ${isOut ? 'text-error' : isLow ? 'text-tertiary' : 'text-on-surface'}">
+            ${item.totalStock} <span class="text-[10px] font-normal text-outline">${item.unit}</span>
+          </td>
+
+          <!-- Min Stock Alert -->
+          <td class="py-3 px-3 text-center text-outline font-data-tabular">
+            ${item.minStock}
+          </td>
+
+          <!-- Unit Cost -->
+          <td class="py-3 px-3 text-right text-on-surface-variant font-data-tabular">
+            ${this.formatCurrency(item.unitCost)}
+          </td>
+
+          <!-- Total Valuation -->
+          <td class="py-3 px-4 text-right font-bold text-on-surface font-data-tabular">
+            ${this.formatCurrency(item.totalValue)}
+          </td>
+
+          <!-- Actions -->
+          <td class="py-3 px-4 text-center">
+            <div class="inline-flex items-center space-x-1">
+              <button onclick="app.quickRestock('${item.id}')" title="Stock In" class="p-1 rounded bg-secondary-container/20 hover:bg-secondary-container/30 text-secondary transition">
+                <span class="material-symbols-outlined text-[16px]">add_circle</span>
+              </button>
+              <button onclick="app.quickStockOut('${item.id}')" title="Stock Out / Disburse" class="p-1 rounded bg-tertiary-container/20 hover:bg-tertiary-container/30 text-tertiary transition">
+                <span class="material-symbols-outlined text-[16px]">remove_circle</span>
+              </button>
+              <button onclick="app.quickTransfer('${item.id}')" title="Transfer Store" class="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary transition">
+                <span class="material-symbols-outlined text-[16px]">sync_alt</span>
+              </button>
+              <button onclick="app.openBarcodeModal('${item.id}')" title="Print Barcode" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition">
+                <span class="material-symbols-outlined text-[16px]">qr_code</span>
+              </button>
+              <button onclick="app.editItem('${item.id}')" title="Edit Item" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition">
+                <span class="material-symbols-outlined text-[16px]">edit</span>
+              </button>
+              <button onclick="app.confirmDeleteItem('${item.id}')" title="Delete Item" class="p-1 rounded bg-error-container/20 hover:bg-error-container/30 text-error transition">
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  // ==========================================
+  // TRANSACTIONS & AUDIT
+  // ==========================================
+  filterTransactions: function() {
+    const searchVal = (document.getElementById('txnSearchInput')?.value || '').toLowerCase().trim();
+    const typeVal = document.getElementById('txnTypeFilter')?.value || 'ALL';
+
+    const filtered = this.state.recentTransactions.filter(t => {
+      if (typeVal !== 'ALL' && t.type !== typeVal) return false;
+      if (!searchVal) return true;
+
+      return (
+        (t.id && t.id.toLowerCase().includes(searchVal)) ||
+        (t.itemName && t.itemName.toLowerCase().includes(searchVal)) ||
+        (t.sku && t.sku.toLowerCase().includes(searchVal)) ||
+        (t.reference && t.reference.toLowerCase().includes(searchVal)) ||
+        (t.performedBy && t.performedBy.toLowerCase().includes(searchVal)) ||
+        (t.notes && t.notes.toLowerCase().includes(searchVal))
+      );
+    });
+
+    this.renderTransactionsTable(filtered);
+  },
+
+  renderTransactionsTable: function(txns) {
+    const tbody = document.getElementById('transactionsTableBody');
+    if (!tbody) return;
+
+    if (!txns || txns.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-on-surface-variant font-medium">No transaction records found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = txns.map(t => {
+      const typeBadge = this.getTypeBadge(t.type);
+      const dateFormatted = t.timestamp ? new Date(t.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '--';
+
+      return `
+        <tr class="hover:bg-surface-container-high transition border-b border-outline-variant/10 text-on-surface">
+          <td class="py-3 px-4 font-mono text-[11px] text-outline">${t.id}</td>
+          <td class="py-3 px-3 text-on-surface-variant font-data-tabular whitespace-nowrap text-xs">${dateFormatted}</td>
+          <td class="py-3 px-3">${typeBadge}</td>
+          <td class="py-3 px-4">
+            <div class="font-bold text-on-surface text-xs">${t.itemName}</div>
+            <div class="text-[10px] text-outline font-mono">${t.sku}</div>
+          </td>
+          <td class="py-3 px-3 text-center font-bold font-data-tabular text-on-surface">${t.quantity} ${t.unit || ''}</td>
+          <td class="py-3 px-3 text-on-surface-variant text-xs">${t.sourceLocation || '--'}</td>
+          <td class="py-3 px-3 text-on-surface-variant text-xs">${t.destLocation || '--'}</td>
+          <td class="py-3 px-3 text-right font-data-tabular font-bold text-on-surface">${this.formatCurrency(t.totalCost)}</td>
+          <td class="py-3 px-3 font-mono text-xs text-primary">${t.reference || '--'}</td>
+          <td class="py-3 px-4 text-on-surface-variant text-xs">
+            <div class="font-semibold text-on-surface">${t.performedBy || 'Staff'}</div>
+            ${t.notes ? `<div class="text-[10px] text-outline truncate max-w-[150px]">${t.notes}</div>` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  // ==========================================
+  // SUPPLIERS DIRECTORY
+  // ==========================================
+  renderSuppliers: function() {
+    const container = document.getElementById('suppliersGridContainer');
+    if (!container) return;
+
+    if (!this.state.suppliers || this.state.suppliers.length === 0) {
+      container.innerHTML = `<div class="col-span-3 text-center py-12 text-on-surface-variant">No suppliers registered. Click "+ Add Supplier" to register vendors.</div>`;
+      return;
+    }
+
+    container.innerHTML = this.state.suppliers.map(sup => {
+      return `
+        <div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant/10 shadow-sm space-y-3 hover:border-outline-variant/30 transition text-on-surface">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="text-[10px] font-mono text-outline font-bold">${sup.id}</span>
+              <h4 class="text-sm font-bold text-on-surface">${sup.name}</h4>
+              <p class="text-xs text-primary font-medium mt-0.5">${sup.categorySupplied || 'General Supplier'}</p>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${sup.status === 'Active' ? 'bg-secondary-container/20 text-secondary border border-secondary/20' : 'bg-surface-container-highest text-on-surface-variant'}">
+              ${sup.status}
+            </span>
+          </div>
+
+          <div class="text-xs text-on-surface-variant space-y-1 pt-2 border-t border-outline-variant/10">
+            ${sup.contactPerson ? `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-outline">person</span>${sup.contactPerson}</div>` : ''}
+            ${sup.phone ? `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-outline">call</span>${sup.phone}</div>` : ''}
+            ${sup.email ? `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-outline">mail</span>${sup.email}</div>` : ''}
+            ${sup.address ? `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-outline">location_on</span>${sup.address}</div>` : ''}
+          </div>
+
+          <div class="pt-2 flex items-center justify-end space-x-2 border-t border-outline-variant/10 text-xs">
+            <button onclick="app.editSupplier('${sup.id}')" class="text-on-surface-variant hover:text-on-surface font-semibold px-2 py-1 rounded hover:bg-surface-container-high transition">Edit</button>
+            <button onclick="app.confirmDeleteSupplier('${sup.id}')" class="text-error hover:underline font-semibold px-2 py-1 rounded hover:bg-error-container/20 transition">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  // ==========================================
+  // DEPARTMENTS & LOCATIONS
+  // ==========================================
+  renderDepartmentsAndLocations: function() {
+    const deptTbody = document.getElementById('departmentsTableBody');
+    if (deptTbody && this.state.departments) {
+      deptTbody.innerHTML = this.state.departments.map(d => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 font-bold text-slate-800">${d.name}</td>
+          <td class="py-2.5 text-slate-500">${d.propertyScope || 'Both Properties'}</td>
+          <td class="py-2.5 text-slate-600">${d.headOfDepartment || '--'}</td>
+        </tr>
+      `).join('');
+    }
+
+    const locTbody = document.getElementById('locationsTableBody');
+    if (locTbody && this.state.locations) {
+      locTbody.innerHTML = this.state.locations.map(l => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 font-mono font-bold text-amber-600">${l.code}</td>
+          <td class="py-2.5 font-bold text-slate-800">${l.name}</td>
+          <td class="py-2.5 text-slate-500">${l.type}</td>
+        </tr>
+      `).join('');
+    }
+  },
+
+  // ==========================================
+  // SETTINGS TAB
+  // ==========================================
+  renderSettingsTab: function() {
+    const set = this.state.settings || {};
+    const hotelInput = document.getElementById('settingHotelName');
+    if (hotelInput) hotelInput.value = set.HOTEL_NAME || 'DNP HOTELS';
+
+    const currInput = document.getElementById('settingCurrencySymbol');
+    if (currInput) currInput.value = set.CURRENCY_SYMBOL || '₹';
+  },
+
+  saveAppSettings: function() {
+    const name = document.getElementById('settingHotelName').value.trim();
+    const curr = document.getElementById('settingCurrencySymbol').value.trim();
+
+    this.showLoading('Saving settings...', 'Updating system preferences');
+    const newSettings = {
+      HOTEL_NAME: name,
+      CURRENCY_SYMBOL: curr
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function() {
+          app.hideLoading();
+          app.state.settings.HOTEL_NAME = name;
+          app.state.settings.CURRENCY_SYMBOL = curr;
+          app.renderDashboard();
+          app.filterCatalog();
+          app.showToast('Settings saved successfully!');
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error saving settings: ' + err.message, 'error');
+        })
+        .saveSettings(newSettings);
+    } else {
+      this.hideLoading();
+      this.state.settings.HOTEL_NAME = name;
+      this.state.settings.CURRENCY_SYMBOL = curr;
+      this.renderDashboard();
+      this.showToast('Settings updated (local test mode)');
+    }
+  },
+
+  connectCustomSheet: function() {
+    const input = document.getElementById('customSheetInput');
+    const val = (input ? input.value : '').trim();
+
+    if (!val) {
+      this.showToast('Please enter a valid Google Sheet URL or ID.', 'error');
+      return;
+    }
+
+    this.showLoading('Connecting Google Sheet...', 'Validating permissions and initializing database tabs');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res.success) {
+            app.showToast(res.message);
+            input.value = '';
+            app.loadInitialData(true);
+          } else {
+            app.showToast(res.error || 'Failed to connect sheet', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Connection error: ' + err.message, 'error');
+        })
+        .connectCustomSpreadsheet(val);
+    } else {
+      this.hideLoading();
+      this.showToast('Google Sheet connection simulated in test mode.');
+    }
+  },
+
+  reseedDemoData: function() {
+    if (!confirm('Re-seed demo hotel inventory data into current spreadsheet? This will populate standard hotel catalog items.')) {
+      return;
+    }
+
+    this.showLoading('Refreshing demo data...', 'Inserting hotel catalog items');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.showToast('Sample hotel data re-seeded!');
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error reseeding: ' + err.message, 'error');
+        })
+        .resetOrSeedDemoData();
+    } else {
+      this.hideLoading();
+      this.showToast('Demo data re-seeded (local mode)');
+    }
+  },
+
+  refreshDriveFolderSheets: function() {
+    const icon = document.getElementById('scanFolderIcon');
+    if (icon) icon.classList.add('fa-spin');
+    this.showToast('Scanning Drive folder for spreadsheets...', 'info');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(info) {
+          if (icon) icon.classList.remove('fa-spin');
+          if (info && info.folderSheets) {
+            app.state.dbInfo.folderSheets = info.folderSheets;
+            app.renderDriveFolderSheets();
+            app.showToast(`Found ${info.folderSheets.length} spreadsheets in folder`);
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (icon) icon.classList.remove('fa-spin');
+          app.showToast('Error scanning Drive folder: ' + err.message, 'error');
+        })
+        .getDatabaseInfo();
+    } else {
+      setTimeout(() => {
+        if (icon) icon.classList.remove('fa-spin');
+        this.showToast('Drive folder scan completed (test mode)');
+      }, 500);
+    }
+  },
+
+  connectCustomDriveFolder: function() {
+    const input = document.getElementById('customDriveFolderInput');
+    const val = (input ? input.value : '').trim();
+    if (!val) {
+      this.showToast('Please enter a valid Google Drive folder URL or ID.', 'error');
+      return;
+    }
+
+    this.showLoading('Connecting Drive Folder...', 'Validating folder access');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res.success) {
+            app.showToast(res.message);
+            input.value = '';
+            app.loadInitialData(true);
+          } else {
+            app.showToast(res.error || 'Failed to connect folder', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Folder error: ' + err.message, 'error');
+        })
+        .setDriveFolderId(val);
+    } else {
+      this.hideLoading();
+      this.showToast('Drive folder connected (test mode)');
+    }
+  },
+
+  activateSheetFromFolder: function(sheetId) {
+    if (!confirm('Switch the active IMS Database to this spreadsheet?')) return;
+    this.showLoading('Switching Database...', 'Connecting selected spreadsheet');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res.success) {
+            app.showToast(res.message);
+            app.loadInitialData(true);
+          } else {
+            app.showToast(res.error || 'Failed to switch sheet', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error switching database: ' + err.message, 'error');
+        })
+        .connectCustomSpreadsheet(sheetId);
+    } else {
+      this.hideLoading();
+      this.showToast('Switched database sheet (test mode)');
+    }
+  },
+
+  // ==========================================
+  // MODAL MANAGEMENT & FORMS
+  // ==========================================
+  openModal: function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeModal: function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('hidden');
+  },
+
+  populateAllSelectDropdowns: function() {
+    // Populate Category filter
+    const catFilter = document.getElementById('catalogCategoryFilter');
+    if (catFilter) {
+      const cats = [...new Set(this.state.items.map(i => i.category).filter(Boolean))];
+      catFilter.innerHTML = `<option value="ALL">All Categories (${cats.length})</option>` +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    // Populate Item selectors for Stock In, Out, Transfer, Adjustment
+    const itemOptions = this.state.items.map(i => `<option value="${i.id}">${i.name} [${i.sku}] - Total: ${i.totalStock} ${i.unit}</option>`).join('');
+
+    ['stockInItemId', 'stockOutItemId', 'transferItemId', 'adjItemId'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = itemOptions;
+    });
+
+    // Populate Suppliers in Item & Stock In forms (all 28 real vendors)
+    const supOptions = `<option value="">-- None / Direct --</option>` +
+      this.state.suppliers.map(s => `<option value="${s.name}">[${s.code || s.id}] ${s.name} (${s.category})</option>`).join('');
+
+    ['itemSupplier', 'stockInSupplier'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = supOptions;
+    });
+
+    // Populate Stores in Stock In, Stock Out & Transfer forms
+    const storeOptions = (this.state.stores && this.state.stores.length > 0 ? this.state.stores : [
+      { code: 'S_001', name: '21 GUN SOLUTE GGN SEC 29' },
+      { code: 'S_002', name: 'PAHLE CHAI GGN Sec 27' },
+      { code: 'S_000', name: 'Central Depot Warehouse' }
+    ]).map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+
+    ['stockInDest', 'stockOutSource', 'transferSource', 'transferDest'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = storeOptions;
+    });
+
+    // Populate Selling Points & Departments in Stock Out / Requisitions form
+    const spOptions = (this.state.sellingPoints && this.state.sellingPoints.length > 0 ? this.state.sellingPoints : [
+      { code: 'SP_001', name: '21 GUN SOLUTE GGN SEC 29', type: 'Dining & Bar' },
+      { code: 'SP_002', name: 'PAHLE CHAI GGN Sec 27', type: 'Chai Counter' },
+      { code: 'SP_003', name: '21 Gun Salute - Kitchen Store', type: 'F&B Production' },
+      { code: 'SP_004', name: '21 Gun Salute - Bar & Lounge', type: 'Beverage Counter' }
+    ]).map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name} (${sp.type})</option>`).join('');
+
+    const stockOutDept = document.getElementById('stockOutDept');
+    if (stockOutDept) stockOutDept.innerHTML = spOptions;
+  },
+
+  // ITEM MODAL
+  openItemModal: function(item = null) {
+    const title = document.getElementById('itemModalTitle');
+    const form = document.getElementById('itemForm');
+    form.reset();
+
+    if (item) {
+      title.innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i> Edit Inventory Item`;
+      document.getElementById('itemId').value = item.id;
+      document.getElementById('itemSku').value = item.sku;
+      document.getElementById('itemName').value = item.name;
+      document.getElementById('itemCategory').value = item.category;
+      document.getElementById('itemUnit').value = item.unit;
+      document.getElementById('itemMinStock').value = item.minStock;
+      document.getElementById('itemUnitCost').value = item.unitCost;
+      document.getElementById('itemCentralStock').value = item.centralStock;
+      document.getElementById('itemDenebStock').value = item.denebStock;
+      document.getElementById('itemPolluxStock').value = item.polluxStock;
+      document.getElementById('itemSupplier').value = item.supplier || '';
+      document.getElementById('itemStorageLocation').value = item.storageLocation || '';
+    } else {
+      title.innerHTML = `<i class="fa-solid fa-box text-amber-400 mr-2"></i> Add New Inventory Item`;
+      document.getElementById('itemId').value = '';
+    }
+
+    this.openModal('itemModal');
+  },
+
+  editItem: function(itemId) {
+    const item = this.state.items.find(i => i.id === itemId);
+    if (item) this.openItemModal(item);
+  },
+
+  handleItemFormSubmit: function(e) {
+    e.preventDefault();
+    const itemData = {
+      id: document.getElementById('itemId').value,
+      sku: document.getElementById('itemSku').value.trim(),
+      name: document.getElementById('itemName').value.trim(),
+      category: document.getElementById('itemCategory').value,
+      unit: document.getElementById('itemUnit').value,
+      minStock: Number(document.getElementById('itemMinStock').value) || 0,
+      unitCost: Number(document.getElementById('itemUnitCost').value) || 0,
+      centralStock: Number(document.getElementById('itemCentralStock').value) || 0,
+      denebStock: Number(document.getElementById('itemDenebStock').value) || 0,
+      polluxStock: Number(document.getElementById('itemPolluxStock').value) || 0,
+      supplier: document.getElementById('itemSupplier').value,
+      storageLocation: document.getElementById('itemStorageLocation').value.trim()
+    };
+
+    this.showLoading('Saving Item...', 'Updating catalog in Google Sheets');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.closeModal('itemModal');
+          app.showToast('Item saved successfully: ' + itemData.name);
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error saving item: ' + err.message, 'error');
+        })
+        .saveItem(itemData);
+    } else {
+      this.hideLoading();
+      this.closeModal('itemModal');
+      this.showToast('Item saved (local mode)');
+    }
+  },
+
+  confirmDeleteItem: function(itemId) {
+    const item = this.state.items.find(i => i.id === itemId);
+    const name = item ? item.name : itemId;
+
+    if (!confirm(`Are you sure you want to delete "${name}" from inventory?`)) return;
+
+    this.showLoading('Deleting item...', 'Removing row from database');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.showToast('Item removed from catalog');
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Delete error: ' + err.message, 'error');
+        })
+        .deleteItem(itemId);
+    } else {
+      this.hideLoading();
+      this.showToast('Item deleted (local mode)');
+    }
+  },
+
+  // STOCK IN MODAL
+  openStockInModal: function(defaultItemId = null) {
+    document.getElementById('stockInForm').reset();
+    if (defaultItemId) {
+      document.getElementById('stockInItemId').value = defaultItemId;
+    }
+    this.openModal('stockInModal');
+  },
+
+  quickRestock: function(itemId) {
+    this.openStockInModal(itemId);
+  },
+
+  handleStockInSubmit: function(e) {
+    e.preventDefault();
+    const supVal = document.getElementById('stockInSupplier').value;
+    const supObj = this.state.suppliers.find(s => s.name === supVal || s.code === supVal);
+    const storeVal = document.getElementById('stockInDest').value;
+    const storeObj = (this.state.stores || []).find(st => st.code === storeVal || st.name === storeVal);
+
+    const data = {
+      type: 'STOCK_IN',
+      itemId: document.getElementById('stockInItemId').value,
+      itemCode: document.getElementById('stockInItemId').value,
+      destLocation: storeVal,
+      storeCode: storeObj ? storeObj.code : storeVal,
+      storeName: storeObj ? storeObj.name : storeVal,
+      supplierCode: supObj ? supObj.code : '',
+      supplierName: supObj ? supObj.name : supVal,
+      sourceLocation: supObj ? supObj.name : supVal,
+      quantity: Number(document.getElementById('stockInQty').value),
+      rate: Number(document.getElementById('stockInUnitPrice').value) || 0,
+      unitPrice: Number(document.getElementById('stockInUnitPrice').value) || 0,
+      reference: document.getElementById('stockInRef').value.trim(),
+      performedBy: document.getElementById('stockInStaff').value.trim() || 'Store Keeper',
+      notes: document.getElementById('stockInNotes').value.trim()
+    };
+
+    this.showLoading('Recording Supplier Purchase...', 'Updating Product_Master and Supplier_Transactions');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.closeModal('stockInModal');
+          app.showToast('Stock received and recorded in Supplier_Transactions');
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Stock In error: ' + err.message, 'error');
+        })
+        .processStockTransaction(data);
+    } else {
+      this.hideLoading();
+      this.closeModal('stockInModal');
+      this.showToast('Stock In recorded (local mode)');
+    }
+  },
+
+  // STOCK OUT MODAL
+  openStockOutModal: function(defaultItemId = null) {
+    document.getElementById('stockOutForm').reset();
+    if (defaultItemId) {
+      document.getElementById('stockOutItemId').value = defaultItemId;
+    }
+    this.updateStockOutItemInfo();
+    this.openModal('stockOutModal');
+  },
+
+  quickStockOut: function(itemId) {
+    this.openStockOutModal(itemId);
+  },
+
+  updateStockOutItemInfo: function() {
+    const itemId = document.getElementById('stockOutItemId').value;
+    const sourceLoc = document.getElementById('stockOutSource').value;
+    const item = this.state.items.find(i => i.id === itemId);
+    const infoEl = document.getElementById('stockOutAvailInfo');
+
+    if (!item || !infoEl) return;
+
+    let available = 0;
+    if (sourceLoc.includes('S_001') || sourceLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
+    else if (sourceLoc.includes('S_002') || sourceLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+    else available = item.centralStock || 0;
+
+    infoEl.innerHTML = `Available in <span class="text-on-surface font-bold font-data-tabular">${sourceLoc}</span>: <span class="font-bold text-secondary font-data-tabular">${available} ${item.unit}</span> (Total across all stores: ${item.totalStock})`;
+  },
+
+  handleStockOutSubmit: function(e) {
+    e.preventDefault();
+    const itemId = document.getElementById('stockOutItemId').value;
+    const sourceLoc = document.getElementById('stockOutSource').value;
+    const qty = Number(document.getElementById('stockOutQty').value);
+    const destSp = document.getElementById('stockOutDept').value;
+
+    const item = this.state.items.find(i => i.id === itemId);
+    if (item) {
+      let available = 0;
+      if (sourceLoc.includes('S_001') || sourceLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
+      else if (sourceLoc.includes('S_002') || sourceLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+      else available = item.centralStock || 0;
+
+      if (available < qty) {
+        this.showToast(`Insufficient stock in ${sourceLoc}. Available: ${available}, Requested: ${qty}`, 'error');
+        return;
+      }
+    }
+
+    const data = {
+      type: 'STOCK_OUT',
+      itemId: itemId,
+      itemCode: itemId,
+      sourceLocation: sourceLoc,
+      fromStore: sourceLoc,
+      destLocation: destSp,
+      toSellingPoint: destSp,
+      quantity: qty,
+      reference: document.getElementById('stockOutRef').value.trim(),
+      performedBy: document.getElementById('stockOutRequester').value.trim() || 'Store Incharge',
+      notes: document.getElementById('stockOutNotes').value.trim()
+    };
+
+    this.showLoading('Disbursing Stock...', 'Recording in Issuance_Transactions');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.closeModal('stockOutModal');
+          app.showToast(`Issued ${data.quantity} units to ${data.destLocation}`);
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Stock Out error: ' + err.message, 'error');
+        })
+        .processStockTransaction(data);
+    } else {
+      this.hideLoading();
+      this.closeModal('stockOutModal');
+      this.showToast('Stock Out completed (local mode)');
+    }
+  },
+
+  // TRANSFER MODAL
+  openTransferModal: function(defaultItemId = null) {
+    document.getElementById('transferForm').reset();
+    if (defaultItemId) {
+      document.getElementById('transferItemId').value = defaultItemId;
+    }
+    this.updateTransferItemInfo();
+    this.openModal('transferModal');
+  },
+
+  quickTransfer: function(itemId) {
+    this.openTransferModal(itemId);
+  },
+
+  updateTransferItemInfo: function() {
+    const itemId = document.getElementById('transferItemId').value;
+    const sourceLoc = document.getElementById('transferSource').value;
+    const item = this.state.items.find(i => i.id === itemId);
+    const infoEl = document.getElementById('transferAvailInfo');
+
+    if (!item || !infoEl) return;
+
+    let available = 0;
+    if (sourceLoc.includes('S_001') || sourceLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
+    else if (sourceLoc.includes('S_002') || sourceLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+    else available = item.centralStock || 0;
+
+    infoEl.innerHTML = `Available in source (<span class="font-bold text-on-surface font-data-tabular">${sourceLoc}</span>): <span class="font-bold text-primary font-data-tabular">${available} ${item.unit}</span>`;
+  },
+
+  handleTransferSubmit: function(e) {
+    e.preventDefault();
+    const itemId = document.getElementById('transferItemId').value;
+    const fromLoc = document.getElementById('transferSource').value;
+    const toLoc = document.getElementById('transferDest').value;
+    const qty = Number(document.getElementById('transferQty').value);
+
+    if (fromLoc === toLoc) {
+      this.showToast('Source and Destination stores cannot be identical.', 'error');
+      return;
+    }
+
+    const item = this.state.items.find(i => i.id === itemId);
+    if (item) {
+      let available = 0;
+      if (fromLoc.includes('S_001') || fromLoc.includes('21 GUN')) available = item.stockS001 || item.denebStock || 0;
+      else if (fromLoc.includes('S_002') || fromLoc.includes('PAHLE')) available = item.stockS002 || item.polluxStock || 0;
+      else available = item.centralStock || 0;
+
+      if (available < qty) {
+        this.showToast(`Insufficient stock in ${fromLoc}. Available: ${available}, Transfer: ${qty}`, 'error');
+        return;
+      }
+    }
+
+    const data = {
+      type: 'TRANSFER',
+      itemId: itemId,
+      itemCode: itemId,
+      sourceLocation: fromLoc,
+      fromStore: fromLoc,
+      destLocation: toLoc,
+      toSellingPoint: toLoc,
+      quantity: qty,
+      reference: document.getElementById('transferRef').value.trim(),
+      performedBy: 'Logistics Coord',
+      notes: document.getElementById('transferNotes').value.trim()
+    };
+
+    this.showLoading('Transferring Stock...', 'Moving stock between property hubs');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.closeModal('transferModal');
+          app.showToast(`Transferred ${qty} units from ${fromLoc} to ${toLoc}`);
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Transfer error: ' + err.message, 'error');
+        })
+        .processStockTransaction(data);
+    } else {
+      this.hideLoading();
+      this.closeModal('transferModal');
+      this.showToast('Transfer completed (local mode)');
+    }
+  },
+
+  // ADJUSTMENT MODAL
+  openAdjustmentModal: function(defaultItemId = null) {
+    document.getElementById('adjustmentForm').reset();
+    if (defaultItemId) {
+      document.getElementById('adjItemId').value = defaultItemId;
+    }
+    this.updateAdjustmentItemInfo();
+    this.openModal('adjustmentModal');
+  },
+
+  updateAdjustmentItemInfo: function() {
+    const itemId = document.getElementById('adjItemId').value;
+    const loc = document.getElementById('adjLocation').value;
+    const item = this.state.items.find(i => i.id === itemId);
+    const infoEl = document.getElementById('adjDiscrepancyInfo');
+
+    if (!item || !infoEl) return;
+
+    let current = 0;
+    if (loc.includes('Central')) current = item.centralStock;
+    else if (loc.includes('Deneb')) current = item.denebStock;
+    else if (loc.includes('Pollux')) current = item.polluxStock;
+
+    infoEl.innerHTML = `System recorded stock at <span class="font-bold text-slate-800">${loc}</span>: <span class="font-bold text-purple-700">${current} ${item.unit}</span>. Entering a physical count will recalculate discrepancy automatically.`;
+  },
+
+  handleAdjustmentSubmit: function(e) {
+    e.preventDefault();
+    const data = {
+      type: 'ADJUSTMENT',
+      itemId: document.getElementById('adjItemId').value,
+      sourceLocation: document.getElementById('adjLocation').value,
+      countedQuantity: Number(document.getElementById('adjCountedQty').value),
+      reference: 'AUDIT-' + new Date().toISOString().slice(0, 10),
+      performedBy: 'Internal Auditor',
+      notes: document.getElementById('adjReason').value + ' | ' + document.getElementById('adjNotes').value.trim()
+    };
+
+    this.showLoading('Saving Audit Adjustment...', 'Calibrating stock records');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.closeModal('adjustmentModal');
+          app.showToast('Physical audit count reconciled successfully.');
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Adjustment error: ' + err.message, 'error');
+        })
+        .processStockTransaction(data);
+    } else {
+      this.hideLoading();
+      this.closeModal('adjustmentModal');
+      this.showToast('Adjustment saved (local mode)');
+    }
+  },
+
+  // BARCODE LABEL MODAL & JSBARCODE
+  openBarcodeModal: function(itemId) {
+    const item = this.state.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    document.getElementById('barcodeLabelName').innerText = item.name;
+    document.getElementById('barcodeLabelCategory').innerText = item.category;
+    document.getElementById('barcodeLabelSku').innerText = item.sku;
+    document.getElementById('barcodeLabelCost').innerText = this.formatCurrency(item.unitCost);
+
+    try {
+      JsBarcode('#barcodeSvg', item.sku, {
+        format: 'CODE128',
+        lineColor: '#0f172a',
+        width: 2,
+        height: 55,
+        displayValue: true,
+        fontSize: 12,
+        font: 'Plus Jakarta Sans',
+        margin: 5
+      });
+    } catch (e) {
+      console.error('Barcode generation error', e);
+    }
+
+    this.openModal('barcodeModal');
+  },
+
+  // LIVE CAMERA BARCODE SCANNER
+  openScannerModal: function() {
+    this.openModal('scannerModal');
+    const viewport = document.getElementById('scannerViewport');
+
+    if (typeof Html5Qrcode !== 'undefined') {
+      try {
+        if (!this.state.html5QrScanner) {
+          this.state.html5QrScanner = new Html5Qrcode('scannerViewport');
+        }
+
+        const config = { fps: 10, qrbox: { width: 250, height: 160 } };
+        this.state.html5QrScanner.start(
+          { facingMode: 'environment' },
+          config,
+          (decodedText) => {
+            app.handleScanSuccess(decodedText);
+          },
+          (error) => {
+            // Scanning in progress
+          }
+        ).catch(err => {
+          console.warn('Camera scan not started or permission denied', err);
+          viewport.innerHTML = `<div class="p-4 text-center text-slate-300">Camera not accessible or permission denied. Please enter SKU manually below.</div>`;
+        });
+      } catch (err) {
+        console.error('Scanner init error', err);
+      }
+    }
+  },
+
+  closeScannerModal: function() {
+    if (this.state.html5QrScanner && this.state.html5QrScanner.isScanning) {
+      this.state.html5QrScanner.stop().then(() => {
+        app.closeModal('scannerModal');
+      }).catch(() => {
+        app.closeModal('scannerModal');
+      });
+    } else {
+      this.closeModal('scannerModal');
+    }
+  },
+
+  handleScanSuccess: function(decodedText) {
+    this.closeScannerModal();
+    this.processScannedCode(decodedText);
+  },
+
+  handleManualScanSubmit: function() {
+    const input = document.getElementById('manualBarcodeInput');
+    const val = (input ? input.value : '').trim();
+    if (!val) return;
+    this.closeScannerModal();
+    this.processScannedCode(val);
+  },
+
+  processScannedCode: function(code) {
+    const clean = code.trim().toUpperCase();
+    const item = this.state.items.find(i => 
+      (i.sku && i.sku.toUpperCase() === clean) || 
+      (i.id && i.id.toUpperCase() === clean)
+    );
+
+    if (item) {
+      this.showToast(`Found Item: ${item.name} (${item.sku})`);
+      this.switchTab('inventory');
+      const search = document.getElementById('catalogSearchInput');
+      if (search) {
+        search.value = item.sku;
+        this.filterCatalog();
+      }
+    } else {
+      if (confirm(`Scanned SKU "${code}" was not found in catalog. Would you like to create a new item with this SKU?`)) {
+        this.openItemModal();
+        document.getElementById('itemSku').value = clean;
+      }
+    }
+  },
+
+  // SUPPLIERS MODAL
+  openSupplierModal: function(sup = null) {
+    const form = document.getElementById('supplierForm');
+    form.reset();
+
+    if (sup) {
+      document.getElementById('supplierId').value = sup.id;
+      document.getElementById('supplierName').value = sup.name;
+      document.getElementById('supplierContact').value = sup.contactPerson;
+      document.getElementById('supplierPhone').value = sup.phone;
+      document.getElementById('supplierEmail').value = sup.email;
+      document.getElementById('supplierCategories').value = sup.categorySupplied;
+      document.getElementById('supplierAddress').value = sup.address;
+    } else {
+      document.getElementById('supplierId').value = '';
+    }
+
+    this.openModal('supplierModal');
+  },
+
+  editSupplier: function(supId) {
+    const s = this.state.suppliers.find(x => x.id === supId);
+    if (s) this.openSupplierModal(s);
+  },
+
+  handleSupplierFormSubmit: function(e) {
+    e.preventDefault();
+    const data = {
+      id: document.getElementById('supplierId').value,
+      name: document.getElementById('supplierName').value.trim(),
+      contactPerson: document.getElementById('supplierContact').value.trim(),
+      phone: document.getElementById('supplierPhone').value.trim(),
+      email: document.getElementById('supplierEmail').value.trim(),
+      categorySupplied: document.getElementById('supplierCategories').value.trim(),
+      address: document.getElementById('supplierAddress').value.trim(),
+      status: 'Active'
+    };
+
+    this.showLoading('Saving Supplier...', 'Updating vendor directory in Sheets');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function() {
+          app.hideLoading();
+          app.closeModal('supplierModal');
+          app.showToast('Supplier saved: ' + data.name);
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Supplier save error: ' + err.message, 'error');
+        })
+        .saveSupplier(data);
+    } else {
+      this.hideLoading();
+      this.closeModal('supplierModal');
+      this.showToast('Supplier saved (local mode)');
+    }
+  },
+
+  confirmDeleteSupplier: function(supId) {
+    if (!confirm('Are you sure you want to remove this supplier?')) return;
+    this.showLoading('Deleting Supplier...', 'Updating vendor sheet');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function() {
+          app.hideLoading();
+          app.showToast('Supplier removed');
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Delete error: ' + err.message, 'error');
+        })
+        .deleteSupplier(supId);
+    } else {
+      this.hideLoading();
+      this.showToast('Supplier removed (local mode)');
+    }
+  },
+
+  // CSV EXPORTERS
+  exportCatalogCSV: function() {
+    if (!this.state.items || this.state.items.length === 0) {
+      this.showToast('No items to export.', 'error');
+      return;
+    }
+
+    const headers = ['Item ID', 'SKU', 'Item Name', 'Category', 'Unit', 'Central Stock', 'Deneb Stock', 'Pollux Stock', 'Total Stock', 'Min Stock', 'Unit Cost', 'Total Valuation', 'Supplier'];
+    const rows = this.state.items.map(i => [
+      `"${i.id}"`,
+      `"${i.sku}"`,
+      `"${(i.name || '').replace(/"/g, '""')}"`,
+      `"${i.category}"`,
+      `"${i.unit}"`,
+      i.centralStock,
+      i.denebStock,
+      i.polluxStock,
+      i.totalStock,
+      i.minStock,
+      i.unitCost,
+      i.totalValue,
+      `"${(i.supplier || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `DNP_HOTELS_Inventory_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast('Inventory catalog exported to CSV!');
+  },
+
+  exportTransactionsCSV: function() {
+    if (!this.state.recentTransactions || this.state.recentTransactions.length === 0) {
+      this.showToast('No transaction records to export.', 'error');
+      return;
+    }
+
+    const headers = ['Transaction ID', 'Date Time', 'Type', 'SKU', 'Item Name', 'Quantity', 'Unit', 'Source', 'Destination', 'Total Cost', 'Reference', 'Staff', 'Notes'];
+    const rows = this.state.recentTransactions.map(t => [
+      `"${t.id}"`,
+      `"${t.timestamp}"`,
+      `"${t.type}"`,
+      `"${t.sku}"`,
+      `"${(t.itemName || '').replace(/"/g, '""')}"`,
+      t.quantity,
+      `"${t.unit || ''}"`,
+      `"${t.sourceLocation || ''}"`,
+      `"${t.destLocation || ''}"`,
+      t.totalCost,
+      `"${(t.reference || '').replace(/"/g, '""')}"`,
+      `"${(t.performedBy || '').replace(/"/g, '""')}"`,
+      `"${(t.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `DNP_HOTELS_Transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast('Transactions audit log exported to CSV!');
+  },
+
+  // Fallback empty data when previewing outside Google Apps Script
+  getMockInitialData: function() {
+    return {
+      dbInfo: { id: '', name: 'Google Sheets Database', url: '#' },
+      settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: '21 Gun Salute & Pahle Chai (DNP Hotels)' },
+      metrics: {
+        totalSkus: 0,
+        totalValuation: 0,
+        totalUnits: 0,
+        lowStockCount: 0,
+        outOfStockCount: 0,
+        stores: {},
+        categoryBreakdown: {},
+        lowStockItems: [],
+        todaySummary: { txnCount: 0, stockIn: 0, stockOut: 0 }
+      },
+      items: [],
+      suppliers: [],
+      stores: [],
+      sellingPoints: [],
+      users: [],
+      supplierTransactions: [],
+      issuanceTransactions: [],
+      recentTransactions: []
+    };
+  }
+};
+
+// Auto-run on DOM Ready
+document.addEventListener('DOMContentLoaded', function() {
+  app.init();
+});
+</script>
