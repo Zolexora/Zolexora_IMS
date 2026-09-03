@@ -15,17 +15,79 @@ const WORKBOOKS = {
 };
 
 /**
- * Gets the designated Google Drive Folder
+ * Gets the designated Google Drive Folder (1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)
+ * Guarantees that all created files and folders are placed inside this folder.
  */
 function getDriveFolder() {
   const props = PropertiesService.getScriptProperties();
-  const folderId = props.getProperty('DRIVE_FOLDER_ID') || DEFAULT_DRIVE_FOLDER_ID;
+  let folderId = props.getProperty('DRIVE_FOLDER_ID');
+  if (!folderId) {
+    folderId = DEFAULT_DRIVE_FOLDER_ID;
+    try {
+      props.setProperty('DRIVE_FOLDER_ID', folderId);
+    } catch (e) {
+      console.warn('Could not set default DRIVE_FOLDER_ID property', e);
+    }
+  }
   try {
     return DriveApp.getFolderById(folderId);
   } catch (err) {
-    console.warn('Could not open Drive folder: ' + folderId, err);
-    return null;
+    console.error('Failed to access designated Google Drive folder: ' + folderId, err);
+    throw new Error('Designated Google Drive folder (' + folderId + ') cannot be accessed. Ensure Drive permissions are granted and folder exists.');
   }
+}
+
+/**
+ * Ensures that a file is located inside the designated Google Drive folder (or a subfolder of it)
+ */
+function ensureFileInFolder(fileOrId, targetFolder) {
+  const folder = targetFolder || getDriveFolder();
+  const file = typeof fileOrId === 'string' ? DriveApp.getFileById(fileOrId) : fileOrId;
+  if (!file || !folder) return file;
+
+  const parents = file.getParents();
+  let inFolder = false;
+  while (parents.hasNext()) {
+    if (parents.next().getId() === folder.getId()) {
+      inFolder = true;
+      break;
+    }
+  }
+
+  if (!inFolder) {
+    file.moveTo(folder);
+  }
+  return file;
+}
+
+/**
+ * Creates or retrieves a subfolder inside the designated Google Drive folder
+ * @param {string} folderName - Subfolder name
+ * @returns {Folder} DriveApp Folder
+ */
+function createFolderInDriveFolder(folderName) {
+  const parentFolder = getDriveFolder();
+  const existingFolders = parentFolder.getFoldersByName(folderName);
+  if (existingFolders.hasNext()) {
+    return existingFolders.next();
+  }
+  return parentFolder.createFolder(folderName);
+}
+
+/**
+ * Creates a file directly inside the designated Google Drive folder (or optional subfolder)
+ * @param {string} fileName - File name
+ * @param {string|Blob} content - File content or Blob
+ * @param {string} [mimeType] - MIME type
+ * @param {string} [subfolderName] - Optional subfolder name
+ * @returns {File} DriveApp File
+ */
+function createFileInDriveFolder(fileName, content, mimeType, subfolderName) {
+  const targetFolder = subfolderName ? createFolderInDriveFolder(subfolderName) : getDriveFolder();
+  if (content && typeof content.getBytes === 'function') {
+    return targetFolder.createFile(content);
+  }
+  return targetFolder.createFile(fileName, content || '', mimeType || MimeType.PLAIN_TEXT);
 }
 
 /**
@@ -47,20 +109,26 @@ function formatHeaderRow(sheet, numCols) {
 }
 
 /**
- * Gets or creates a specific workbook inside the Google Drive folder
+ * Gets or creates a specific workbook strictly inside the designated Google Drive folder
  */
 function getWorkbook(name) {
+  const folder = getDriveFolder();
   const props = PropertiesService.getScriptProperties();
   const cachedId = props.getProperty('WB_ID_' + name);
+
   if (cachedId) {
     try {
-      return SpreadsheetApp.openById(cachedId);
+      const ss = SpreadsheetApp.openById(cachedId);
+      // Verify and guarantee file is inside the designated Drive folder
+      if (folder) {
+        ensureFileInFolder(DriveApp.getFileById(cachedId), folder);
+      }
+      return ss;
     } catch (e) {
       // Cached ID was deleted or inaccessible, will re-fetch
     }
   }
 
-  const folder = getDriveFolder();
   if (folder) {
     const files = folder.getFilesByName(name);
     if (files.hasNext()) {
@@ -71,12 +139,12 @@ function getWorkbook(name) {
     }
   }
 
-  // Not found in folder, create and initialize it
+  // Not found in folder, create and initialize it strictly in the designated folder
   return createAndInitWorkbook(name);
 }
 
 /**
- * Creates and sets up initial schema & sample data for a workbook
+ * Creates and sets up initial schema & sample data for a workbook strictly inside the Drive folder
  */
 function createAndInitWorkbook(name) {
   const folder = getDriveFolder();
@@ -84,14 +152,12 @@ function createAndInitWorkbook(name) {
   const ssId = ss.getId();
   PropertiesService.getScriptProperties().setProperty('WB_ID_' + name, ssId);
 
-  // Move into Drive folder
-  if (folder) {
-    try {
-      const file = DriveApp.getFileById(ssId);
-      file.moveTo(folder);
-    } catch (err) {
-      console.warn('Could not move workbook to Drive folder', err);
-    }
+  // Strictly move into the designated Drive folder
+  try {
+    const file = DriveApp.getFileById(ssId);
+    file.moveTo(folder);
+  } catch (err) {
+    console.warn('Could not move workbook to Drive folder: ' + err.message, err);
   }
 
   // Schema initialization based on workbook type
