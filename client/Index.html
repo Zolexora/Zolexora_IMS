@@ -538,8 +538,9 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <a href="https://accounts.google.com/AccountChooser" target="_blank" title="Switch Google Account" class="px-2.5 py-1 text-[11px] font-semibold text-primary hover:text-on-primary bg-primary/10 hover:bg-primary rounded-lg transition border border-primary/20 flex-shrink-0">
-            Choose Account
+          <a id="switchGoogleAccountBtn" href="https://accounts.google.com/AccountChooser?continue=<?= encodeURIComponent(webAppUrl) ?>" target="_top" onclick="app.switchGoogleAccount(event)" title="Switch to another Google Account" class="px-2.5 py-1 text-[11px] font-semibold text-primary hover:text-on-primary bg-primary/10 hover:bg-primary rounded-lg transition border border-primary/20 flex-shrink-0 cursor-pointer flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">switch_account</span>
+            <span>Switch Account</span>
           </a>
           <button onclick="app.closeAuthModal()" title="Close dialog" class="w-8 h-8 rounded-lg bg-surface-container-highest hover:bg-surface-bright text-on-surface flex items-center justify-center transition cursor-pointer">
             <span class="material-symbols-outlined text-[18px]">close</span>

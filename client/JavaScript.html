@@ -91,6 +91,16 @@ const app = {
     if (modal) modal.classList.add('hidden');
   },
 
+  switchGoogleAccount: function(e) {
+    if (e) e.preventDefault();
+    const url = this.switchAccountUrl || 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent('https://script.google.com/macros/s/AKfycbyQpkaxpQrmcDyFtROLp4PNRGVxTFpBzg7KkNBiqPOxSOtxijB8VUarYIpTuprSB7f3/exec');
+    try {
+      window.top.location.href = url;
+    } catch (err) {
+      window.location.href = url;
+    }
+  },
+
   detectAndSetupGoogleIdentity: function() {
     const emailEl = document.getElementById('googleDetectedEmail');
     const lockedEl = document.getElementById('gEmailLocked');
@@ -103,6 +113,12 @@ const app = {
           app.detectedGoogleEmail = email;
           if (emailEl) emailEl.innerText = email;
           if (lockedEl) lockedEl.value = email;
+
+          if (idInfo && idInfo.switchAccountUrl) {
+            app.switchAccountUrl = idInfo.switchAccountUrl;
+            const switchBtn = document.getElementById('switchGoogleAccountBtn');
+            if (switchBtn) switchBtn.href = idInfo.switchAccountUrl;
+          }
 
           // Suggest name from email
           if (nameEl && !nameEl.value) {

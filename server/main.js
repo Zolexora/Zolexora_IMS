@@ -14,7 +14,15 @@ function doGet(e) {
       googleEmail = Session.getEffectiveUser().getEmail();
     } catch (err) {}
   }
-  template.googleEmail = googleEmail || '';
+  let webAppUrl = '';
+  try {
+    webAppUrl = ScriptApp.getService().getUrl();
+  } catch (err) {}
+  if (!webAppUrl) {
+    webAppUrl = 'https://script.google.com/macros/s/AKfycbyQpkaxpQrmcDyFtROLp4PNRGVxTFpBzg7KkNBiqPOxSOtxijB8VUarYIpTuprSB7f3/exec';
+  }
+  template.webAppUrl = webAppUrl;
+  template.switchAccountUrl = 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(webAppUrl);
 
   return template.evaluate()
     .setTitle('Zolexora IMS')
@@ -39,8 +47,17 @@ function getGoogleUserIdentity() {
       email = Session.getEffectiveUser().getEmail();
     } catch (e) {}
   }
+  let webAppUrl = '';
+  try {
+    webAppUrl = ScriptApp.getService().getUrl();
+  } catch (err) {}
+  if (!webAppUrl) {
+    webAppUrl = 'https://script.google.com/macros/s/AKfycbyQpkaxpQrmcDyFtROLp4PNRGVxTFpBzg7KkNBiqPOxSOtxijB8VUarYIpTuprSB7f3/exec';
+  }
   return {
     email: email || '',
-    isAuthenticated: !!email
+    isAuthenticated: !!email,
+    webAppUrl: webAppUrl,
+    switchAccountUrl: 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(webAppUrl)
   };
 }
