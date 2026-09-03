@@ -154,7 +154,8 @@ function saveItem(itemData) {
       nowIso
     ]]);
 
-    return { success: true, itemCode: itemCode, mode: 'updated', status: status };
+    const items = getItemsInternal(ss);
+    return { success: true, itemCode: itemCode, mode: 'updated', status: status, items: items };
   } else {
     // ADDING NEW ITEM:
     if (!itemCode) {
@@ -199,7 +200,8 @@ function saveItem(itemData) {
       nowIso
     ]);
 
-    return { success: true, itemCode: itemCode, mode: 'created', status: status };
+    const items = getItemsInternal(ss);
+    return { success: true, itemCode: itemCode, mode: 'created', status: status, items: items };
   }
 }
 
@@ -214,7 +216,8 @@ function setItemStatus(itemCode, newStatus) {
     if (String(data[i][0]).trim().toUpperCase() === code) {
       sheet.getRange(i + 1, 15).setValue(newStatus);
       sheet.getRange(i + 1, 16).setValue(new Date().toISOString());
-      return { success: true, itemCode: code, status: newStatus };
+      const items = getItemsInternal(ss);
+      return { success: true, itemCode: code, status: newStatus, items: items };
     }
   }
   throw new Error('Item not found: ' + itemCode);
@@ -229,7 +232,8 @@ function deleteItem(itemCode) {
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).toUpperCase() === String(itemCode).toUpperCase()) {
       sheet.deleteRow(i + 1);
-      return { success: true };
+      const items = getItemsInternal(ss);
+      return { success: true, items: items };
     }
   }
   return { success: false, error: 'Item not found in sheet' };
@@ -367,9 +371,6 @@ function getInitialData() {
   // Current active organization
   const currentOrg = activeOrg;
 
-  // Provision / verify workbooks for the active organization
-  initAllWorkbooks();
-
   const workbooksInfo = getWorkbooksInfo();
   const prodWb = getWorkbook(WORKBOOKS.PRODUCT_MASTER);
   const items = getItemsInternal(prodWb);
@@ -494,14 +495,21 @@ function getGoogleAccountInfo() {
  */
 function recordPurchaseInvoice(invoiceData) {
   const res = processPurchaseInvoice(invoiceData);
-  const updatedData = getInitialData();
+  const prodWb = getWorkbook(WORKBOOKS.PRODUCT_MASTER);
+  const items = getItemsInternal(prodWb);
+  const supTxns = getSupplierTransactions(50);
+  const stores = getStores();
+  const issuanceTxns = getIssuanceTransactions(50);
+  const metrics = calculateDashboardMetrics(items, supTxns, issuanceTxns, stores);
   return {
     success: true,
     invoiceNo: res.invoiceNo,
     date: res.date,
     itemsCount: res.itemsCount,
     payableAmount: res.payableAmount,
-    data: updatedData,
+    items: items,
+    supplierTransactions: supTxns,
+    metrics: metrics,
     message: res.message
   };
 }
@@ -511,14 +519,21 @@ function recordPurchaseInvoice(invoiceData) {
  */
 function recordTransferInvoice(transferData) {
   const res = processTransferInvoice(transferData);
-  const updatedData = getInitialData();
+  const prodWb = getWorkbook(WORKBOOKS.PRODUCT_MASTER);
+  const items = getItemsInternal(prodWb);
+  const supTxns = getSupplierTransactions(50);
+  const stores = getStores();
+  const issuanceTxns = getIssuanceTransactions(50);
+  const metrics = calculateDashboardMetrics(items, supTxns, issuanceTxns, stores);
   return {
     success: true,
     invoiceNo: res.invoiceNo,
     date: res.date,
     itemsCount: res.itemsCount,
     payableAmount: res.payableAmount,
-    data: updatedData,
+    items: items,
+    issuanceTransactions: issuanceTxns,
+    metrics: metrics,
     message: res.message
   };
 }
@@ -528,12 +543,11 @@ function recordTransferInvoice(transferData) {
  */
 function updateItemStatus(itemCode, newStatus) {
   const res = setItemStatus(itemCode, newStatus);
-  const updatedData = getInitialData();
   return {
     success: true,
     itemCode: res.itemCode,
     status: res.status,
-    data: updatedData,
+    items: res.items,
     message: `Item ${res.itemCode} is now marked as ${res.status}.`
   };
 }

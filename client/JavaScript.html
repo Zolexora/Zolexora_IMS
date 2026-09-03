@@ -940,6 +940,53 @@ const app = {
     this.showToast(`View filtered to: ${propertyCode === 'ALL' ? 'All Properties' : propertyCode + ' Store'}`);
   },
 
+  // Fast in-memory metric recalculation when items change
+  recomputeLocalMetrics: function() {
+    const items = this.state.items || [];
+    let totalValuation = 0;
+    let totalUnits = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    const catMap = {};
+
+    items.forEach(it => {
+      const stock = Number(it.totalStock || it.currentStock) || 0;
+      const rate = Number(it.rate || it.unitCost) || 0;
+      const min = Number(it.minStock || 0);
+      const val = Number(it.totalValuation) || (stock * rate);
+
+      totalUnits += stock;
+      totalValuation += val;
+
+      if (stock === 0) {
+        outOfStockCount++;
+      } else if (stock <= min) {
+        lowStockCount++;
+      }
+
+      const cat = it.category || 'Uncategorized';
+      if (!catMap[cat]) catMap[cat] = { count: 0, units: 0, value: 0 };
+      catMap[cat].count++;
+      catMap[cat].units += stock;
+      catMap[cat].value += val;
+    });
+
+    if (!this.state.metrics) this.state.metrics = {};
+    this.state.metrics.totalSkus = items.length;
+    this.state.metrics.totalUnits = totalUnits;
+    this.state.metrics.totalValuation = totalValuation;
+    this.state.metrics.lowStockCount = lowStockCount;
+    this.state.metrics.outOfStockCount = outOfStockCount;
+    this.state.metrics.categoryBreakdown = catMap;
+
+    const navBadge = document.getElementById('navTotalItemsBadge');
+    if (navBadge) navBadge.innerText = items.length;
+    const skusBadge = document.getElementById('sidebarSkusBadge');
+    if (skusBadge) skusBadge.innerText = items.length;
+
+    this.renderDashboard();
+  },
+
   // ==========================================
   // DASHBOARD RENDERING (MATERIAL 3)
   // ==========================================
@@ -2143,7 +2190,13 @@ const app = {
           app.hideLoading();
           app.closeModal('addItemModal');
           app.showToast(`Product item "${name}" created successfully with code ${prdCode}!`);
-          app.loadInitialData(true);
+          if (res && res.items) {
+            app.state.items = res.items;
+            app.filterCatalog();
+            app.recomputeLocalMetrics();
+          } else {
+            app.loadInitialData(true);
+          }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
@@ -2377,7 +2430,13 @@ const app = {
           app.hideLoading();
           app.showToast(`Item ${itemCode} is now ${targetStatus}!`);
           app.closeModal('editItemModal');
-          app.loadInitialData(true);
+          if (res && res.items) {
+            app.state.items = res.items;
+            app.filterCatalog();
+            app.recomputeLocalMetrics();
+          } else {
+            app.loadInitialData(true);
+          }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
@@ -2439,7 +2498,13 @@ const app = {
           app.hideLoading();
           app.closeModal('editItemModal');
           app.showToast(`Item ${itemCode} updated successfully!`);
-          app.loadInitialData(true);
+          if (res && res.items) {
+            app.state.items = res.items;
+            app.filterCatalog();
+            app.recomputeLocalMetrics();
+          } else {
+            app.loadInitialData(true);
+          }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
@@ -2471,7 +2536,13 @@ const app = {
         .withSuccessHandler(function(res) {
           app.hideLoading();
           app.showToast('Item removed from catalog');
-          app.loadInitialData(true);
+          if (res && res.items) {
+            app.state.items = res.items;
+            app.filterCatalog();
+            app.recomputeLocalMetrics();
+          } else {
+            app.loadInitialData(true);
+          }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
@@ -2858,7 +2929,14 @@ const app = {
           if (res && res.success) {
             app.closeModal('purchaseInvoiceModal');
             app.showToast(`Invoice ${res.invoiceNo} saved! Payable Amount: ${app.formatCurrency(res.payableAmount)}`);
-            if (res.data) {
+            if (res.items) {
+              app.state.items = res.items;
+              if (res.supplierTransactions) app.state.supplierTransactions = res.supplierTransactions;
+              if (res.metrics) app.state.metrics = res.metrics;
+              app.renderDashboard();
+              app.filterCatalog();
+              app.filterTransactions();
+            } else if (res.data) {
               app.showDashboard(res.data);
             } else {
               app.loadInitialData(true);
@@ -3242,7 +3320,14 @@ const app = {
           if (res && res.success) {
             app.closeModal('transferInvoiceModal');
             app.showToast(`Transfer Invoice ${res.invoiceNo} saved! Valuation: ${app.formatCurrency(res.payableAmount)}`);
-            if (res.data) {
+            if (res.items) {
+              app.state.items = res.items;
+              if (res.issuanceTransactions) app.state.issuanceTransactions = res.issuanceTransactions;
+              if (res.metrics) app.state.metrics = res.metrics;
+              app.renderDashboard();
+              app.filterCatalog();
+              app.filterTransactions();
+            } else if (res.data) {
               app.showDashboard(res.data);
             } else {
               app.loadInitialData(true);

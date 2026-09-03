@@ -663,27 +663,46 @@ function listOrganizations() {
   return orgs;
 }
 
+// In-memory script execution caches to eliminate redundant Drive & Spreadsheet API lookups
+var _activeOrgCache = null;
+var _orgFolderCache = null;
+var _wbCache = {};
+
 /**
  * Gets the current active organization
  */
 function getActiveOrganization() {
+  if (_activeOrgCache !== null) return _activeOrgCache;
+
   const userProps = PropertiesService.getUserProperties();
-  const orgId = userProps.getProperty('ACTIVE_ORG_ID');
+  const scriptProps = PropertiesService.getScriptProperties();
+  const orgId = userProps.getProperty('ACTIVE_ORG_ID') || scriptProps.getProperty('ACTIVE_ORG_ID');
+  const orgName = userProps.getProperty('ACTIVE_ORG_NAME') || scriptProps.getProperty('ACTIVE_ORG_NAME');
   
   if (orgId) {
+    if (orgName) {
+      _activeOrgCache = {
+        id: orgId,
+        name: orgName,
+        url: 'https://drive.google.com/drive/folders/' + orgId
+      };
+      return _activeOrgCache;
+    }
     try {
       const folder = DriveApp.getFolderById(orgId);
-      return {
+      _activeOrgCache = {
         id: folder.getId(),
         name: folder.getName(),
         url: folder.getUrl()
       };
+      return _activeOrgCache;
     } catch (e) {
       console.warn('Active org folder not accessible: ' + orgId);
       userProps.deleteProperty('ACTIVE_ORG_ID');
     }
   }
 
+  _activeOrgCache = null;
   return null;
 }
 
@@ -691,6 +710,10 @@ function getActiveOrganization() {
  * Sets the current active organization
  */
 function setActiveOrganization(orgId, orgName) {
+  _activeOrgCache = null;
+  _orgFolderCache = null;
+  _wbCache = {};
+
   let folder = null;
   try {
     folder = DriveApp.getFolderById(orgId);
@@ -718,13 +741,16 @@ function setActiveOrganization(orgId, orgName) {
  * Gets the active organization's folder in Google Drive
  */
 function getOrgFolder() {
+  if (_orgFolderCache) return _orgFolderCache;
   const activeOrg = getActiveOrganization();
   if (activeOrg && activeOrg.id) {
     try {
-      return DriveApp.getFolderById(activeOrg.id);
+      _orgFolderCache = DriveApp.getFolderById(activeOrg.id);
+      return _orgFolderCache;
     } catch (e) {}
   }
-  return getDriveFolder();
+  _orgFolderCache = getDriveFolder();
+  return _orgFolderCache;
 }
 
 /**
@@ -809,13 +835,18 @@ function provisionOrganization(orgData) {
  * Gets or creates a specific workbook strictly inside the active organization folder (including subfolders)
  */
 function getWorkbook(name) {
+  if (_wbCache[name]) return _wbCache[name];
+
   const folder = getOrgFolder();
+  const folderId = folder ? folder.getId() : 'default';
   const props = PropertiesService.getScriptProperties();
-  const cachedId = props.getProperty('WB_ID_' + folder.getId() + '_' + name) || props.getProperty('WB_ID_' + name);
+  const cacheKey = 'WB_ID_' + folderId + '_' + name;
+  let cachedId = props.getProperty(cacheKey) || props.getProperty('WB_ID_' + name);
 
   if (cachedId) {
     try {
       const ss = SpreadsheetApp.openById(cachedId);
+      _wbCache[name] = ss;
       return ss;
     } catch (e) {
       // Cached ID was deleted or inaccessible, will re-fetch
@@ -826,13 +857,16 @@ function getWorkbook(name) {
     const file = findFileInFolderRecursively(folder, name);
     if (file) {
       const ss = SpreadsheetApp.openById(file.getId());
-      props.setProperty('WB_ID_' + folder.getId() + '_' + name, ss.getId());
+      props.setProperty(cacheKey, ss.getId());
+      _wbCache[name] = ss;
       return ss;
     }
   }
 
   // Not found in folder, create and initialize it strictly in the designated subfolder of this organization
-  return createAndInitWorkbook(name);
+  const ss = createAndInitWorkbook(name);
+  _wbCache[name] = ss;
+  return ss;
 }
 
 /**
