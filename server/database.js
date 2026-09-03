@@ -19,22 +19,23 @@ const WORKBOOKS = {
  * Guarantees that all created files and folders are placed inside this folder.
  */
 function getDriveFolder() {
-  const props = PropertiesService.getScriptProperties();
-  let folderId = props.getProperty('DRIVE_FOLDER_ID');
-  if (!folderId) {
-    folderId = DEFAULT_DRIVE_FOLDER_ID;
-    try {
-      props.setProperty('DRIVE_FOLDER_ID', folderId);
-    } catch (e) {
-      console.warn('Could not set default DRIVE_FOLDER_ID property', e);
-    }
-  }
+  const folderId = DEFAULT_DRIVE_FOLDER_ID;
   try {
     return DriveApp.getFolderById(folderId);
   } catch (err) {
     console.error('Failed to access designated Google Drive folder: ' + folderId, err);
-    throw new Error('Designated Google Drive folder (' + folderId + ') cannot be accessed. Ensure Drive permissions are granted and folder exists.');
+    throw new Error('Designated Google Drive folder (' + folderId + ') cannot be accessed: ' + err.message + '. If this is the first run, please open script.google.com and authorize Drive permissions.');
   }
+}
+
+/**
+ * 1-Click Authorization Test Function
+ * Open script editor -> Select "authorizeAndTestDrive" -> Click "Run" -> Click "Review permissions" -> "Allow"
+ */
+function authorizeAndTestDrive() {
+  const folder = DriveApp.getFolderById('1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx');
+  Logger.log('DriveApp Authorization Verified! Folder Name: ' + folder.getName());
+  return 'SUCCESS: DriveApp is fully authorized for folder ' + folder.getName();
 }
 
 /**
