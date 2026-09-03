@@ -263,12 +263,12 @@ const app = {
     // Update user profile badges
     if (this.state.authUser) {
       const u = this.state.authUser;
-      const hName = document.getElementById('headerUserName');
-      const hRole = document.getElementById('headerUserRole');
-      const sName = document.getElementById('sidebarUserName');
-      if (hName) hName.innerText = u.name || u.email;
-      if (hRole) hRole.innerText = (u.role || 'Admin') + ' (' + (u.orgName || 'Org') + ')';
-      if (sName) sName.innerText = u.name || u.email;
+      const dUser = document.getElementById('dropdownUserName');
+      const dRole = document.getElementById('dropdownUserRole');
+      if (dUser) dUser.innerText = u.name || u.email;
+      if (dRole) dRole.innerText = u.role || 'System Administrator & Manager';
+      const dOrg = document.getElementById('dropdownOrgName');
+      if (dOrg && u.orgName) dOrg.innerText = u.orgName;
     }
 
     this.handleInitialDataSuccess(data);
@@ -404,6 +404,16 @@ const app = {
 
     const sidebarHotelEl = document.getElementById('sidebarHotelName');
     if (sidebarHotelEl) sidebarHotelEl.innerText = currentOrgName;
+
+    const firstLetter = currentOrgName.trim().charAt(0).toUpperCase() || 'S';
+    const headerAvatarLetter = document.getElementById('headerOrgAvatarLetter');
+    if (headerAvatarLetter) headerAvatarLetter.innerText = firstLetter;
+
+    const sidebarAvatarLetter = document.getElementById('sidebarOrgAvatarLetter');
+    if (sidebarAvatarLetter) sidebarAvatarLetter.innerText = firstLetter;
+
+    const dropdownOrg = document.getElementById('dropdownOrgName');
+    if (dropdownOrg) dropdownOrg.innerText = currentOrgName;
 
     // Update Nav Count
     const navBadge = document.getElementById('navTotalItemsBadge');
@@ -975,10 +985,10 @@ const app = {
     // Update user profile from Users sheet
     if (this.state.users && this.state.users.length > 0) {
       const u = this.state.users[0];
-      const nameEl = document.getElementById('headerUserName');
-      if (nameEl) nameEl.innerText = u.name || 'Staff';
-      const roleEl = document.getElementById('headerUserRole');
-      if (roleEl) roleEl.innerText = u.role || 'Inventory Incharge';
+      const dUser = document.getElementById('dropdownUserName');
+      const dRole = document.getElementById('dropdownUserRole');
+      if (dUser) dUser.innerText = u.name || 'Staff';
+      if (dRole) dRole.innerText = u.role || 'Inventory Incharge';
     }
 
     // Update organization title from Settings sheet

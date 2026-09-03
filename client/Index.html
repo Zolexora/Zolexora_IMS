@@ -782,9 +782,11 @@
   <!-- ============================================================== -->
   <div id="appDashboardContainer" class="hidden min-h-screen bg-black">
     <aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col pt-xl pb-xl border-r border-outline-variant/10 shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
-    <!-- Brand Logo -->
+    <!-- Brand Logo with First Letter of Org -->
     <div class="px-xl mb-8 flex items-center gap-sm cursor-pointer" onclick="app.switchTab('dashboard')">
-      <span class="material-symbols-outlined text-primary text-[28px]">domain</span>
+      <div class="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 text-primary font-bold text-base flex items-center justify-center shadow-inner flex-shrink-0">
+        <span id="sidebarOrgAvatarLetter">S</span>
+      </div>
       <div class="flex-1 min-w-0">
         <span id="sidebarHotelName" class="font-display-lg text-headline-md tracking-tight text-on-surface block leading-tight truncate">Zolexora IMS</span>
         <div class="flex items-center justify-between mt-0.5">
@@ -835,27 +837,12 @@
       </a>
     </nav>
 
-    <!-- Bottom Quick Database Info -->
+    <!-- Bottom Sign Out Action -->
     <div class="px-md pt-md border-t border-outline-variant/10">
-      <div class="bg-surface-container p-sm rounded-lg border border-outline-variant/10 text-xs">
-        <div class="flex items-center justify-between text-on-surface-variant">
-          <span class="font-label-caps text-[10px] text-outline uppercase flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-            Cloud Synced
-          </span>
-          <a id="sidebarDriveLink" href="https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx" target="_blank" title="Open Google Drive Database Folder" class="text-primary hover:underline font-body-sm">Drive Folder</a>
-        </div>
-        <div id="sidebarDbName" class="font-bold text-on-surface truncate text-body-sm mt-1">Zolexora IMS Database</div>
-        <div class="pt-2 border-t border-outline-variant/10 flex items-center justify-between mt-2">
-          <div class="text-[11px] text-on-surface-variant truncate max-w-[130px]">
-            <span id="sidebarUserName" class="text-on-surface font-semibold truncate block">Admin</span>
-          </div>
-          <button onclick="app.logoutUser()" title="Sign Out" class="text-[11px] text-error hover:underline font-bold flex items-center gap-1 cursor-pointer">
-            <span class="material-symbols-outlined text-[13px]">logout</span>
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </div>
+      <button onclick="app.logoutUser()" class="w-full flex items-center gap-2 px-md py-2.5 rounded-lg text-on-surface-variant hover:text-rose-400 hover:bg-rose-500/10 transition text-xs font-semibold cursor-pointer">
+        <span class="material-symbols-outlined text-[18px]">logout</span>
+        <span>Sign Out</span>
+      </button>
     </div>
   </aside>
 
@@ -915,16 +902,30 @@
           <span id="bellAlertDot" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface animate-pulse"></span>
         </button>
 
-        <!-- User Profile & Logout -->
-        <div class="flex items-center gap-md pl-md border-l border-outline-variant/20">
-          <div class="text-right hidden sm:block">
-            <div id="headerUserName" class="font-body-md font-semibold text-on-surface leading-none">Admin</div>
-            <div id="headerUserRole" class="font-body-sm text-on-surface-variant text-[11px]">OrgAdmin</div>
-          </div>
-          <button onclick="app.logoutUser()" title="Sign Out of Zolexora IMS" class="px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-error/20 text-on-surface-variant hover:text-error flex items-center gap-1 transition border border-outline-variant/20 text-xs font-semibold cursor-pointer">
-            <span class="material-symbols-outlined text-[16px]">logout</span>
-            <span class="hidden md:inline">Sign Out</span>
+        <!-- Top Right Corner: Only First Letter of Active Org -->
+        <div class="relative group pl-md border-l border-outline-variant/20">
+          <button onclick="app.openOrgModal()" title="Active Organization" class="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center transition shadow-sm cursor-pointer">
+            <span id="headerOrgAvatarLetter">S</span>
           </button>
+          <!-- Organization Details on Hover / Focus -->
+          <div class="absolute right-0 mt-2 w-56 bg-[#0c0c12] border border-white/15 rounded-xl shadow-2xl py-2.5 px-3 hidden group-hover:block z-50 text-xs space-y-2">
+            <div class="border-b border-white/10 pb-2">
+              <span class="text-[10px] text-on-surface-variant uppercase block font-semibold">Active Organization</span>
+              <span id="dropdownOrgName" class="font-bold text-white block truncate text-sm">Sibban Restorents</span>
+            </div>
+            <div class="border-b border-white/10 pb-2">
+              <span class="text-[10px] text-on-surface-variant uppercase block font-semibold">Signed In User</span>
+              <span id="dropdownUserName" class="font-bold text-white block truncate">Sibban</span>
+              <span id="dropdownUserRole" class="text-[11px] text-on-surface-variant block truncate">System Administrator &amp; Manager</span>
+            </div>
+            <div class="pt-1 flex items-center justify-between">
+              <button onclick="app.openOrgModal()" class="text-primary hover:underline font-bold text-xs">Switch Org</button>
+              <button onclick="app.logoutUser()" class="text-rose-400 hover:underline font-bold text-xs flex items-center gap-1 cursor-pointer">
+                <span class="material-symbols-outlined text-[13px]">logout</span>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </header>
