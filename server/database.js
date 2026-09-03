@@ -233,7 +233,7 @@ function initAuthRegistry(ss) {
     // Seed default admin account
     usersSheet.appendRow([
       'USR_DEFAULT_001',
-      'aboishekofficial4577@gmail.com',
+      'abhishekofficial4577@gmail.com',
       hashPassword('admin123'),
       'Zolexora Administrator',
       'SuperAdmin',
@@ -256,7 +256,7 @@ function initAuthRegistry(ss) {
       '1rI5Oj3ZoxqRYdw_eX7pkVrMf-Rlw_BpL',
       'Deneb & Pollux Hotels Pvt. Ltd.',
       'Hospitality & Hotels',
-      'aboishekofficial4577@gmail.com',
+      'abhishekofficial4577@gmail.com',
       new Date().toISOString(),
       'Active'
     ]);
@@ -923,7 +923,7 @@ function initUsersAndSettings(ss, orgData) {
   const currency = (orgData && orgData.currency && orgData.currency.trim()) ? orgData.currency.trim() : '₹';
   const industry = (orgData && orgData.industry && orgData.industry.trim()) ? orgData.industry.trim() : 'General Enterprise';
   const adminName = (orgData && orgData.adminName && orgData.adminName.trim()) ? orgData.adminName.trim() : 'Zolexora Admin';
-  const adminEmail = (orgData && orgData.adminEmail && orgData.adminEmail.trim()) ? orgData.adminEmail.trim() : 'aboishekofficial4577@gmail.com';
+  const adminEmail = (orgData && orgData.adminEmail && orgData.adminEmail.trim()) ? orgData.adminEmail.trim() : 'abhishekofficial4577@gmail.com';
 
   // Sheet 1: Users
   let usersSheet = ss.getSheetByName('Users');
