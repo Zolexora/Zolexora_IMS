@@ -1,5 +1,5 @@
 /**
- * DNP HOTELS - Pure Google Sheets Master Data Handler
+ * Zolexora IMS - Pure Google Sheets Master Data Handler
  * Reads and writes 100% strictly from Google Sheets in Drive folder
  */
 

@@ -1,5 +1,5 @@
 /**
- * DNP HOTELS - Supplier & Issuance Transactions Engine
+ * Zolexora IMS - Supplier & Issuance Transactions Engine
  */
 
 // ==========================================

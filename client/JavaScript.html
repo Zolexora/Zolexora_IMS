@@ -1,6 +1,6 @@
 <script>
 /**
- * DNP HOTELS - IMS CLIENT APPLICATION LOGIC
+ * Zolexora IMS - CLIENT APPLICATION LOGIC
  */
 
 const app = {
@@ -11,7 +11,7 @@ const app = {
     suppliers: [],
     departments: [],
     locations: [],
-    settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'DNP HOTELS' },
+    settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' },
     recentTransactions: [],
     activeTab: 'dashboard',
     propertyFilter: 'ALL',
@@ -117,7 +117,7 @@ const app = {
     this.state.departments = data.departments || [];
     this.state.locations = data.locations || [];
     this.state.users = data.users || [];
-    this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: '21 Gun Salute & Pahle Chai (DNP Hotels)' };
+    this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
     this.state.supplierTransactions = data.supplierTransactions || [];
     this.state.issuanceTransactions = data.issuanceTransactions || [];
     this.state.recentTransactions = data.issuanceTransactions || data.recentTransactions || [];
@@ -145,7 +145,7 @@ const app = {
     const wbInfo = this.state.workbooksInfo || {};
     const folder = wbInfo.folder || {
       id: '1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx',
-      name: 'DNP Database Drive Folder',
+      name: 'Zolexora IMS Database Folder',
       url: 'https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx'
     };
 
@@ -160,7 +160,7 @@ const app = {
     }
 
     const folderNameEl = document.getElementById('driveFolderName');
-    if (folderNameEl) folderNameEl.innerText = folder.name || 'DNP Database Drive Folder';
+    if (folderNameEl) folderNameEl.innerText = folder.name || 'Zolexora IMS Database Folder';
 
     const folderIdEl = document.getElementById('driveFolderId');
     if (folderIdEl) folderIdEl.innerText = folder.id || '1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx';
@@ -1117,7 +1117,7 @@ const app = {
   renderSettingsTab: function() {
     const set = this.state.settings || {};
     const hotelInput = document.getElementById('settingHotelName');
-    if (hotelInput) hotelInput.value = set.HOTEL_NAME || 'DNP HOTELS';
+    if (hotelInput) hotelInput.value = set.HOTEL_NAME || 'Zolexora IMS';
 
     const currInput = document.getElementById('settingCurrencySymbol');
     if (currInput) currInput.value = set.CURRENCY_SYMBOL || '₹';
@@ -1978,7 +1978,7 @@ const app = {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `DNP_HOTELS_Inventory_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Zolexora_IMS_Inventory_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2012,7 +2012,7 @@ const app = {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `DNP_HOTELS_Transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Zolexora_IMS_Transactions_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2023,7 +2023,7 @@ const app = {
   getMockInitialData: function() {
     return {
       dbInfo: { id: '', name: 'Google Sheets Database', url: '#' },
-      settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: '21 Gun Salute & Pahle Chai (DNP Hotels)' },
+      settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' },
       metrics: {
         totalSkus: 0,
         totalValuation: 0,

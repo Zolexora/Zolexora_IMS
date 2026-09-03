@@ -1,5 +1,5 @@
 /**
- * DNP HOTELS - Pure Sheet-Driven Product Master & Metrics
+ * Zolexora IMS - Pure Sheet-Driven Product Master & Metrics
  * All calculations and listings are read 100% strictly from Google Sheets
  */
 

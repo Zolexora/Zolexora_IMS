@@ -1,5 +1,5 @@
 /**
- * DNP HOTELS - Multi-Workbook Database Architecture
+ * Zolexora IMS - Multi-Workbook Database Architecture
  * Manages bifurcated workbooks inside Google Drive Folder: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx
  */
 
@@ -467,9 +467,9 @@ function initUsersAndSettings(ss) {
   if (usersSheet.getLastRow() === 0) {
     usersSheet.appendRow(['User ID', 'Name', 'Role', 'Email', 'Assigned Store / Selling Point', 'Status']);
     formatHeaderRow(usersSheet, 6);
-    usersSheet.appendRow(['USR_001', 'Alsha Khan', 'Logistics & Inventory Manager', 'alsha.khan@dnphotels.com', 'ALL', 'Active']);
-    usersSheet.appendRow(['USR_002', 'Store Incharge - GGN Sec 29', 'Store Keeper', 'store29@dnphotels.com', 'S_001', 'Active']);
-    usersSheet.appendRow(['USR_003', 'Pahle Chai Supervisor - GGN Sec 27', 'Outlet Supervisor', 'pahlechai27@dnphotels.com', 'SP_002', 'Active']);
+    usersSheet.appendRow(['USR_001', 'Alsha Khan', 'Logistics & Inventory Manager', 'alsha.khan@zolexora.com', 'ALL', 'Active']);
+    usersSheet.appendRow(['USR_002', 'Store Incharge - GGN Sec 29', 'Store Keeper', 'store29@zolexora.com', 'S_001', 'Active']);
+    usersSheet.appendRow(['USR_003', 'Pahle Chai Supervisor - GGN Sec 27', 'Outlet Supervisor', 'pahlechai27@zolexora.com', 'SP_002', 'Active']);
   }
 
   // Sheet 2: Settings
@@ -480,7 +480,7 @@ function initUsersAndSettings(ss) {
   if (settingsSheet.getLastRow() === 0) {
     settingsSheet.appendRow(['Key', 'Value', 'Description']);
     formatHeaderRow(settingsSheet, 3);
-    settingsSheet.appendRow(['HOTEL_NAME', '21 Gun Salute & Pahle Chai (DNP Hotels)', 'Organization Brand Name']);
+    settingsSheet.appendRow(['HOTEL_NAME', 'Zolexora IMS', 'Organization Brand Name']);
     settingsSheet.appendRow(['CURRENCY_SYMBOL', '₹', 'Display Currency Symbol']);
     settingsSheet.appendRow(['DRIVE_FOLDER_ID', DEFAULT_DRIVE_FOLDER_ID, 'Designated Database Drive Folder']);
   }
@@ -544,7 +544,7 @@ function getWorkbooksInfo() {
   return {
     folder: {
       id: folderId,
-      name: folder ? folder.getName() : 'DNP Database Drive Folder',
+      name: folder ? folder.getName() : 'Zolexora IMS Database Folder',
       url: folder ? folder.getUrl() : 'https://drive.google.com/drive/folders/' + folderId
     },
     workbooks: workbooks,
@@ -670,7 +670,7 @@ function getSettings() {
   try {
     const ss = getWorkbook(WORKBOOKS.USERS_SETTINGS);
     const sheet = ss.getSheetByName('Settings');
-    if (!sheet) return { CURRENCY_SYMBOL: '₹', HOTEL_NAME: '21 Gun Salute & Pahle Chai' };
+    if (!sheet) return { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
     const data = sheet.getDataRange().getValues();
     const settings = {};
     for (let i = 1; i < data.length; i++) {
@@ -680,7 +680,7 @@ function getSettings() {
     }
     return settings;
   } catch (e) {
-    return { CURRENCY_SYMBOL: '₹', HOTEL_NAME: '21 Gun Salute & Pahle Chai' };
+    return { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
   }
 }
 
