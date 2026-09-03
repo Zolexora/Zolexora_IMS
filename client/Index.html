@@ -124,10 +124,13 @@
   <aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col pt-xl pb-xl border-r border-outline-variant/10 shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
     <!-- Brand Logo -->
     <div class="px-xl mb-8 flex items-center gap-sm cursor-pointer" onclick="app.switchTab('dashboard')">
-      <span class="material-symbols-outlined text-primary text-[28px]">inventory_2</span>
-      <div>
-        <span id="sidebarHotelName" class="font-display-lg text-headline-md tracking-tight text-on-surface block leading-tight">Zolexora IMS</span>
-        <span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider uppercase">Procurement &amp; Inventory</span>
+      <span class="material-symbols-outlined text-primary text-[28px]">domain</span>
+      <div class="flex-1 min-w-0">
+        <span id="sidebarHotelName" class="font-display-lg text-headline-md tracking-tight text-on-surface block leading-tight truncate">Zolexora IMS</span>
+        <div class="flex items-center justify-between mt-0.5">
+          <span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider uppercase">Active Org</span>
+          <button type="button" onclick="event.stopPropagation(); app.openOrgModal();" class="text-[11px] text-primary hover:underline font-bold">Switch</button>
+        </div>
       </div>
     </div>
 
@@ -194,10 +197,19 @@
 
     <!-- FIXED TOP HEADER -->
     <header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 px-xl flex items-center justify-between border-b border-outline-variant/10">
-      <!-- Search Input -->
-      <div class="flex items-center bg-surface-container-high px-md py-xs rounded-full w-80 lg:w-96 border border-outline-variant/20 focus-within:border-primary transition-colors">
-        <span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-sm">search</span>
-        <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-on-surface w-full placeholder:text-outline" placeholder="Search inventory, orders, or suppliers..." type="text"/>
+      <div class="flex items-center gap-3">
+        <!-- Search Input -->
+        <div class="flex items-center bg-surface-container-high px-md py-xs rounded-full w-72 lg:w-80 border border-outline-variant/20 focus-within:border-primary transition-colors">
+          <span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-sm">search</span>
+          <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-on-surface w-full placeholder:text-outline" placeholder="Search inventory, orders, or suppliers..." type="text"/>
+        </div>
+
+        <!-- Organization Selector Button -->
+        <button onclick="app.openOrgModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
+          <span class="material-symbols-outlined text-primary text-[18px]">corporate_fare</span>
+          <span id="headerOrgName" class="font-bold truncate max-w-[130px]">Zolexora IMS</span>
+          <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
+        </button>
       </div>
 
       <!-- Header Center & Right Actions -->
@@ -1167,6 +1179,120 @@
           <button type="submit" class="px-5 py-2 bg-primary-container text-on-primary-container font-bold rounded-lg shadow">Save Supplier</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- 8. ORGANIZATION SWITCHER & CREATION MODAL -->
+  <div id="orgModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop fixed inset-0 bg-background/80 backdrop-blur-sm" onclick="app.closeOrgModal()"></div>
+    <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-2xl w-full z-10 border border-outline-variant/20 overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="bg-surface-container-high px-6 py-4 flex items-center justify-between border-b border-outline-variant/10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined text-[24px]">corporate_fare</span>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-on-surface">Organization Database Manager</h3>
+            <p class="text-xs text-on-surface-variant">Switch company database or provision a new structured tree inside Google Drive</p>
+          </div>
+        </div>
+        <button onclick="app.closeOrgModal()" class="text-on-surface-variant hover:text-on-surface text-xl">&times;</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto space-y-6 text-xs">
+
+        <!-- Tabs: Switch vs Create -->
+        <div class="flex border-b border-outline-variant/10 gap-4">
+          <button id="tabSwitchOrgBtn" onclick="app.switchOrgTab('switch')" class="pb-2 border-b-2 border-primary text-primary font-bold text-xs flex items-center gap-1.5 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">swap_horiz</span>
+            <span>Existing Organizations</span>
+          </button>
+          <button id="tabCreateOrgBtn" onclick="app.switchOrgTab('create')" class="pb-2 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">add_circle</span>
+            <span>+ Create New Organization</span>
+          </button>
+        </div>
+
+        <!-- 1. EXISTING ORGS SECTION -->
+        <div id="orgSectionSwitch" class="space-y-4">
+          <p class="text-on-surface-variant">Organizations located inside root Google Drive folder <a href="https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx" target="_blank" class="text-primary hover:underline font-mono bg-surface-container px-1 py-0.5 rounded">1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</a>:</p>
+          <div id="orgListContainer" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- 2. CREATE ORG SECTION -->
+        <div id="orgSectionCreate" class="hidden space-y-4">
+          <form id="createOrgForm" onsubmit="app.handleCreateOrgSubmit(event)" class="space-y-4">
+            <div>
+              <label class="block font-bold text-on-surface mb-1">Organization / Brand Name *:</label>
+              <input type="text" id="newOrgName" required placeholder="e.g. Zolexora Luxury Resorts" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface text-xs focus:border-primary outline-none">
+              <span class="text-[10px] text-on-surface-variant">A dedicated Google Drive folder with this exact name will be created inside root database folder.</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Primary Store Name *:</label>
+                <input type="text" id="newOrgStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Currency Symbol *:</label>
+                <select id="newOrgCurrency" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface text-xs focus:border-primary outline-none">
+                  <option value="₹">₹ (INR - Indian Rupee)</option>
+                  <option value="$">$ (USD - US Dollar)</option>
+                  <option value="€">€ (EUR - Euro)</option>
+                  <option value="£">£ (GBP - British Pound)</option>
+                  <option value="AED">AED (UAE Dirham)</option>
+                  <option value="SAR">SAR (Saudi Riyal)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Admin Full Name:</label>
+                <input type="text" id="newOrgAdminName" placeholder="Zolexora Admin" value="Zolexora Admin" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Admin Email:</label>
+                <input type="email" id="newOrgAdminEmail" placeholder="aboishekofficial4577@gmail.com" value="aboishekofficial4577@gmail.com" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+            </div>
+
+            <!-- Directory Architecture Blueprint Card -->
+            <div class="bg-surface-container-high/60 border border-outline-variant/20 rounded-xl p-3.5 space-y-2">
+              <div class="flex items-center justify-between text-[11px] font-bold text-on-surface">
+                <span class="flex items-center gap-1.5 text-primary">
+                  <span class="material-symbols-outlined text-[16px]">account_tree</span>
+                  <span>Automated Directory Tree Layout Blueprint</span>
+                </span>
+                <span class="text-[10px] text-on-surface-variant font-mono">1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
+              </div>
+              <div class="font-mono text-[11px] text-on-surface-variant bg-surface-container-lowest/80 p-2.5 rounded-lg leading-relaxed">
+                <div>📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/ (Root Drive Database)</div>
+                <div class="text-primary font-bold">└── 📁 [Organization Name]/</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 01_Master_Databases/ (Location_Master, Product_Master, Supplier_Master)</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 02_Transactions/ (Supplier_Transactions, Issuance_Transactions)</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 03_Settings_and_Users/ (Users_and_Settings)</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 04_Invoices_and_Attachments/ (Purchase_Orders, Delivery_Challans)</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 05_Reports_and_Exports/ (Daily_Summaries, Monthly_Valuation, Supplier_Audits)</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;└── 📁 06_System_Backups/</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <button type="button" onclick="app.closeOrgModal()" class="px-4 py-2 border border-outline-variant/20 rounded-lg text-on-surface-variant hover:bg-surface-container-high">Cancel</button>
+              <button type="submit" class="px-5 py-2 bg-primary text-on-primary font-bold rounded-lg shadow flex items-center gap-2 hover:opacity-95 cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+                <span>Create &amp; Provision Database</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
     </div>
   </div>
 

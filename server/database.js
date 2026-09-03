@@ -169,12 +169,192 @@ function findFileInFolderRecursively(folder, fileName) {
 }
 
 /**
- * Gets or creates a specific workbook strictly inside the designated Google Drive folder (including subfolders)
+ * =================================================================
+ * MULTI-ORGANIZATION ARCHITECTURE (Inside Folder: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)
+ * =================================================================
+ */
+
+/**
+ * Lists all existing organization database folders inside root Drive folder
+ */
+function listOrganizations() {
+  const rootFolder = getDriveFolder();
+  const subfolders = rootFolder.getFolders();
+  const orgs = [];
+  while (subfolders.hasNext()) {
+    const f = subfolders.next();
+    orgs.push({
+      id: f.getId(),
+      name: f.getName(),
+      url: f.getUrl(),
+      lastUpdated: f.getLastUpdated().toISOString()
+    });
+  }
+  return orgs;
+}
+
+/**
+ * Gets the current active organization
+ */
+function getActiveOrganization() {
+  const userProps = PropertiesService.getUserProperties();
+  const scriptProps = PropertiesService.getScriptProperties();
+  const orgId = userProps.getProperty('ACTIVE_ORG_ID') || scriptProps.getProperty('ACTIVE_ORG_ID');
+  
+  if (orgId) {
+    try {
+      const folder = DriveApp.getFolderById(orgId);
+      return {
+        id: folder.getId(),
+        name: folder.getName(),
+        url: folder.getUrl()
+      };
+    } catch (e) {
+      console.warn('Active org folder not accessible: ' + orgId);
+    }
+  }
+
+  // Auto-discover first available organization folder if any
+  const rootFolder = getDriveFolder();
+  const subfolders = rootFolder.getFolders();
+  if (subfolders.hasNext()) {
+    const firstFolder = subfolders.next();
+    setActiveOrganization(firstFolder.getId(), firstFolder.getName());
+    return {
+      id: firstFolder.getId(),
+      name: firstFolder.getName(),
+      url: firstFolder.getUrl()
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Sets the current active organization
+ */
+function setActiveOrganization(orgId, orgName) {
+  let folder = null;
+  try {
+    folder = DriveApp.getFolderById(orgId);
+  } catch (e) {
+    throw new Error('Organization folder not accessible (' + orgId + '): ' + e.message);
+  }
+
+  const name = orgName || folder.getName();
+  PropertiesService.getScriptProperties().setProperty('ACTIVE_ORG_ID', orgId);
+  PropertiesService.getScriptProperties().setProperty('ACTIVE_ORG_NAME', name);
+  PropertiesService.getUserProperties().setProperty('ACTIVE_ORG_ID', orgId);
+  PropertiesService.getUserProperties().setProperty('ACTIVE_ORG_NAME', name);
+
+  return {
+    success: true,
+    organization: {
+      id: orgId,
+      name: name,
+      url: folder.getUrl()
+    }
+  };
+}
+
+/**
+ * Gets the active organization's folder in Google Drive
+ */
+function getOrgFolder() {
+  const activeOrg = getActiveOrganization();
+  if (activeOrg && activeOrg.id) {
+    try {
+      return DriveApp.getFolderById(activeOrg.id);
+    } catch (e) {}
+  }
+  return getDriveFolder();
+}
+
+/**
+ * Creates and provisions a brand new organization inside Drive Folder 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx
+ * with the complete 6 numbered subdirectories and all 6 workbooks.
+ */
+function provisionOrganization(orgData) {
+  const rootFolder = getDriveFolder();
+  const orgName = (orgData && orgData.name && orgData.name.trim()) ? orgData.name.trim() : 'Zolexora IMS';
+
+  // 1. Get or create folder with Organization Name inside Root Drive Folder
+  let orgFolder = null;
+  const existingFolders = rootFolder.getFoldersByName(orgName);
+  if (existingFolders.hasNext()) {
+    orgFolder = existingFolders.next();
+  } else {
+    orgFolder = rootFolder.createFolder(orgName);
+  }
+
+  // 2. Set this organization as active
+  setActiveOrganization(orgFolder.getId(), orgName);
+
+  // 3. Provision the 6 numbered subdirectories inside the Organization Folder
+  const subfolders = {};
+  for (const subName of Object.keys(DRIVE_DIRECTORY_STRUCTURE)) {
+    subfolders[subName] = getOrCreateChildFolder(orgFolder, subName);
+  }
+
+  // Provision nested subfolders for Invoices & Reports
+  getOrCreateChildFolder(subfolders['04_Invoices_and_Attachments'], 'Purchase_Orders');
+  getOrCreateChildFolder(subfolders['04_Invoices_and_Attachments'], 'Delivery_Challans');
+
+  getOrCreateChildFolder(subfolders['05_Reports_and_Exports'], 'Daily_Summaries');
+  getOrCreateChildFolder(subfolders['05_Reports_and_Exports'], 'Monthly_Valuation');
+  getOrCreateChildFolder(subfolders['05_Reports_and_Exports'], 'Supplier_Audits');
+
+  // 4. Provision all 6 Workbooks strictly inside their designated subfolders
+  const list = [
+    { name: WORKBOOKS.LOCATION_MASTER, folder: subfolders['01_Master_Databases'], init: initLocationMaster },
+    { name: WORKBOOKS.PRODUCT_MASTER, folder: subfolders['01_Master_Databases'], init: initProductMaster },
+    { name: WORKBOOKS.SUPPLIER_MASTER, folder: subfolders['01_Master_Databases'], init: initSupplierMaster },
+    { name: WORKBOOKS.SUPPLIER_TXNS, folder: subfolders['02_Transactions'], init: initSupplierTransactions },
+    { name: WORKBOOKS.ISSUANCE_TXNS, folder: subfolders['02_Transactions'], init: initIssuanceTransactions },
+    { name: WORKBOOKS.USERS_SETTINGS, folder: subfolders['03_Settings_and_Users'], init: initUsersAndSettings }
+  ];
+
+  const results = {};
+  list.forEach(item => {
+    let wb = null;
+    const existingFile = findFileInFolderRecursively(orgFolder, item.name);
+    if (existingFile) {
+      wb = SpreadsheetApp.openById(existingFile.getId());
+      ensureFileInFolder(existingFile, item.folder);
+    } else {
+      wb = SpreadsheetApp.create(item.name);
+      const ssId = wb.getId();
+      const file = DriveApp.getFileById(ssId);
+      file.moveTo(item.folder);
+      item.init(wb, orgData);
+    }
+    PropertiesService.getScriptProperties().setProperty('WB_ID_' + orgFolder.getId() + '_' + item.name, wb.getId());
+    results[item.name] = {
+      id: wb.getId(),
+      name: wb.getName(),
+      url: wb.getUrl()
+    };
+  });
+
+  return {
+    success: true,
+    organization: {
+      id: orgFolder.getId(),
+      name: orgFolder.getName(),
+      url: orgFolder.getUrl()
+    },
+    workbooks: results,
+    directoryTree: scanFolderTree(orgFolder, 0, 3)
+  };
+}
+
+/**
+ * Gets or creates a specific workbook strictly inside the active organization folder (including subfolders)
  */
 function getWorkbook(name) {
-  const folder = getDriveFolder();
+  const folder = getOrgFolder();
   const props = PropertiesService.getScriptProperties();
-  const cachedId = props.getProperty('WB_ID_' + name);
+  const cachedId = props.getProperty('WB_ID_' + folder.getId() + '_' + name) || props.getProperty('WB_ID_' + name);
 
   if (cachedId) {
     try {
@@ -189,24 +369,24 @@ function getWorkbook(name) {
     const file = findFileInFolderRecursively(folder, name);
     if (file) {
       const ss = SpreadsheetApp.openById(file.getId());
-      props.setProperty('WB_ID_' + name, ss.getId());
+      props.setProperty('WB_ID_' + folder.getId() + '_' + name, ss.getId());
       return ss;
     }
   }
 
-  // Not found in folder, create and initialize it strictly in the designated folder/subfolder
+  // Not found in folder, create and initialize it strictly in the designated subfolder of this organization
   return createAndInitWorkbook(name);
 }
 
 /**
  * Creates and sets up initial schema & sample data for a workbook strictly inside its proper subfolder
  */
-function createAndInitWorkbook(name) {
-  const folder = getDriveFolder();
+function createAndInitWorkbook(name, orgData) {
+  const folder = getOrgFolder();
   const targetFolder = getTargetSubfolderForWorkbook(name, folder);
   const ss = SpreadsheetApp.create(name);
   const ssId = ss.getId();
-  PropertiesService.getScriptProperties().setProperty('WB_ID_' + name, ssId);
+  PropertiesService.getScriptProperties().setProperty('WB_ID_' + folder.getId() + '_' + name, ssId);
 
   // Strictly move into the designated target subfolder
   try {
@@ -218,7 +398,7 @@ function createAndInitWorkbook(name) {
 
   // Schema initialization based on workbook type
   if (name === WORKBOOKS.LOCATION_MASTER) {
-    initLocationMaster(ss);
+    initLocationMaster(ss, orgData);
   } else if (name === WORKBOOKS.PRODUCT_MASTER) {
     initProductMaster(ss);
   } else if (name === WORKBOOKS.SUPPLIER_MASTER) {
@@ -228,7 +408,7 @@ function createAndInitWorkbook(name) {
   } else if (name === WORKBOOKS.ISSUANCE_TXNS) {
     initIssuanceTransactions(ss);
   } else if (name === WORKBOOKS.USERS_SETTINGS) {
-    initUsersAndSettings(ss);
+    initUsersAndSettings(ss, orgData);
   }
 
   return ss;
@@ -237,7 +417,10 @@ function createAndInitWorkbook(name) {
 /**
  * 1. Location_Master Workbook (Store & Selling_Point sheets)
  */
-function initLocationMaster(ss) {
+function initLocationMaster(ss, orgData) {
+  const storeName = (orgData && orgData.storeName && orgData.storeName.trim()) ? orgData.storeName.trim() : 'Main Central Warehouse';
+  const orgName = (orgData && orgData.name && orgData.name.trim()) ? orgData.name.trim() : 'Zolexora IMS';
+
   // Sheet 1: Store
   let storeSheet = ss.getSheetByName('Store');
   if (!storeSheet) {
@@ -247,9 +430,9 @@ function initLocationMaster(ss) {
   if (storeSheet.getLastRow() === 0) {
     storeSheet.appendRow(['Store Code', 'Store Name', 'Type', 'Status', 'Description']);
     formatHeaderRow(storeSheet, 5);
-    storeSheet.appendRow(['S_001', '21 GUN SOLUTE GGN SEC 29', 'Main Outlet Store', 'Active', 'Sector 29 Gurgaon Property']);
-    storeSheet.appendRow(['S_002', 'PAHLE CHAI GGN Sec 27', 'Outlet Store', 'Active', 'Sector 27 Gurgaon Outlet']);
-    storeSheet.appendRow(['S_000', 'Central Depot Warehouse', 'Central Depot', 'Active', 'Central Replenishment Warehouse']);
+    storeSheet.appendRow(['S_001', storeName, 'Main Outlet Store', 'Active', 'Primary inventory depot for ' + orgName]);
+    storeSheet.appendRow(['S_002', orgName + ' Retail Outlet', 'Outlet Store', 'Active', 'Secondary distribution outlet']);
+    storeSheet.appendRow(['S_000', 'Central Distribution Hub', 'Central Depot', 'Active', 'Central replenishment warehouse']);
   }
 
   // Sheet 2: Selling_Point
@@ -260,10 +443,9 @@ function initLocationMaster(ss) {
   if (spSheet.getLastRow() === 0) {
     spSheet.appendRow(['Selling Point Code', 'Selling Point Name', 'Assigned Store Code', 'Type', 'Status']);
     formatHeaderRow(spSheet, 5);
-    spSheet.appendRow(['SP_001', '21 GUN SOLUTE GGN SEC 29', 'S_001', 'Dining & Bar', 'Active']);
-    spSheet.appendRow(['SP_002', 'PAHLE CHAI GGN Sec 27', 'S_002', 'Chai & Cafe Counter', 'Active']);
-    spSheet.appendRow(['SP_003', '21 Gun Salute - Kitchen Store', 'S_001', 'F&B Production', 'Active']);
-    spSheet.appendRow(['SP_004', '21 Gun Salute - Bar & Lounge', 'S_001', 'Beverage Counter', 'Active']);
+    spSheet.appendRow(['SP_001', storeName + ' - Front Counter', 'S_001', 'Front Operations', 'Active']);
+    spSheet.appendRow(['SP_002', storeName + ' - Kitchen / Production', 'S_001', 'Production Unit', 'Active']);
+    spSheet.appendRow(['SP_003', storeName + ' - Bar & Beverage', 'S_001', 'Beverage Counter', 'Active']);
   }
 }
 
@@ -457,7 +639,12 @@ function initIssuanceTransactions(ss) {
 /**
  * 6. Users_and_Settings Workbook (Users & Settings sheets)
  */
-function initUsersAndSettings(ss) {
+function initUsersAndSettings(ss, orgData) {
+  const orgName = (orgData && orgData.name && orgData.name.trim()) ? orgData.name.trim() : 'Zolexora IMS';
+  const currency = (orgData && orgData.currency && orgData.currency.trim()) ? orgData.currency.trim() : '₹';
+  const adminName = (orgData && orgData.adminName && orgData.adminName.trim()) ? orgData.adminName.trim() : 'Zolexora Admin';
+  const adminEmail = (orgData && orgData.adminEmail && orgData.adminEmail.trim()) ? orgData.adminEmail.trim() : 'aboishekofficial4577@gmail.com';
+
   // Sheet 1: Users
   let usersSheet = ss.getSheetByName('Users');
   if (!usersSheet) {
@@ -467,9 +654,9 @@ function initUsersAndSettings(ss) {
   if (usersSheet.getLastRow() === 0) {
     usersSheet.appendRow(['User ID', 'Name', 'Role', 'Email', 'Assigned Store / Selling Point', 'Status']);
     formatHeaderRow(usersSheet, 6);
-    usersSheet.appendRow(['USR_001', 'Alsha Khan', 'Logistics & Inventory Manager', 'alsha.khan@zolexora.com', 'ALL', 'Active']);
-    usersSheet.appendRow(['USR_002', 'Store Incharge - GGN Sec 29', 'Store Keeper', 'store29@zolexora.com', 'S_001', 'Active']);
-    usersSheet.appendRow(['USR_003', 'Pahle Chai Supervisor - GGN Sec 27', 'Outlet Supervisor', 'pahlechai27@zolexora.com', 'SP_002', 'Active']);
+    usersSheet.appendRow(['USR_001', adminName, 'System Administrator & Manager', adminEmail, 'ALL', 'Active']);
+    usersSheet.appendRow(['USR_002', 'Store Incharge', 'Store Keeper', 'store@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'S_001', 'Active']);
+    usersSheet.appendRow(['USR_003', 'Operations Supervisor', 'Outlet Supervisor', 'ops@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'SP_001', 'Active']);
   }
 
   // Sheet 2: Settings
@@ -480,8 +667,8 @@ function initUsersAndSettings(ss) {
   if (settingsSheet.getLastRow() === 0) {
     settingsSheet.appendRow(['Key', 'Value', 'Description']);
     formatHeaderRow(settingsSheet, 3);
-    settingsSheet.appendRow(['HOTEL_NAME', 'Zolexora IMS', 'Organization Brand Name']);
-    settingsSheet.appendRow(['CURRENCY_SYMBOL', '₹', 'Display Currency Symbol']);
+    settingsSheet.appendRow(['HOTEL_NAME', orgName, 'Organization Brand Name']);
+    settingsSheet.appendRow(['CURRENCY_SYMBOL', currency, 'Display Currency Symbol']);
     settingsSheet.appendRow(['DRIVE_FOLDER_ID', DEFAULT_DRIVE_FOLDER_ID, 'Designated Database Drive Folder']);
   }
 }
@@ -513,11 +700,13 @@ function initAllWorkbooks() {
 }
 
 /**
- * Returns metadata of all 6 workbooks
+ * Returns metadata of all 6 workbooks in the active organization
  */
 function getWorkbooksInfo() {
-  const folder = getDriveFolder();
-  const folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID') || DEFAULT_DRIVE_FOLDER_ID;
+  const rootFolder = getDriveFolder();
+  const orgFolder = getOrgFolder();
+  const activeOrg = getActiveOrganization();
+  const orgList = listOrganizations();
 
   const names = Object.values(WORKBOOKS);
   const workbooks = names.map(name => {
@@ -542,34 +731,44 @@ function getWorkbooksInfo() {
   });
 
   return {
-    folder: {
-      id: folderId,
-      name: folder ? folder.getName() : 'Zolexora IMS Database Folder',
-      url: folder ? folder.getUrl() : 'https://drive.google.com/drive/folders/' + folderId
+    rootFolder: {
+      id: rootFolder.getId(),
+      name: rootFolder.getName(),
+      url: rootFolder.getUrl()
     },
+    folder: {
+      id: orgFolder.getId(),
+      name: orgFolder.getName(),
+      url: orgFolder.getUrl()
+    },
+    activeOrganization: activeOrg,
+    organizations: orgList,
     workbooks: workbooks,
     directoryTree: getDriveDirectoryTree()
   };
 }
 
 /**
- * Creates the complete directory tree inside Google Drive folder 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx
+ * Creates the complete directory tree inside the active organization Google Drive folder
  * and organizes all existing/new workbooks into their respective subdirectories.
  */
 function createDriveDirectoryTree() {
   const rootFolder = getDriveFolder();
+  const orgFolder = getOrgFolder();
   const result = {
     success: true,
     rootFolderId: rootFolder.getId(),
     rootFolderName: rootFolder.getName(),
-    rootFolderUrl: rootFolder.getUrl(),
+    orgFolderId: orgFolder.getId(),
+    orgFolderName: orgFolder.getName(),
+    orgFolderUrl: orgFolder.getUrl(),
     subfolders: {},
     organizedFiles: []
   };
 
-  // 1. Create main categories & relocate workbooks
+  // 1. Create main categories inside the active organization folder & relocate workbooks
   for (const [subName, expectedWorkbooks] of Object.entries(DRIVE_DIRECTORY_STRUCTURE)) {
-    const subFolder = getOrCreateChildFolder(rootFolder, subName);
+    const subFolder = getOrCreateChildFolder(orgFolder, subName);
     result.subfolders[subName] = {
       id: subFolder.getId(),
       name: subFolder.getName(),
@@ -597,27 +796,29 @@ function createDriveDirectoryTree() {
     }
   }
 
-  // 2. Provision nested subfolders for Receipts and Reports
-  const invFolder = getOrCreateChildFolder(rootFolder, '04_Invoices_and_Attachments');
+  // 2. Provision nested subfolders for Receipts and Reports inside organization
+  const invFolder = getOrCreateChildFolder(orgFolder, '04_Invoices_and_Attachments');
   getOrCreateChildFolder(invFolder, 'Purchase_Orders');
   getOrCreateChildFolder(invFolder, 'Delivery_Challans');
 
-  const repFolder = getOrCreateChildFolder(rootFolder, '05_Reports_and_Exports');
+  const repFolder = getOrCreateChildFolder(orgFolder, '05_Reports_and_Exports');
   getOrCreateChildFolder(repFolder, 'Daily_Summaries');
   getOrCreateChildFolder(repFolder, 'Monthly_Valuation');
   getOrCreateChildFolder(repFolder, 'Supplier_Audits');
+
+  const bakFolder = getOrCreateChildFolder(orgFolder, '06_System_Backups');
 
   result.directoryTree = getDriveDirectoryTree();
   return result;
 }
 
 /**
- * Returns the hierarchical tree structure of the designated Google Drive folder
+ * Returns the hierarchical tree structure of the active organization folder
  */
 function getDriveDirectoryTree() {
   try {
-    const rootFolder = getDriveFolder();
-    return scanFolderTree(rootFolder, 0, 3);
+    const orgFolder = getOrgFolder();
+    return scanFolderTree(orgFolder, 0, 3);
   } catch (err) {
     console.warn('Could not scan drive directory tree: ' + err.message);
     return null;

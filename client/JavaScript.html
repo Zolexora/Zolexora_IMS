@@ -109,6 +109,10 @@ const app = {
 
     this.state.workbooksInfo = data.workbooksInfo || {};
     this.state.dbInfo = data.dbInfo || (data.workbooksInfo ? data.workbooksInfo.folder : {});
+    this.state.activeOrganization = data.activeOrganization || (data.workbooksInfo ? data.workbooksInfo.activeOrganization : null);
+    this.state.organizations = data.organizations || (data.workbooksInfo ? data.workbooksInfo.organizations : []);
+    this.state.hasOrganization = data.hasOrganization !== false;
+
     this.state.metrics = data.metrics || {};
     this.state.items = data.items || [];
     this.state.suppliers = data.suppliers || [];
@@ -118,12 +122,19 @@ const app = {
     this.state.locations = data.locations || [];
     this.state.users = data.users || [];
     this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
-    if (!this.state.settings.HOTEL_NAME || this.state.settings.HOTEL_NAME.includes('DNP') || this.state.settings.HOTEL_NAME.includes('21 Gun Salute')) {
-      this.state.settings.HOTEL_NAME = 'Zolexora IMS';
-    }
-    this.state.supplierTransactions = data.supplierTransactions || [];
-    this.state.issuanceTransactions = data.issuanceTransactions || [];
-    this.state.recentTransactions = data.issuanceTransactions || data.recentTransactions || [];
+
+    const currentOrgName = (this.state.activeOrganization && this.state.activeOrganization.name) 
+      ? this.state.activeOrganization.name 
+      : (this.state.settings.HOTEL_NAME || 'Zolexora IMS');
+
+    this.state.settings.HOTEL_NAME = currentOrgName;
+
+    // Update active organization headers & sidebar
+    const headerOrgEl = document.getElementById('headerOrgName');
+    if (headerOrgEl) headerOrgEl.innerText = currentOrgName;
+
+    const sidebarHotelEl = document.getElementById('sidebarHotelName');
+    if (sidebarHotelEl) sidebarHotelEl.innerText = currentOrgName;
 
     // Update Nav Count
     const navBadge = document.getElementById('navTotalItemsBadge');
@@ -132,7 +143,7 @@ const app = {
     // Update Google Sheet links and Multi-Workbook grid
     this.updateGoogleSheetLinks();
 
-    // Populate dropdowns across modals with real 28 suppliers, stores, and selling points
+    // Populate dropdowns across modals with real suppliers, stores, and selling points
     this.populateAllSelectDropdowns();
 
     // Render components
@@ -142,6 +153,184 @@ const app = {
     this.renderSuppliers();
     this.renderDepartmentsAndLocations();
     this.renderSettingsTab();
+
+    // If no organization exists or hasOrganization is false, trigger the onboarding modal
+    if (!this.state.hasOrganization || !this.state.activeOrganization) {
+      this.openOrgModal('create');
+    }
+  },
+
+  // ==========================================
+  // MULTI-ORGANIZATION MANAGEMENT
+  // ==========================================
+  openOrgModal: function(defaultTab = 'switch') {
+    const modal = document.getElementById('orgModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    this.switchOrgTab(defaultTab);
+    this.renderOrgList();
+  },
+
+  closeOrgModal: function() {
+    const modal = document.getElementById('orgModal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  switchOrgTab: function(tab) {
+    const secSwitch = document.getElementById('orgSectionSwitch');
+    const secCreate = document.getElementById('orgSectionCreate');
+    const btnSwitch = document.getElementById('tabSwitchOrgBtn');
+    const btnCreate = document.getElementById('tabCreateOrgBtn');
+
+    if (tab === 'create') {
+      if (secSwitch) secSwitch.classList.add('hidden');
+      if (secCreate) secCreate.classList.remove('hidden');
+      if (btnSwitch) {
+        btnSwitch.className = 'pb-2 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer';
+      }
+      if (btnCreate) {
+        btnCreate.className = 'pb-2 border-b-2 border-primary text-primary font-bold text-xs flex items-center gap-1.5 transition cursor-pointer';
+      }
+      const nameInput = document.getElementById('newOrgName');
+      if (nameInput) setTimeout(() => nameInput.focus(), 100);
+    } else {
+      if (secCreate) secCreate.classList.add('hidden');
+      if (secSwitch) secSwitch.classList.remove('hidden');
+      if (btnCreate) {
+        btnCreate.className = 'pb-2 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer';
+      }
+      if (btnSwitch) {
+        btnSwitch.className = 'pb-2 border-b-2 border-primary text-primary font-bold text-xs flex items-center gap-1.5 transition cursor-pointer';
+      }
+      this.renderOrgList();
+    }
+  },
+
+  renderOrgList: function() {
+    const container = document.getElementById('orgListContainer');
+    if (!container) return;
+
+    const orgs = this.state.organizations || [];
+    const activeId = this.state.activeOrganization ? this.state.activeOrganization.id : '';
+
+    if (orgs.length === 0) {
+      container.innerHTML = `
+        <div class="bg-surface-container-high/40 rounded-xl p-6 text-center space-y-3 border border-outline-variant/10">
+          <span class="material-symbols-outlined text-primary text-[32px]">domain_disabled</span>
+          <div>
+            <h4 class="font-bold text-on-surface text-sm">No Organizations Found Yet</h4>
+            <p class="text-on-surface-variant text-xs mt-1">Create your first organization database in Drive folder 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx.</p>
+          </div>
+          <button type="button" onclick="app.switchOrgTab('create')" class="px-4 py-2 bg-primary text-on-primary font-bold text-xs rounded-lg shadow inline-flex items-center gap-1.5 cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">add_circle</span>
+            <span>Create Organization Database</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = orgs.map(org => {
+      const isActive = org.id === activeId;
+      return `
+        <div class="flex items-center justify-between p-3.5 rounded-xl border transition ${
+          isActive 
+            ? 'bg-primary/10 border-primary/40 shadow-sm' 
+            : 'bg-surface-container-high hover:bg-surface-container-highest border-outline-variant/20'
+        }">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-lg ${isActive ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'} flex items-center justify-center font-bold text-xs flex-shrink-0">
+              <span class="material-symbols-outlined text-[18px]">domain</span>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-on-surface text-xs truncate">${org.name}</span>
+                ${isActive ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-on-primary">Active</span>' : ''}
+              </div>
+              <p class="text-[11px] text-on-surface-variant font-mono truncate">ID: ${org.id}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <a href="${org.url}" target="_blank" title="Open Organization Folder in Google Drive" class="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition">
+              <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+            </a>
+            ${isActive 
+              ? '<span class="text-xs text-primary font-semibold px-2.5 py-1">Current Database</span>' 
+              : `<button type="button" onclick="app.switchOrganization('${org.id}')" class="px-3 py-1.5 bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-xs font-bold rounded-lg transition border border-outline-variant/20 cursor-pointer">
+                  Switch
+                </button>`
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  handleCreateOrgSubmit: function(e) {
+    if (e) e.preventDefault();
+    const name = document.getElementById('newOrgName').value.trim();
+    const storeName = document.getElementById('newOrgStoreName').value.trim();
+    const currency = document.getElementById('newOrgCurrency').value;
+    const adminName = document.getElementById('newOrgAdminName').value.trim();
+    const adminEmail = document.getElementById('newOrgAdminEmail').value.trim();
+
+    if (!name) {
+      this.showToast('Please enter an organization name.', 'error');
+      return;
+    }
+
+    this.showLoading('Provisioning Organization Database...', 'Creating folder "' + name + '" & structured tree in Google Drive');
+
+    const orgData = {
+      name: name,
+      storeName: storeName || 'Main Central Warehouse',
+      currency: currency || '₹',
+      adminName: adminName || 'Zolexora Admin',
+      adminEmail: adminEmail || 'aboishekofficial4577@gmail.com'
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          app.hideLoading();
+          app.closeOrgModal();
+          app.handleInitialDataSuccess(data);
+          app.showToast('Organization "' + name + '" provisioned successfully with 6 structured subdirectories!');
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Failed to create organization: ' + err.message, 'error');
+        })
+        .createNewOrganization(orgData);
+    } else {
+      setTimeout(() => {
+        app.hideLoading();
+        app.closeOrgModal();
+        app.state.activeOrganization = { id: 'mock_org_' + Date.now(), name: name, url: '#' };
+        app.state.organizations.push(app.state.activeOrganization);
+        app.state.settings.HOTEL_NAME = name;
+        app.showToast('Mock Organization "' + name + '" provisioned!');
+        app.renderDashboard();
+      }, 1000);
+    }
+  },
+
+  switchOrganization: function(orgId) {
+    this.showLoading('Switching Database...', 'Loading organization workbooks from Google Drive');
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          app.hideLoading();
+          app.closeOrgModal();
+          app.handleInitialDataSuccess(data);
+          app.showToast('Switched organization to ' + (data.activeOrganization ? data.activeOrganization.name : 'new database'));
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Failed to switch organization: ' + err.message, 'error');
+        })
+        .switchOrganization(orgId);
+    }
   },
 
   updateGoogleSheetLinks: function() {

@@ -271,6 +271,38 @@ function calculateDashboardMetrics(items, supplierTxns, issuanceTxns, storesList
 }
 
 function getInitialData() {
+  const activeOrg = getActiveOrganization();
+  const orgList = listOrganizations();
+
+  // If no active organization exists and no folders exist in root
+  if (!activeOrg && orgList.length === 0) {
+    return {
+      success: true,
+      hasOrganization: false,
+      activeOrganization: null,
+      organizations: [],
+      workbooksInfo: {
+        rootFolder: { id: DEFAULT_DRIVE_FOLDER_ID, name: 'Zolexora IMS Database', url: 'https://drive.google.com/drive/folders/' + DEFAULT_DRIVE_FOLDER_ID },
+        folder: { id: DEFAULT_DRIVE_FOLDER_ID, name: 'Zolexora IMS Database', url: 'https://drive.google.com/drive/folders/' + DEFAULT_DRIVE_FOLDER_ID },
+        workbooks: []
+      },
+      metrics: {},
+      items: [],
+      suppliers: [],
+      stores: [],
+      sellingPoints: [],
+      users: [],
+      settings: { HOTEL_NAME: 'Zolexora IMS', CURRENCY_SYMBOL: '₹' },
+      supplierTransactions: [],
+      issuanceTransactions: [],
+      recentTransactions: []
+    };
+  }
+
+  // Current active organization
+  const currentOrg = getActiveOrganization();
+
+  // Provision / verify workbooks for the active organization
   initAllWorkbooks();
 
   const workbooksInfo = getWorkbooksInfo();
@@ -287,6 +319,9 @@ function getInitialData() {
 
   return {
     success: true,
+    hasOrganization: true,
+    activeOrganization: currentOrg,
+    organizations: orgList,
     workbooksInfo: workbooksInfo,
     metrics: metrics,
     items: items,
@@ -299,4 +334,20 @@ function getInitialData() {
     issuanceTransactions: issuanceTxns,
     recentTransactions: issuanceTxns
   };
+}
+
+/**
+ * Server entry point to switch active organization
+ */
+function switchOrganization(orgId) {
+  setActiveOrganization(orgId);
+  return getInitialData();
+}
+
+/**
+ * Server entry point to create and provision a new organization
+ */
+function createNewOrganization(orgData) {
+  provisionOrganization(orgData);
+  return getInitialData();
 }
