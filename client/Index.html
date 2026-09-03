@@ -1169,11 +1169,15 @@
             <p class="font-body-sm text-on-surface-variant">Live multi-property catalog with SKU barcodes and valuation</p>
           </div>
           <div class="flex items-center flex-wrap gap-xs">
-            <button onclick="app.openItemModal()" class="px-4 py-2 bg-primary-container hover:bg-primary text-on-primary-container hover:text-on-primary font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow transition">
-              <span class="material-symbols-outlined text-[18px]">add</span>
-              <span>New Product Item</span>
+            <button onclick="app.openAddItemModal()" class="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-lg flex items-center gap-1.5 shadow transition cursor-pointer">
+              <span class="material-symbols-outlined text-[18px]">add_circle</span>
+              <span>+ Add New Item</span>
             </button>
-            <button onclick="app.exportCatalogCSV()" class="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-lg flex items-center gap-1 border border-outline-variant/20 transition" title="Export CSV">
+            <button onclick="app.openEditItemModal()" class="px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-outline-variant/20 transition cursor-pointer" title="Edit existing product details">
+              <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
+              <span>Edit Item</span>
+            </button>
+            <button onclick="app.exportCatalogCSV()" class="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-lg flex items-center gap-1 border border-outline-variant/20 transition cursor-pointer" title="Export CSV">
               <span class="material-symbols-outlined text-[18px]">download</span>
               <span>CSV</span>
             </button>
@@ -1495,107 +1499,323 @@
   <!-- MODALS -->
   <!-- ============================================================== -->
 
-  <!-- 1. ADD / EDIT ITEM MODAL -->
-  <div id="itemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-    <div class="modal-backdrop fixed inset-0" onclick="app.closeModal('itemModal')"></div>
-    <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto z-10 border border-outline-variant/20">
-      <div class="bg-surface-container-high px-6 py-4 flex items-center justify-between sticky top-0 z-10 border-b border-outline-variant/10">
-        <h3 id="itemModalTitle" class="text-base font-bold flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary text-[22px]">box</span>
-          <span>Add New Product Item</span>
-        </h3>
-        <button onclick="app.closeModal('itemModal')" class="text-on-surface-variant hover:text-on-surface text-xl">&times;</button>
-      </div>
-      <form id="itemForm" onsubmit="app.handleItemFormSubmit(event)" class="p-6 space-y-4 text-xs">
-        <input type="hidden" id="itemId">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block font-bold text-on-surface mb-1">SKU / Barcode <span class="text-outline font-normal">(Auto-generates if blank)</span>:</label>
-            <input type="text" id="itemSku" placeholder="e.g. DP-HK-001" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg uppercase text-on-surface focus:border-primary">
+  <!-- ============================================================== -->
+  <!-- 1A. ADD NEW ITEM MODAL -->
+  <!-- ============================================================== -->
+  <div id="addItemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-md" onclick="app.closeModal('addItemModal')"></div>
+    <div class="relative bg-[#060609] text-on-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto z-10 border border-white/20 my-6">
+      
+      <!-- Top Bar -->
+      <div class="bg-[#0b0b10] px-6 py-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-20">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[20px]">add_box</span>
           </div>
           <div>
-            <label class="block font-bold text-on-surface mb-1">Category *:</label>
-            <select id="itemCategory" required class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
-              <option value="Housekeeping & Linens">Housekeeping &amp; Linens</option>
-              <option value="Guest Amenities & Toiletries">Guest Amenities &amp; Toiletries</option>
-              <option value="Food & Beverage">Food &amp; Beverage</option>
-              <option value="Bar & Beverages">Bar &amp; Beverages</option>
-              <option value="Front Office & Stationery">Front Office &amp; Stationery</option>
-              <option value="Maintenance & Engineering">Maintenance &amp; Engineering</option>
-              <option value="Cleaning & Chemicals">Cleaning &amp; Chemicals</option>
-              <option value="Spa & Wellness">Spa &amp; Wellness</option>
+            <h3 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Add New Product Item</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Catalog Registration</span>
+            </h3>
+            <p class="text-[11px] text-on-surface-variant">Register unique SKU with auto-generated codes &amp; duplicate check</p>
+          </div>
+        </div>
+        <button onclick="app.closeModal('addItemModal')" class="text-on-surface-variant hover:text-white text-2xl px-2 cursor-pointer">&times;</button>
+      </div>
+
+      <form id="addItemForm" onsubmit="app.handleAddItemSubmit(event)" class="p-6 space-y-4 text-xs">
+        
+        <!-- Category Section: Select Existing or Enter New -->
+        <div class="p-4 rounded-xl bg-[#09090e] border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-white text-xs uppercase flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-primary">category</span>
+              <span>1. Item Category *</span>
+            </label>
+            <div class="flex items-center gap-3 text-xs">
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="addCategoryMode" value="existing" checked onchange="app.toggleAddCategoryMode('existing')" class="text-primary focus:ring-0">
+                <span class="text-white font-medium">Select Existing</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="addCategoryMode" value="new" onchange="app.toggleAddCategoryMode('new')" class="text-primary focus:ring-0">
+                <span class="text-emerald-400 font-bold">+ Enter New Category</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Existing Category Select -->
+          <div id="addCategorySelectContainer">
+            <select id="addItemCategorySelect" onchange="app.onAddItemCategorySelectChange()" class="w-full px-3 py-2 bg-[#040406] border border-white/20 rounded-lg text-xs font-semibold text-white focus:border-primary outline-none">
+              <!-- Populated by JS -->
             </select>
           </div>
+
+          <!-- New Category Input -->
+          <div id="addCategoryNewContainer" class="hidden space-y-1">
+            <input type="text" id="addItemCategoryNew" oninput="app.onAddItemCategoryNewInput(this.value)" placeholder="Enter new category name (e.g. Health &amp; Safety Essentials)..." class="w-full px-3 py-2 bg-[#040406] border border-emerald-500/40 rounded-lg text-xs font-semibold text-white focus:border-emerald-500 outline-none">
+            <div id="addItemCategoryError" class="text-rose-400 text-[11px] font-bold hidden flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">error</span>
+              <span id="addItemCategoryErrorText"></span>
+            </div>
+          </div>
+
+          <!-- Auto-generated Category Code -->
+          <div class="flex items-center justify-between pt-1 border-t border-white/5 text-[11px]">
+            <span class="text-on-surface-variant font-medium">Auto-generated Category Code (No Duplicate):</span>
+            <span id="addItemCategoryCodeBadge" class="font-mono font-bold text-primary px-2.5 py-0.5 rounded bg-primary/10 border border-primary/20">CAT_...</span>
+          </div>
         </div>
 
-        <div>
-          <label class="block font-bold text-on-surface mb-1">Item Name *:</label>
-          <input type="text" id="itemName" required placeholder="e.g. King Size Bed Sheet 400TC White" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface focus:border-primary">
-        </div>
+        <!-- Product Name & Auto-Generated Code -->
+        <div class="p-4 rounded-xl bg-[#09090e] border border-white/10 space-y-3">
+          <label class="font-bold text-white text-xs uppercase flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-emerald-400">inventory_2</span>
+            <span>2. Product Identification *</span>
+          </label>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label class="block font-bold text-on-surface mb-1">Unit of Measure *:</label>
-            <select id="itemUnit" required class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
+            <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">Enter Product Name * (Duplicate Not Allowed)</label>
+            <input type="text" id="addItemName" required oninput="app.onAddItemNameInput(this.value)" placeholder="e.g. 100% Egyptian Cotton Bath Towel White" class="w-full px-3 py-2 bg-[#040406] border border-white/20 rounded-lg text-xs font-semibold text-white focus:border-emerald-500 outline-none">
+            <div id="addItemNameError" class="text-rose-400 text-[11px] font-bold mt-1 hidden flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">error</span>
+              <span id="addItemNameErrorText"></span>
+            </div>
+          </div>
+
+          <!-- Auto-generated Product Code -->
+          <div class="flex items-center justify-between pt-2 border-t border-white/5 text-[11px]">
+            <span class="text-on-surface-variant font-medium">Auto-generated Product Code / SKU (No Duplicate):</span>
+            <span id="addItemCodeBadge" class="font-mono font-bold text-emerald-400 px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">PRD_...</span>
+          </div>
+        </div>
+
+        <!-- UOM, Price & Tax Rate -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- UOM -->
+          <div>
+            <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">Select or Enter UOM *</label>
+            <select id="addItemUomSelect" onchange="app.onAddItemUomSelectChange(this.value)" class="w-full px-3 py-2 bg-[#08080c] border border-white/20 rounded-lg text-xs text-white focus:border-primary outline-none">
               <option value="Pcs">Pcs</option>
+              <option value="Kg">Kg</option>
+              <option value="Ltr">Ltr</option>
               <option value="Bottles">Bottles</option>
-              <option value="Bags">Bags</option>
               <option value="Boxes">Boxes</option>
               <option value="Packs">Packs</option>
+              <option value="Mtr">Mtr</option>
+              <option value="Set">Set</option>
+              <option value="Tins">Tins</option>
+              <option value="Bags">Bags</option>
               <option value="Reams">Reams</option>
               <option value="Cans">Cans</option>
               <option value="Drums">Drums</option>
-              <option value="Kg">Kg</option>
-              <option value="Liters">Liters</option>
-              <option value="Tins">Tins</option>
-              <option value="Cards">Cards</option>
+              <option value="CUSTOM">+ Enter Custom UOM...</option>
+            </select>
+            <input type="text" id="addItemCustomUom" placeholder="Type custom unit..." class="hidden mt-1.5 w-full px-3 py-1.5 bg-[#040406] border border-primary/40 rounded-lg text-xs text-white">
+          </div>
+
+          <!-- Initial Price -->
+          <div>
+            <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">Unit Price / Cost (₹) *</label>
+            <input type="number" id="addItemRate" required min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2 bg-[#08080c] border border-white/20 rounded-lg text-xs font-mono font-bold text-white text-right focus:border-primary outline-none">
+          </div>
+
+          <!-- Tax Rate -->
+          <div>
+            <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">Tax Rate % *</label>
+            <select id="addItemTaxSelect" onchange="app.onAddItemTaxSelectChange(this.value)" class="w-full px-3 py-2 bg-[#08080c] border border-white/20 rounded-lg text-xs text-white focus:border-primary outline-none">
+              <option value="0">0% (Nil / Exempt)</option>
+              <option value="5">5% (Concessional)</option>
+              <option value="12">12% (Standard 1)</option>
+              <option value="18" selected>18% (Standard 2)</option>
+              <option value="28">28% (Higher / Luxury)</option>
+              <option value="CUSTOM">Custom %...</option>
+            </select>
+            <input type="number" id="addItemCustomTax" min="0" max="100" step="0.1" value="18" class="hidden mt-1.5 w-full px-3 py-1.5 bg-[#040406] border border-primary/40 rounded-lg text-xs font-mono text-center text-white">
+          </div>
+        </div>
+
+        <!-- Initial Stock Distribution (Optional) -->
+        <div class="p-3.5 rounded-xl bg-[#09090e] border border-white/10 space-y-2">
+          <label class="block font-bold text-on-surface-variant text-[11px] uppercase">Initial Stock Across Stores (Optional):</label>
+          <div class="grid grid-cols-3 gap-2 text-xs">
+            <div>
+              <span class="text-primary text-[10px] block font-semibold">Central Depot</span>
+              <input type="number" id="addItemCentralStock" min="0" value="0" class="w-full px-2 py-1.5 bg-[#040406] border border-white/15 rounded text-center font-mono font-bold text-white">
+            </div>
+            <div>
+              <span class="text-secondary text-[10px] block font-semibold">Store 1</span>
+              <input type="number" id="addItemStore1Stock" min="0" value="0" class="w-full px-2 py-1.5 bg-[#040406] border border-white/15 rounded text-center font-mono font-bold text-white">
+            </div>
+            <div>
+              <span class="text-tertiary text-[10px] block font-semibold">Store 2</span>
+              <input type="number" id="addItemStore2Stock" min="0" value="0" class="w-full px-2 py-1.5 bg-[#040406] border border-white/15 rounded text-center font-mono font-bold text-white">
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="flex items-center justify-between pt-4 border-t border-white/10">
+          <button type="button" onclick="app.closeModal('addItemModal')" class="px-4 py-2 border border-white/20 rounded-lg font-semibold text-on-surface-variant hover:text-white hover:bg-white/5 transition cursor-pointer">Cancel</button>
+          <button type="submit" id="addItemSubmitBtn" class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/25 transition flex items-center gap-1.5 cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">save</span>
+            <span>Save Product Item</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 1B. EDIT ITEM MODAL (Price Restricted, Fetch Everything, Discontinue Support) -->
+  <!-- ============================================================== -->
+  <div id="editItemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="modal-backdrop fixed inset-0 bg-black/80 backdrop-blur-md" onclick="app.closeModal('editItemModal')"></div>
+    <div class="relative bg-[#060609] text-on-surface rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto z-10 border border-white/20 my-6">
+      
+      <!-- Top Bar -->
+      <div class="bg-[#0b0b10] px-6 py-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-20">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[20px]">edit_note</span>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Edit Inventory Item</span>
+              <span id="editItemStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Active</span>
+            </h3>
+            <p class="text-[11px] text-on-surface-variant">Update product name &amp; category. Price editing is strictly locked.</p>
+          </div>
+        </div>
+        <button onclick="app.closeModal('editItemModal')" class="text-on-surface-variant hover:text-white text-2xl px-2 cursor-pointer">&times;</button>
+      </div>
+
+      <form id="editItemForm" onsubmit="app.handleEditItemSubmit(event)" class="p-6 space-y-4 text-xs">
+        
+        <!-- Selection Bar: Select Category OR Select Item (Auto-fill Category if item selected first) -->
+        <div class="p-4 rounded-xl bg-[#09090e] border border-white/10 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">1. Select Category:</label>
+              <select id="editItemCategorySelect" onchange="app.onEditCategorySelectChange()" class="w-full px-3 py-2 bg-[#040406] border border-white/20 rounded-lg text-xs font-semibold text-white focus:border-amber-400 outline-none">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">2. Select Item * (Auto-fills category):</label>
+              <select id="editItemSelect" required onchange="app.onEditItemSelectChange()" class="w-full px-3 py-2 bg-[#040406] border border-white/20 rounded-lg text-xs font-semibold text-white focus:border-amber-400 outline-none">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discontinue Notice Banner (If Discontinued) -->
+        <div id="editItemDiscontinuedAlert" class="hidden p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-rose-400">warning</span>
+            <span class="font-bold">This product is DISCONTINUED. Purchasing this item in Purchase Entry is prohibited.</span>
+          </div>
+        </div>
+
+        <!-- Editable Section: Product Name & Category Change -->
+        <div class="p-4 rounded-xl bg-[#09090e] border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-white text-xs uppercase flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-amber-400">edit</span>
+              <span>Editable Attributes (Name &amp; Category Only)</span>
+            </label>
+            <span class="text-[10px] text-emerald-400 font-bold uppercase">Editable</span>
+          </div>
+
+          <div>
+            <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">Product Name * (Duplicate Not Allowed):</label>
+            <input type="text" id="editItemName" required oninput="app.onEditItemNameInput(this.value)" placeholder="Product name..." class="w-full px-3 py-2 bg-[#040406] border border-white/20 rounded-lg text-xs font-semibold text-white focus:border-amber-400 outline-none">
+            <div id="editItemNameError" class="text-rose-400 text-[11px] font-bold mt-1 hidden flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">error</span>
+              <span id="editItemNameErrorText"></span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-on-surface-variant text-[11px] uppercase mb-1">Assigned Category *:</label>
+            <select id="editItemChangeCategory" onchange="app.onEditItemCategoryChange()" class="w-full px-3 py-2 bg-[#040406] border border-white/20 rounded-lg text-xs font-semibold text-white focus:border-amber-400 outline-none">
+              <!-- Populated by JS -->
             </select>
           </div>
-          <div>
-            <label class="block font-bold text-on-surface mb-1">Min Stock Alert Level *:</label>
-            <input type="number" id="itemMinStock" min="0" required placeholder="e.g. 20" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
+        </div>
+
+        <!-- Fetched Read-Only Details: Complete Product Info with Price Restricted -->
+        <div class="p-4 rounded-xl bg-[#07070b] border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-on-surface-variant text-xs uppercase flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-on-surface-variant">lock</span>
+              <span>Locked System Data (Price &amp; Ledgers Restricted)</span>
+            </span>
+            <span class="text-[10px] text-on-surface-variant font-mono">Ledger Protected</span>
           </div>
-          <div>
-            <label class="block font-bold text-on-surface mb-1">Unit Cost *:</label>
-            <input type="number" id="itemUnitCost" min="0" step="0.01" required placeholder="0.00" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
+
+          <!-- Price & Tax Protected Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-on-surface-variant text-[10px] uppercase mb-0.5">Item Code / SKU</label>
+              <input type="text" id="editItemCode" readonly class="w-full px-2.5 py-1.5 bg-[#020204] border border-white/10 rounded text-xs font-mono font-bold text-on-surface-variant outline-none">
+            </div>
+            <div>
+              <label class="block text-on-surface-variant text-[10px] uppercase mb-0.5 flex items-center gap-1">
+                <span>Unit Price / Rate</span>
+                <span class="text-rose-400 font-bold text-[9px]">(Locked 🔒)</span>
+              </label>
+              <input type="text" id="editItemRate" readonly disabled class="w-full px-2.5 py-1.5 bg-[#020204] border border-white/10 rounded text-xs font-mono font-bold text-amber-300 text-right outline-none cursor-not-allowed">
+            </div>
+            <div>
+              <label class="block text-on-surface-variant text-[10px] uppercase mb-0.5">Tax Rate % / UOM</label>
+              <input type="text" id="editItemTaxUom" readonly class="w-full px-2.5 py-1.5 bg-[#020204] border border-white/10 rounded text-xs font-mono text-center text-on-surface-variant outline-none">
+            </div>
+          </div>
+
+          <!-- Stock Summary Across Stores -->
+          <div class="grid grid-cols-4 gap-2 text-center pt-2 border-t border-white/5">
+            <div class="p-2 rounded bg-[#030306] border border-white/5">
+              <span class="text-[10px] text-primary block">Central Depot</span>
+              <span id="editItemCentralStock" class="font-mono font-bold text-white text-xs">0</span>
+            </div>
+            <div class="p-2 rounded bg-[#030306] border border-white/5">
+              <span class="text-[10px] text-secondary block">Store 1</span>
+              <span id="editItemStore1Stock" class="font-mono font-bold text-white text-xs">0</span>
+            </div>
+            <div class="p-2 rounded bg-[#030306] border border-white/5">
+              <span class="text-[10px] text-tertiary block">Store 2</span>
+              <span id="editItemStore2Stock" class="font-mono font-bold text-white text-xs">0</span>
+            </div>
+            <div class="p-2 rounded bg-[#030306] border border-white/5">
+              <span class="text-[10px] text-emerald-400 block">Total Stock</span>
+              <span id="editItemTotalStock" class="font-mono font-extrabold text-emerald-400 text-xs">0</span>
+            </div>
           </div>
         </div>
 
-        <!-- Property Stocks Initial Setup -->
-        <div class="bg-surface-container-high p-4 rounded-xl border border-outline-variant/10">
-          <label class="block font-bold text-on-surface mb-2 uppercase font-label-caps">Stock Quantities Across Stores:</label>
-          <div class="grid grid-cols-3 gap-3">
-            <div>
-              <span class="text-primary text-[11px] block font-medium">Central Depot:</span>
-              <input type="number" id="itemCentralStock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
-            </div>
-            <div>
-              <span class="text-secondary text-[11px] block font-medium">Store 1 (Main):</span>
-              <input type="number" id="itemStore1Stock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
-            </div>
-            <div>
-              <span class="text-tertiary text-[11px] block font-medium">Store 2 (Outlet):</span>
-              <input type="number" id="itemStore2Stock" min="0" value="0" class="w-full px-2 py-1.5 bg-surface-container border border-outline-variant/20 rounded-lg text-center font-bold text-on-surface">
-            </div>
+        <!-- Discontinue Button Section -->
+        <div class="flex items-center justify-between p-3.5 rounded-xl bg-[#08080c] border border-white/10">
+          <div>
+            <span class="font-bold text-white block">Item Availability Status:</span>
+            <span class="text-[11px] text-on-surface-variant">Discontinuing blocks future purchases in Purchase Entry.</span>
           </div>
+          <button type="button" id="editItemDiscontinueBtn" onclick="app.toggleDiscontinueCurrentItem()" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
+            <!-- Populated by JS -->
+          </button>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block font-bold text-on-surface mb-1">Primary Supplier:</label>
-            <select id="itemSupplier" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
-            </select>
-          </div>
-          <div>
-            <label class="block font-bold text-on-surface mb-1">Bin / Shelf Location:</label>
-            <input type="text" id="itemStorageLocation" placeholder="e.g. Aisle 2 - Shelf B" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
-          </div>
+        <!-- Footer Actions -->
+        <div class="flex items-center justify-between pt-4 border-t border-white/10">
+          <button type="button" onclick="app.closeModal('editItemModal')" class="px-4 py-2 border border-white/20 rounded-lg font-semibold text-on-surface-variant hover:text-white hover:bg-white/5 transition cursor-pointer">Cancel</button>
+          <button type="submit" id="editItemSubmitBtn" class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-xl shadow-lg shadow-amber-500/25 transition flex items-center gap-1.5 cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">save</span>
+            <span>Save Changes</span>
+          </button>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-4 border-t border-outline-variant/10">
-          <button type="button" onclick="app.closeModal('itemModal')" class="px-4 py-2 border border-outline-variant/20 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-high">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-primary-container text-on-primary-container rounded-lg font-bold shadow">Save Item</button>
-        </div>
       </form>
     </div>
   </div>

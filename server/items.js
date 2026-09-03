@@ -88,8 +88,10 @@ function saveItem(itemData) {
 
   const data = sheet.getDataRange().getValues();
   let itemCode = itemData.code || itemData.sku || itemData.id ? String(itemData.code || itemData.sku || itemData.id).trim().toUpperCase() : '';
-  let targetRow = -1;
+  const prodName = String(itemData.name || itemData.description || '').trim();
+  if (!prodName) throw new Error('Product Name is required.');
 
+  let targetRow = -1;
   if (itemCode && data.length > 1) {
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).toUpperCase() === itemCode) {
@@ -99,45 +101,91 @@ function saveItem(itemData) {
     }
   }
 
-  const rate = Number(itemData.rate || itemData.unitCost) || 0;
-  const tax = Number(itemData.taxPercent) || 0;
-  const minStock = Number(itemData.minStock) || 0;
-  const stockS001 = Number(itemData.stockS001) || 0;
-  const stockS002 = Number(itemData.stockS002) || 0;
-  const centralStock = Number(itemData.centralStock) || 0;
-  const totalStock = stockS001 + stockS002 + centralStock;
-  const totalVal = totalStock * rate;
+  // Duplicate product name validation (case-insensitive)
+  const lowerName = prodName.toLowerCase();
+  for (let i = 1; i < data.length; i++) {
+    if (i + 1 !== targetRow) {
+      if (String(data[i][1]).trim().toLowerCase() === lowerName) {
+        throw new Error(`Product name "${prodName}" already exists! Duplicate product names are not allowed.`);
+      }
+    }
+  }
+
+  const category = String(itemData.category || 'General').trim();
+  let categoryCode = itemData.categoryCode ? String(itemData.categoryCode).trim().toUpperCase() : '';
+  if (!categoryCode) {
+    categoryCode = 'CAT_' + category.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+  }
+
   const nowIso = new Date().toISOString();
 
   if (targetRow > 1) {
+    // EDITING EXISTING ITEM:
+    // Price edition is restricted completely! Preserve existing rate, tax, stock, and uom from sheet.
+    const existingRow = data[targetRow - 1];
+    const preservedUom = existingRow[4] || itemData.unit || itemData.uom || 'Pcs';
+    const preservedRate = Number(existingRow[5]) || 0; // Price locked completely!
+    const preservedTax = Number(existingRow[6]) || 0;
+    const minStock = Number(existingRow[7]) || 0;
+    const stockS001 = Number(existingRow[8]) || 0;
+    const stockS002 = Number(existingRow[9]) || 0;
+    const centralStock = Number(existingRow[10]) || 0;
+    const totalStock = stockS001 + stockS002 + centralStock;
+    const totalVal = totalStock * preservedRate;
+    const supplier = existingRow[13] || '';
+    const status = itemData.status || existingRow[14] || 'Active';
+
     sheet.getRange(targetRow, 1, 1, 16).setValues([[
       itemCode,
-      itemData.name || itemData.description,
-      itemData.category,
-      itemData.categoryCode || ('CAT_' + String(itemData.category).slice(0, 3).toUpperCase()),
-      itemData.unit || itemData.uom || 'Pcs',
-      rate,
-      tax,
+      prodName, // ONLY Name & Category are changed!
+      category,
+      categoryCode,
+      preservedUom,
+      preservedRate, // Restricted completely!
+      preservedTax,
       minStock,
       stockS001,
       stockS002,
       centralStock,
       totalStock,
       totalVal,
-      itemData.supplierCode || itemData.supplier || '',
-      itemData.status || 'Active',
+      supplier,
+      status,
       nowIso
     ]]);
+
+    return { success: true, itemCode: itemCode, mode: 'updated', status: status };
   } else {
+    // ADDING NEW ITEM:
     if (!itemCode) {
-      itemCode = 'ITM_' + String(data.length).padStart(3, '0');
+      const catPrefix = categoryCode.replace(/^CAT_/, '').slice(0, 3) || 'GEN';
+      itemCode = 'PRD_' + catPrefix + '_' + String(data.length).padStart(3, '0');
     }
+
+    // Check duplicate item code
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toUpperCase() === itemCode) {
+        throw new Error(`Item Code "${itemCode}" already exists! Duplicates are not allowed.`);
+      }
+    }
+
+    const rate = Number(itemData.rate || itemData.unitCost) || 0;
+    const tax = Number(itemData.taxPercent) || 0;
+    const minStock = Number(itemData.minStock) || 0;
+    const stockS001 = Number(itemData.stockS001) || 0;
+    const stockS002 = Number(itemData.stockS002) || 0;
+    const centralStock = Number(itemData.centralStock) || 0;
+    const totalStock = stockS001 + stockS002 + centralStock;
+    const totalVal = totalStock * rate;
+    const uom = String(itemData.unit || itemData.uom || 'Pcs').trim();
+    const status = itemData.status || 'Active';
+
     sheet.appendRow([
       itemCode,
-      itemData.name || itemData.description,
-      itemData.category,
-      itemData.categoryCode || ('CAT_' + String(itemData.category).slice(0, 3).toUpperCase()),
-      itemData.unit || itemData.uom || 'Pcs',
+      prodName,
+      category,
+      categoryCode,
+      uom,
       rate,
       tax,
       minStock,
@@ -147,12 +195,29 @@ function saveItem(itemData) {
       totalStock,
       totalVal,
       itemData.supplierCode || itemData.supplier || '',
-      itemData.status || 'Active',
+      status,
       nowIso
     ]);
-  }
 
-  return { success: true, itemCode: itemCode };
+    return { success: true, itemCode: itemCode, mode: 'created', status: status };
+  }
+}
+
+function setItemStatus(itemCode, newStatus) {
+  const ss = getWorkbook(WORKBOOKS.PRODUCT_MASTER);
+  const sheet = ss.getSheetByName('Product_Master') || ss.getSheets()[0];
+  if (!sheet) throw new Error('Product_Master sheet missing');
+
+  const data = sheet.getDataRange().getValues();
+  const code = String(itemCode).trim().toUpperCase();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toUpperCase() === code) {
+      sheet.getRange(i + 1, 15).setValue(newStatus);
+      sheet.getRange(i + 1, 16).setValue(new Date().toISOString());
+      return { success: true, itemCode: code, status: newStatus };
+    }
+  }
+  throw new Error('Item not found: ' + itemCode);
 }
 
 function deleteItem(itemCode) {
@@ -455,5 +520,20 @@ function recordTransferInvoice(transferData) {
     payableAmount: res.payableAmount,
     data: updatedData,
     message: res.message
+  };
+}
+
+/**
+ * Server entry point to toggle item active/discontinued status
+ */
+function updateItemStatus(itemCode, newStatus) {
+  const res = setItemStatus(itemCode, newStatus);
+  const updatedData = getInitialData();
+  return {
+    success: true,
+    itemCode: res.itemCode,
+    status: res.status,
+    data: updatedData,
+    message: `Item ${res.itemCode} is now marked as ${res.status}.`
   };
 }

@@ -1390,28 +1390,34 @@ const app = {
       const isOut = total === 0;
       const isLow = !isOut && total <= min;
 
-      let statusPill = isOut 
+      const isDiscontinued = String(item.status || 'Active').toLowerCase() === 'discontinued';
+      let statusPill = isDiscontinued
+        ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500" title="Discontinued Item"></span>`
+        : isOut 
         ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-error" title="Out of Stock"></span>`
         : isLow 
         ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-tertiary animate-pulse" title="Low Stock Warning"></span>`
         : `<span class="inline-block w-2.5 h-2.5 rounded-full bg-secondary" title="Stock Healthy"></span>`;
 
       return `
-        <tr class="hover:bg-surface-container-high transition border-b border-outline-variant/10 text-on-surface">
+        <tr class="hover:bg-surface-container-high transition border-b border-outline-variant/10 text-on-surface ${isDiscontinued ? 'opacity-85' : ''}">
           <!-- SKU / Barcode -->
           <td class="py-3 px-4">
             <div class="flex items-center space-x-2">
               ${statusPill}
-              <button onclick="app.openBarcodeModal('${item.id}')" title="Click to view/print barcode" class="font-data-tabular text-xs font-bold text-primary hover:underline">
-                ${item.sku}
+              <button onclick="app.openBarcodeModal('${item.id || item.code}')" title="Click to view/print barcode" class="font-data-tabular text-xs font-bold text-primary hover:underline">
+                ${item.sku || item.code || item.id}
               </button>
             </div>
-            <div class="text-[10px] text-outline ml-4 font-mono">${item.id}</div>
+            <div class="text-[10px] text-outline ml-4 font-mono">${item.id || item.code}</div>
           </td>
 
           <!-- Name & Category -->
           <td class="py-3 px-4">
-            <div class="font-bold text-on-surface text-xs sm:text-sm">${item.name}</div>
+            <div class="font-bold text-on-surface text-xs sm:text-sm flex items-center flex-wrap gap-1.5">
+              <span>${item.name}</span>
+              ${isDiscontinued ? `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">Discontinued</span>` : ''}
+            </div>
             <div class="flex items-center space-x-2 text-[11px] text-on-surface-variant mt-0.5">
               <span class="bg-surface-container-highest text-on-surface-variant px-1.5 py-0.5 rounded text-[10px] font-medium">${item.category}</span>
               ${item.supplier ? `<span class="truncate max-w-[140px] text-outline text-[11px] flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">local_shipping</span>${item.supplier}</span>` : ''}
@@ -1446,19 +1452,24 @@ const app = {
           <!-- Actions -->
           <td class="py-3 px-4 text-center">
             <div class="inline-flex items-center space-x-1">
-              <button onclick="app.openPurchaseInvoiceModal('${item.id}')" title="Purchase Entry Invoice" class="p-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition">
-                <span class="material-symbols-outlined text-[16px]">receipt_long</span>
-              </button>
-              <button onclick="app.openTransferInvoiceModal('${item.id}')" title="Transfer Entry Invoice" class="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 transition">
+              ${isDiscontinued 
+                ? `<button disabled title="Item Discontinued - Purchase Not Allowed" class="p-1 rounded bg-white/5 text-white/20 border border-white/10 cursor-not-allowed">
+                    <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+                  </button>`
+                : `<button onclick="app.openPurchaseInvoiceModal('${item.id || item.code}')" title="Purchase Entry Invoice" class="p-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition cursor-pointer">
+                    <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+                  </button>`
+              }
+              <button onclick="app.openTransferInvoiceModal('${item.id || item.code}')" title="Transfer Entry Invoice" class="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 transition cursor-pointer">
                 <span class="material-symbols-outlined text-[16px]">sync_alt</span>
               </button>
-              <button onclick="app.openBarcodeModal('${item.id}')" title="Print Barcode" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition border border-white/10">
+              <button onclick="app.openBarcodeModal('${item.id || item.code}')" title="Print Barcode" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition border border-white/10 cursor-pointer">
                 <span class="material-symbols-outlined text-[16px]">qr_code</span>
               </button>
-              <button onclick="app.editItem('${item.id}')" title="Edit Item" class="p-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition">
+              <button onclick="app.openEditItemModal('${item.id || item.code}')" title="Edit Item (Name &amp; Category)" class="p-1 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition cursor-pointer">
                 <span class="material-symbols-outlined text-[16px]">edit</span>
               </button>
-              <button onclick="app.confirmDeleteItem('${item.id}')" title="Delete Item" class="p-1 rounded bg-error-container/20 hover:bg-error-container/30 text-error transition">
+              <button onclick="app.confirmDeleteItem('${item.id || item.code}')" title="Delete Item" class="p-1 rounded bg-error-container/20 hover:bg-error-container/30 text-error transition cursor-pointer">
                 <span class="material-symbols-outlined text-[16px]">delete</span>
               </button>
             </div>
@@ -1852,80 +1863,593 @@ const app = {
     if (stockOutDept) stockOutDept.innerHTML = spOptions;
   },
 
-  // ITEM MODAL
-  openItemModal: function(item = null) {
-    const title = document.getElementById('itemModalTitle');
-    const form = document.getElementById('itemForm');
-    form.reset();
+  // ==============================================================
+  // 0A. ADD NEW PRODUCT ITEM ENGINE (NO DUPLICATES, AUTO CODES)
+  // ==============================================================
+  addCategoryMode: 'existing',
 
-    if (item) {
-      title.innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i> Edit Inventory Item`;
-      document.getElementById('itemId').value = item.id;
-      document.getElementById('itemSku').value = item.sku;
-      document.getElementById('itemName').value = item.name;
-      document.getElementById('itemCategory').value = item.category;
-      document.getElementById('itemUnit').value = item.unit;
-      document.getElementById('itemMinStock').value = item.minStock;
-      document.getElementById('itemUnitCost').value = item.unitCost;
-      document.getElementById('itemCentralStock').value = item.centralStock || 0;
-      document.getElementById('itemStore1Stock').value = item.stockS001 || 0;
-      document.getElementById('itemStore2Stock').value = item.stockS002 || 0;
-      document.getElementById('itemSupplier').value = item.supplier || '';
-      document.getElementById('itemStorageLocation').value = item.storageLocation || '';
-    } else {
-      title.innerHTML = `<i class="fa-solid fa-box text-amber-400 mr-2"></i> Add New Inventory Item`;
-      document.getElementById('itemId').value = '';
+  generateUniqueCategoryCode: function(categoryName) {
+    const raw = String(categoryName || 'General').trim().replace(/[^a-zA-Z0-9]/g, '');
+    let prefix = raw.slice(0, 3).toUpperCase();
+    if (!prefix || prefix.length < 2) prefix = 'GEN';
+    let baseCode = 'CAT_' + prefix;
+
+    const items = this.state.items || [];
+    const existingCodes = new Set();
+    items.forEach(it => {
+      if (it.categoryCode) existingCodes.add(String(it.categoryCode).trim().toUpperCase());
+    });
+
+    if (!existingCodes.has(baseCode)) return baseCode;
+
+    let counter = 1;
+    while (existingCodes.has(`${baseCode}_${String(counter).padStart(2, '0')}`)) {
+      counter++;
+    }
+    return `${baseCode}_${String(counter).padStart(2, '0')}`;
+  },
+
+  generateUniqueProductCode: function(categoryCode) {
+    const prefix = (categoryCode || 'CAT_GEN').replace(/^CAT_/, '').slice(0, 3) || 'GEN';
+    const items = this.state.items || [];
+    const existingCodes = new Set();
+    items.forEach(it => {
+      const code = String(it.code || it.sku || it.id || '').trim().toUpperCase();
+      if (code) existingCodes.add(code);
+    });
+
+    let seq = items.length + 1;
+    let candidate = `PRD_${prefix}_${String(seq).padStart(3, '0')}`;
+    while (existingCodes.has(candidate)) {
+      seq++;
+      candidate = `PRD_${prefix}_${String(seq).padStart(3, '0')}`;
+    }
+    return candidate;
+  },
+
+  openAddItemModal: function() {
+    const form = document.getElementById('addItemForm');
+    if (form) form.reset();
+
+    this.addCategoryMode = 'existing';
+    this.toggleAddCategoryMode('existing');
+
+    const categories = this.getItemCategories();
+    const catSelect = document.getElementById('addItemCategorySelect');
+    if (catSelect) {
+      if (categories.length > 0) {
+        catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+      } else {
+        catSelect.innerHTML = `<option value="General">General</option>`;
+      }
     }
 
-    this.openModal('itemModal');
+    const firstCat = (catSelect && catSelect.value) ? catSelect.value : 'General';
+    const existingItem = (this.state.items || []).find(it => it.category === firstCat);
+    const catCode = existingItem && existingItem.categoryCode ? existingItem.categoryCode : this.generateUniqueCategoryCode(firstCat);
+
+    const catBadge = document.getElementById('addItemCategoryCodeBadge');
+    if (catBadge) catBadge.innerText = catCode;
+
+    const prdCode = this.generateUniqueProductCode(catCode);
+    const prdBadge = document.getElementById('addItemCodeBadge');
+    if (prdBadge) prdBadge.innerText = prdCode;
+
+    const catErr = document.getElementById('addItemCategoryError');
+    if (catErr) catErr.classList.add('hidden');
+    const nameErr = document.getElementById('addItemNameError');
+    if (nameErr) nameErr.classList.add('hidden');
+
+    this.openModal('addItemModal');
   },
 
-  editItem: function(itemId) {
-    const item = this.state.items.find(i => i.id === itemId);
-    if (item) this.openItemModal(item);
+  openItemModal: function(item = null) {
+    if (item) {
+      this.openEditItemModal(item.id || item.code);
+    } else {
+      this.openAddItemModal();
+    }
   },
 
-  handleItemFormSubmit: function(e) {
+  toggleAddCategoryMode: function(mode) {
+    this.addCategoryMode = mode;
+    const selectContainer = document.getElementById('addCategorySelectContainer');
+    const newContainer = document.getElementById('addCategoryNewContainer');
+    const catBadge = document.getElementById('addItemCategoryCodeBadge');
+    const prdBadge = document.getElementById('addItemCodeBadge');
+
+    if (mode === 'new') {
+      if (selectContainer) selectContainer.classList.add('hidden');
+      if (newContainer) newContainer.classList.remove('hidden');
+      const input = document.getElementById('addItemCategoryNew');
+      if (input) {
+        input.focus();
+        this.onAddItemCategoryNewInput(input.value);
+      }
+    } else {
+      if (selectContainer) selectContainer.classList.remove('hidden');
+      if (newContainer) newContainer.classList.add('hidden');
+      const err = document.getElementById('addItemCategoryError');
+      if (err) err.classList.add('hidden');
+      this.onAddItemCategorySelectChange();
+    }
+  },
+
+  onAddItemCategorySelectChange: function() {
+    const sel = document.getElementById('addItemCategorySelect');
+    const catName = sel ? sel.value : 'General';
+    const existing = (this.state.items || []).find(it => it.category === catName);
+    const catCode = existing && existing.categoryCode ? existing.categoryCode : this.generateUniqueCategoryCode(catName);
+
+    const catBadge = document.getElementById('addItemCategoryCodeBadge');
+    if (catBadge) catBadge.innerText = catCode;
+
+    const prdCode = this.generateUniqueProductCode(catCode);
+    const prdBadge = document.getElementById('addItemCodeBadge');
+    if (prdBadge) prdBadge.innerText = prdCode;
+  },
+
+  onAddItemCategoryNewInput: function(val) {
+    const trimmed = String(val || '').trim();
+    const errDiv = document.getElementById('addItemCategoryError');
+    const errText = document.getElementById('addItemCategoryErrorText');
+    const submitBtn = document.getElementById('addItemSubmitBtn');
+    const catBadge = document.getElementById('addItemCategoryCodeBadge');
+    const prdBadge = document.getElementById('addItemCodeBadge');
+
+    const lower = trimmed.toLowerCase();
+    const exists = this.getItemCategories().some(c => c.toLowerCase() === lower);
+
+    if (exists) {
+      if (errDiv) errDiv.classList.remove('hidden');
+      if (errText) errText.innerText = `Category "${trimmed}" already exists! Select it from the list above.`;
+      if (submitBtn) submitBtn.disabled = true;
+    } else {
+      if (errDiv) errDiv.classList.add('hidden');
+      if (submitBtn) submitBtn.disabled = false;
+    }
+
+    const catCode = this.generateUniqueCategoryCode(trimmed || 'General');
+    if (catBadge) catBadge.innerText = catCode;
+    const prdCode = this.generateUniqueProductCode(catCode);
+    if (prdBadge) prdBadge.innerText = prdCode;
+  },
+
+  onAddItemNameInput: function(val) {
+    const trimmed = String(val || '').trim();
+    const errDiv = document.getElementById('addItemNameError');
+    const errText = document.getElementById('addItemNameErrorText');
+    const submitBtn = document.getElementById('addItemSubmitBtn');
+
+    if (!trimmed) {
+      if (errDiv) errDiv.classList.add('hidden');
+      return;
+    }
+
+    const lower = trimmed.toLowerCase();
+    const exists = (this.state.items || []).some(it => String(it.name || it.description || '').trim().toLowerCase() === lower);
+
+    if (exists) {
+      if (errDiv) errDiv.classList.remove('hidden');
+      if (errText) errText.innerText = `Product "${trimmed}" already exists in catalog! Duplicate names are not allowed.`;
+      if (submitBtn) submitBtn.disabled = true;
+    } else {
+      if (errDiv) errDiv.classList.add('hidden');
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  },
+
+  onAddItemUomSelectChange: function(val) {
+    const customInput = document.getElementById('addItemCustomUom');
+    if (val === 'CUSTOM') {
+      if (customInput) {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+      }
+    } else {
+      if (customInput) customInput.classList.add('hidden');
+    }
+  },
+
+  onAddItemTaxSelectChange: function(val) {
+    const customTax = document.getElementById('addItemCustomTax');
+    if (val === 'CUSTOM') {
+      if (customTax) {
+        customTax.classList.remove('hidden');
+        customTax.focus();
+      }
+    } else {
+      if (customTax) customTax.classList.add('hidden');
+    }
+  },
+
+  handleAddItemSubmit: function(e) {
     e.preventDefault();
-    const itemData = {
-      id: document.getElementById('itemId').value,
-      sku: document.getElementById('itemSku').value.trim(),
-      name: document.getElementById('itemName').value.trim(),
-      category: document.getElementById('itemCategory').value,
-      unit: document.getElementById('itemUnit').value,
-      minStock: Number(document.getElementById('itemMinStock').value) || 0,
-      unitCost: Number(document.getElementById('itemUnitCost').value) || 0,
-      centralStock: Number(document.getElementById('itemCentralStock').value) || 0,
-      stockS001: Number(document.getElementById('itemStore1Stock').value) || 0,
-      stockS002: Number(document.getElementById('itemStore2Stock').value) || 0,
-      supplier: document.getElementById('itemSupplier').value,
-      storageLocation: document.getElementById('itemStorageLocation').value.trim()
+    const name = document.getElementById('addItemName').value.trim();
+    if (!name) {
+      this.showToast('Please enter a Product Name.', 'error');
+      return;
+    }
+
+    const lower = name.toLowerCase();
+    if ((this.state.items || []).some(it => String(it.name || it.description || '').trim().toLowerCase() === lower)) {
+      this.showToast(`Product "${name}" already exists! Duplicates are not allowed.`, 'error');
+      return;
+    }
+
+    let category = '';
+    if (this.addCategoryMode === 'new') {
+      category = document.getElementById('addItemCategoryNew').value.trim();
+      if (!category) {
+        this.showToast('Please enter a New Category name.', 'error');
+        return;
+      }
+      if (this.getItemCategories().some(c => c.toLowerCase() === category.toLowerCase())) {
+        this.showToast(`Category "${category}" already exists! Please select it from the list.`, 'error');
+        return;
+      }
+    } else {
+      category = document.getElementById('addItemCategorySelect').value;
+    }
+
+    const catCode = document.getElementById('addItemCategoryCodeBadge').innerText.trim();
+    const prdCode = document.getElementById('addItemCodeBadge').innerText.trim();
+
+    const uomSelect = document.getElementById('addItemUomSelect').value;
+    const uom = uomSelect === 'CUSTOM' ? (document.getElementById('addItemCustomUom').value.trim() || 'Pcs') : uomSelect;
+
+    const rate = parseFloat(document.getElementById('addItemRate').value) || 0;
+    const taxSelect = document.getElementById('addItemTaxSelect').value;
+    const taxPercent = taxSelect === 'CUSTOM' ? (parseFloat(document.getElementById('addItemCustomTax').value) || 0) : parseFloat(taxSelect);
+
+    const centralStock = Number(document.getElementById('addItemCentralStock').value) || 0;
+    const stockS001 = Number(document.getElementById('addItemStore1Stock').value) || 0;
+    const stockS002 = Number(document.getElementById('addItemStore2Stock').value) || 0;
+
+    const payload = {
+      code: prdCode,
+      sku: prdCode,
+      id: prdCode,
+      name: name,
+      category: category,
+      categoryCode: catCode,
+      unit: uom,
+      uom: uom,
+      rate: rate,
+      unitCost: rate,
+      taxPercent: taxPercent,
+      centralStock: centralStock,
+      stockS001: stockS001,
+      stockS002: stockS002,
+      minStock: 10,
+      status: 'Active'
     };
 
-    this.showLoading('Saving Item...', 'Updating catalog in Google Sheets');
+    this.showLoading('Saving New Product Item...', `Registering ${name} (${prdCode})`);
 
     if (this.isGasEnv()) {
       google.script.run
         .withSuccessHandler(function(res) {
           app.hideLoading();
-          app.closeModal('itemModal');
-          app.showToast('Item saved successfully: ' + itemData.name);
+          app.closeModal('addItemModal');
+          app.showToast(`Product item "${name}" created successfully with code ${prdCode}!`);
           app.loadInitialData(true);
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
           app.showToast('Error saving item: ' + err.message, 'error');
         })
-        .saveItem(itemData);
+        .saveItem(payload);
     } else {
-      this.hideLoading();
-      this.closeModal('itemModal');
-      this.showToast('Item saved (local mode)');
+      setTimeout(() => {
+        app.hideLoading();
+        app.closeModal('addItemModal');
+        app.showToast(`Product "${name}" saved (local mode)!`);
+      }, 500);
+    }
+  },
+
+  // ==============================================================
+  // 0B. EDIT INVENTORY ITEM ENGINE (PRICE RESTRICTED, DISCONTINUE SUPPORT)
+  // ==============================================================
+  currentEditingItemCode: null,
+
+  openEditItemModal: function(defaultItemCode = null) {
+    const items = this.state.items || [];
+    if (items.length === 0) {
+      this.showToast('No items in catalog to edit.', 'warning');
+      return;
+    }
+
+    const categories = this.getItemCategories();
+    const catSelect = document.getElementById('editItemCategorySelect');
+    if (catSelect) {
+      catSelect.innerHTML = `<option value="ALL">-- All Categories --</option>` +
+        categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    const changeCatSelect = document.getElementById('editItemChangeCategory');
+    if (changeCatSelect) {
+      changeCatSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    this.populateEditItemSelect('ALL', defaultItemCode);
+
+    if (defaultItemCode) {
+      const item = items.find(it => (it.code || it.id || it.sku) === defaultItemCode);
+      if (item) {
+        if (catSelect) catSelect.value = item.category || 'ALL';
+        this.populateEditItemSelect(item.category || 'ALL', defaultItemCode);
+        this.loadEditItemDetails(item);
+      }
+    } else {
+      const firstItem = items[0];
+      if (firstItem) {
+        if (catSelect) catSelect.value = firstItem.category || 'ALL';
+        this.loadEditItemDetails(firstItem);
+      }
+    }
+
+    this.openModal('editItemModal');
+  },
+
+  editItem: function(itemId) {
+    this.openEditItemModal(itemId);
+  },
+
+  populateEditItemSelect: function(categoryFilter, selectItemCode = null) {
+    const itemSelect = document.getElementById('editItemSelect');
+    if (!itemSelect) return;
+
+    const items = this.state.items || [];
+    const filtered = (categoryFilter && categoryFilter !== 'ALL')
+      ? items.filter(it => it.category === categoryFilter)
+      : items;
+
+    if (filtered.length === 0) {
+      itemSelect.innerHTML = `<option value="">-- No items in this category --</option>`;
+      return;
+    }
+
+    itemSelect.innerHTML = filtered.map(it => {
+      const code = it.code || it.id || it.sku;
+      const isSelected = selectItemCode ? (code === selectItemCode) : false;
+      const isDisc = String(it.status).toLowerCase() === 'discontinued';
+      return `<option value="${code}" ${isSelected ? 'selected' : ''}>[${code}] ${it.name || it.description} ${isDisc ? '(Discontinued)' : ''}</option>`;
+    }).join('');
+
+    if (selectItemCode) {
+      itemSelect.value = selectItemCode;
+    }
+  },
+
+  onEditCategorySelectChange: function() {
+    const catSelect = document.getElementById('editItemCategorySelect');
+    const selectedCategory = catSelect ? catSelect.value : 'ALL';
+    this.populateEditItemSelect(selectedCategory);
+
+    const itemSelect = document.getElementById('editItemSelect');
+    if (itemSelect && itemSelect.value) {
+      this.onEditItemSelectChange();
+    }
+  },
+
+  onEditItemSelectChange: function() {
+    const itemSelect = document.getElementById('editItemSelect');
+    if (!itemSelect) return;
+    const itemCode = itemSelect.value;
+    const item = (this.state.items || []).find(it => (it.code || it.id || it.sku) === itemCode);
+
+    if (item) {
+      const catSelect = document.getElementById('editItemCategorySelect');
+      if (catSelect && item.category) {
+        catSelect.value = item.category;
+      }
+      this.loadEditItemDetails(item);
+    }
+  },
+
+  loadEditItemDetails: function(item) {
+    if (!item) return;
+    this.currentEditingItemCode = item.code || item.id || item.sku;
+
+    const nameInput = document.getElementById('editItemName');
+    if (nameInput) nameInput.value = item.name || item.description || '';
+
+    const changeCatSelect = document.getElementById('editItemChangeCategory');
+    if (changeCatSelect && item.category) {
+      changeCatSelect.value = item.category;
+    }
+
+    const codeInput = document.getElementById('editItemCode');
+    if (codeInput) codeInput.value = this.currentEditingItemCode;
+
+    const rateInput = document.getElementById('editItemRate');
+    if (rateInput) rateInput.value = this.formatCurrency(item.rate || item.unitCost || 0) + ' (Locked 🔒)';
+
+    const taxUomInput = document.getElementById('editItemTaxUom');
+    if (taxUomInput) taxUomInput.value = `${item.taxPercent || 0}% GST / ${item.uom || item.unit || 'Pcs'}`;
+
+    const cStock = document.getElementById('editItemCentralStock');
+    if (cStock) cStock.innerText = item.centralStock || 0;
+
+    const s1Stock = document.getElementById('editItemStore1Stock');
+    if (s1Stock) s1Stock.innerText = item.stockS001 || 0;
+
+    const s2Stock = document.getElementById('editItemStore2Stock');
+    if (s2Stock) s2Stock.innerText = item.stockS002 || 0;
+
+    const totStock = document.getElementById('editItemTotalStock');
+    if (totStock) totStock.innerText = `${item.totalStock || 0} ${item.uom || item.unit || 'Pcs'}`;
+
+    const isDiscontinued = String(item.status || 'Active').toLowerCase() === 'discontinued';
+    const statusBadge = document.getElementById('editItemStatusBadge');
+    const discAlert = document.getElementById('editItemDiscontinuedAlert');
+    const discBtn = document.getElementById('editItemDiscontinueBtn');
+
+    if (isDiscontinued) {
+      if (statusBadge) {
+        statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+        statusBadge.innerText = 'Discontinued';
+      }
+      if (discAlert) discAlert.classList.remove('hidden');
+      if (discBtn) {
+        discBtn.className = 'px-4 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm';
+        discBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">check_circle</span><span>Reactivate Item</span>`;
+      }
+    } else {
+      if (statusBadge) {
+        statusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        statusBadge.innerText = 'Active';
+      }
+      if (discAlert) discAlert.classList.add('hidden');
+      if (discBtn) {
+        discBtn.className = 'px-4 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm';
+        discBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">block</span><span>Discontinue Item</span>`;
+      }
+    }
+
+    const errDiv = document.getElementById('editItemNameError');
+    if (errDiv) errDiv.classList.add('hidden');
+    const submitBtn = document.getElementById('editItemSubmitBtn');
+    if (submitBtn) submitBtn.disabled = false;
+  },
+
+  onEditItemNameInput: function(val) {
+    const trimmed = String(val || '').trim();
+    const errDiv = document.getElementById('editItemNameError');
+    const errText = document.getElementById('editItemNameErrorText');
+    const submitBtn = document.getElementById('editItemSubmitBtn');
+
+    if (!trimmed) {
+      if (errDiv) errDiv.classList.add('hidden');
+      return;
+    }
+
+    const lower = trimmed.toLowerCase();
+    const currentCode = this.currentEditingItemCode;
+
+    const exists = (this.state.items || []).some(it => {
+      const itCode = it.code || it.id || it.sku;
+      return itCode !== currentCode && String(it.name || it.description || '').trim().toLowerCase() === lower;
+    });
+
+    if (exists) {
+      if (errDiv) errDiv.classList.remove('hidden');
+      if (errText) errText.innerText = `Another product already has name "${trimmed}"! Duplicate product names are not allowed.`;
+      if (submitBtn) submitBtn.disabled = true;
+    } else {
+      if (errDiv) errDiv.classList.add('hidden');
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  },
+
+  toggleDiscontinueCurrentItem: function() {
+    const itemCode = this.currentEditingItemCode;
+    if (!itemCode) return;
+    const item = (this.state.items || []).find(it => (it.code || it.id || it.sku) === itemCode);
+    if (!item) return;
+
+    const isDisc = String(item.status || 'Active').toLowerCase() === 'discontinued';
+    const targetStatus = isDisc ? 'Active' : 'Discontinued';
+
+    if (!isDisc) {
+      if (!confirm(`Are you sure you want to DISCONTINUE "${item.name}" (${itemCode})?\n\nOnce discontinued, purchase entries for this item will be strictly prohibited.`)) {
+        return;
+      }
+    }
+
+    this.showLoading(`${targetStatus === 'Discontinued' ? 'Discontinuing' : 'Reactivating'} Item...`, `Updating status to ${targetStatus}`);
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.showToast(`Item ${itemCode} is now ${targetStatus}!`);
+          app.closeModal('editItemModal');
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Status update error: ' + err.message, 'error');
+        })
+        .updateItemStatus(itemCode, targetStatus);
+    } else {
+      setTimeout(() => {
+        item.status = targetStatus;
+        app.hideLoading();
+        app.showToast(`Item ${itemCode} marked ${targetStatus} (local mode)!`);
+        app.loadEditItemDetails(item);
+      }, 400);
+    }
+  },
+
+  handleEditItemSubmit: function(e) {
+    e.preventDefault();
+    const itemCode = this.currentEditingItemCode;
+    if (!itemCode) {
+      this.showToast('No item selected for editing.', 'error');
+      return;
+    }
+
+    const newName = document.getElementById('editItemName').value.trim();
+    if (!newName) {
+      this.showToast('Product Name cannot be empty.', 'error');
+      return;
+    }
+
+    const lower = newName.toLowerCase();
+    const exists = (this.state.items || []).some(it => {
+      const itCode = it.code || it.id || it.sku;
+      return itCode !== itemCode && String(it.name || it.description || '').trim().toLowerCase() === lower;
+    });
+    if (exists) {
+      this.showToast(`Another product already has name "${newName}"! Duplicate names are not allowed.`, 'error');
+      return;
+    }
+
+    const newCategory = document.getElementById('editItemChangeCategory').value;
+    const item = (this.state.items || []).find(it => (it.code || it.id || it.sku) === itemCode) || {};
+
+    const payload = {
+      code: itemCode,
+      sku: itemCode,
+      id: itemCode,
+      name: newName,
+      description: newName,
+      category: newCategory,
+      status: item.status || 'Active'
+    };
+
+    this.showLoading('Saving Item Changes...', `Updating ${newName} (${itemCode})`);
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          app.closeModal('editItemModal');
+          app.showToast(`Item ${itemCode} updated successfully!`);
+          app.loadInitialData(true);
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Error saving item: ' + err.message, 'error');
+        })
+        .saveItem(payload);
+    } else {
+      setTimeout(() => {
+        item.name = newName;
+        item.category = newCategory;
+        app.hideLoading();
+        app.closeModal('editItemModal');
+        app.showToast(`Item ${itemCode} updated (local mode)!`);
+        app.filterCatalog();
+      }, 500);
     }
   },
 
   confirmDeleteItem: function(itemId) {
-    const item = this.state.items.find(i => i.id === itemId);
+    const item = this.state.items.find(i => (i.code || i.id || i.sku) === itemId);
     const name = item ? item.name : itemId;
 
     if (!confirm(`Are you sure you want to delete "${name}" from inventory?`)) return;
@@ -2030,17 +2554,27 @@ const app = {
     const categories = this.getItemCategories();
     const items = this.state.items || [];
 
+    // Filter out discontinued items from purchase invoice
+    const purchasableItems = items.filter(i => String(i.status || 'Active').toLowerCase() !== 'discontinued');
+
     let targetItem = null;
     if (defaultItemId) {
-      targetItem = items.find(i => i.id === defaultItemId || i.code === defaultItemId);
+      targetItem = purchasableItems.find(i => i.id === defaultItemId || i.code === defaultItemId);
+      if (!targetItem) {
+        const anyItem = items.find(i => i.id === defaultItemId || i.code === defaultItemId);
+        if (anyItem && String(anyItem.status || 'Active').toLowerCase() === 'discontinued') {
+          this.showToast(`Purchase not allowed! "${anyItem.name}" has been discontinued.`, 'error');
+          return;
+        }
+      }
     }
 
     const selectedCategory = targetItem ? targetItem.category : 'ALL';
     
-    // Filter products for this row
+    // Filter products for this row (purchasable only)
     const filteredItems = (selectedCategory && selectedCategory !== 'ALL')
-      ? items.filter(i => String(i.category).trim() === selectedCategory)
-      : items;
+      ? purchasableItems.filter(i => String(i.category).trim() === selectedCategory)
+      : purchasableItems;
 
     const rowObj = {
       id: rowId,
@@ -2110,13 +2644,13 @@ const app = {
     if (!catSelect || !prodSelect) return;
 
     const selectedCategory = catSelect.value;
-    const items = this.state.items || [];
+    const items = (this.state.items || []).filter(i => String(i.status || 'Active').toLowerCase() !== 'discontinued');
     const filtered = (selectedCategory && selectedCategory !== 'ALL')
       ? items.filter(i => String(i.category).trim() === selectedCategory)
       : items;
 
     if (filtered.length === 0) {
-      prodSelect.innerHTML = `<option value="">-- No products in this category --</option>`;
+      prodSelect.innerHTML = `<option value="">-- No purchasable products in this category --</option>`;
     } else {
       prodSelect.innerHTML = filtered.map(i => `<option value="${i.code || i.id}">[${i.code || i.id}] ${i.name || i.description}</option>`).join('');
     }
@@ -2243,6 +2777,8 @@ const app = {
     const tbody = document.getElementById('piTableBody');
     const rows = tbody ? tbody.querySelectorAll('tr') : [];
     const items = [];
+    let hasDiscontinued = false;
+    let discontinuedItemName = '';
 
     rows.forEach(tr => {
       const prodSelect = tr.querySelector('.pi-prod-select');
@@ -2262,6 +2798,13 @@ const app = {
       const quantity = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
 
       if (itemCode && quantity > 0) {
+        // Discontinue check
+        const prodObj = (this.state.items || []).find(i => (i.code || i.id || i.sku) === itemCode);
+        if (prodObj && String(prodObj.status || 'Active').toLowerCase() === 'discontinued') {
+          hasDiscontinued = true;
+          discontinuedItemName = prodObj.name || itemCode;
+        }
+
         items.push({
           itemCode: itemCode,
           itemName: itemName,
@@ -2273,6 +2816,11 @@ const app = {
         });
       }
     });
+
+    if (hasDiscontinued) {
+      this.showToast(`Purchase not allowed! Product "${discontinuedItemName}" has been discontinued.`, 'error');
+      return;
+    }
 
     if (items.length === 0) {
       this.showToast('Please add at least one item with quantity greater than 0.', 'error');

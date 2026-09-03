@@ -37,6 +37,10 @@ function processSupplierPurchase(txn) {
     }
 
     const itemDesc = String(itemRow[1]);
+    const itemStatus = String(itemRow[14] || 'Active').trim().toLowerCase();
+    if (itemStatus === 'discontinued') {
+      throw new Error(`Purchase not allowed! Item "${itemDesc}" (${itemCode}) has been discontinued.`);
+    }
     const category = String(itemRow[2]);
     const uom = String(itemRow[4] || 'Pcs');
     let rate = Number(txn.rate) || Number(itemRow[5]) || 0;
@@ -401,6 +405,10 @@ function processPurchaseInvoice(invoiceData) {
       }
 
       const itemDesc = String(itemRow[1]);
+      const itemStatus = String(itemRow[14] || 'Active').trim().toLowerCase();
+      if (itemStatus === 'discontinued') {
+        throw new Error(`Purchase not allowed! Item "${itemDesc}" (${itemCode}) has been discontinued.`);
+      }
       const category = String(itemRow[2]);
       const uom = String(itemRow[4] || 'Pcs');
       let rate = Number(itm.rate) || Number(itemRow[5]) || 0;
