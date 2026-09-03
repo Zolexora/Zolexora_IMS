@@ -119,119 +119,179 @@
 <body class="bg-background font-body-md text-on-background min-h-screen">
 
   <!-- ============================================================== -->
-  <!-- 0. ONBOARDING LANDING VIEW (SHOWN WHEN USER LANDS ON PAGE) -->
+  <!-- 0. AUTHENTICATION & ONBOARDING PORTAL (PRIMARY LANDING VIEW) -->
   <!-- ============================================================== -->
-  <div id="onboardingLandingView" class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-[#0b0d14] text-on-surface">
-    <div class="max-w-2xl w-full space-y-6">
+  <div id="authLandingView" class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-[#0b0d14] text-on-surface">
+    <div class="max-w-xl w-full space-y-6">
       <!-- Brand Header -->
       <div class="text-center space-y-2">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 text-primary mb-2 shadow-lg shadow-primary/10">
-          <span class="material-symbols-outlined text-[36px]">domain</span>
+          <span class="material-symbols-outlined text-[36px]">inventory_2</span>
         </div>
         <div class="flex items-center justify-center gap-2">
           <h1 class="text-3xl font-extrabold text-on-surface tracking-tight">Zolexora IMS</h1>
           <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary/15 text-primary border border-primary/25">Cloud SaaS</span>
         </div>
-        <p class="text-sm text-on-surface-variant max-w-lg mx-auto">
-          Create your organization database to get started. All your inventory workbooks and file attachments will be automatically provisioned inside your Google Drive database.
+        <p class="text-sm text-on-surface-variant max-w-md mx-auto">
+          Centralized Enterprise Inventory Management SaaS. Authenticate to access your organization workspace.
         </p>
       </div>
 
-      <!-- Main Onboarding Card -->
-      <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-        <div class="border-b border-outline-variant/10 pb-4 flex items-center justify-between">
-          <div>
-            <h2 class="text-base font-bold text-on-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-[20px]">add_business</span>
-              <span>Create Organization Database</span>
-            </h2>
-            <p class="text-xs text-on-surface-variant mt-0.5">Google Drive Root: <a href="https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx" target="_blank" class="font-mono text-primary hover:underline">1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</a></p>
-          </div>
-          <span class="text-[11px] font-mono text-outline">Step 1 of 1</span>
-        </div>
-
-        <form id="onboardingCreateForm" onsubmit="app.handleOnboardingSubmit(event)" class="space-y-4 text-xs">
-          <div>
-            <label class="block font-bold text-on-surface mb-1">Organization / Brand Name *:</label>
-            <input type="text" id="onboardOrgName" required placeholder="e.g. Zolexora Luxury Resorts" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-            <span class="text-[10px] text-on-surface-variant">A dedicated Google Drive folder with this exact name will be created inside root database folder.</span>
-          </div>
-
-          <div>
-            <label class="block font-bold text-on-surface mb-1">Industry Sector *:</label>
-            <select id="onboardOrgIndustry" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-              <option value="Hospitality & Hotels">🏨 Hospitality, Hotels &amp; Resorts</option>
-              <option value="Restaurants & F&B">🍽️ Restaurants, Cafes &amp; Cloud Kitchens</option>
-              <option value="Retail & E-Commerce">🛒 Retail, Supermarkets &amp; E-Commerce</option>
-              <option value="Warehouses & Logistics">🏭 Warehousing, Manufacturing &amp; Logistics</option>
-              <option value="Corporate & Office">💼 Corporate Offices &amp; Facilities Management</option>
-              <option value="Healthcare & Medical">🏥 Healthcare, Clinics &amp; Pharmaceuticals</option>
-            </select>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block font-bold text-on-surface mb-1">Primary Store / Warehouse *:</label>
-              <input type="text" id="onboardOrgStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-            </div>
-            <div>
-              <label class="block font-bold text-on-surface mb-1">Currency Symbol *:</label>
-              <select id="onboardOrgCurrency" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                <option value="₹">₹ (INR - Indian Rupee)</option>
-                <option value="$">$ (USD - US Dollar)</option>
-                <option value="€">€ (EUR - Euro)</option>
-                <option value="£">£ (GBP - British Pound)</option>
-                <option value="AED">AED (UAE Dirham)</option>
-                <option value="SAR">SAR (Saudi Riyal)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block font-bold text-on-surface mb-1">Admin Full Name:</label>
-              <input type="text" id="onboardOrgAdminName" placeholder="Zolexora Admin" value="Zolexora Admin" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-            </div>
-            <div>
-              <label class="block font-bold text-on-surface mb-1">Admin Email:</label>
-              <input type="email" id="onboardOrgAdminEmail" placeholder="aboishekofficial4577@gmail.com" value="aboishekofficial4577@gmail.com" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-            </div>
-          </div>
-
-          <!-- Directory Architecture Blueprint Card -->
-          <div class="bg-surface-container-high/60 border border-outline-variant/20 rounded-xl p-3.5 space-y-2">
-            <div class="flex items-center justify-between text-[11px] font-bold text-on-surface">
-              <span class="flex items-center gap-1.5 text-primary">
-                <span class="material-symbols-outlined text-[16px]">account_tree</span>
-                <span>Automated Directory Tree Layout Blueprint</span>
-              </span>
-              <span class="text-[10px] text-on-surface-variant font-mono">1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
-            </div>
-            <div class="font-mono text-[11px] text-on-surface-variant bg-surface-container-lowest/80 p-2.5 rounded-lg leading-relaxed">
-              <div>📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/ (Root Drive Database)</div>
-              <div class="text-primary font-bold">└── 📁 [Organization Name]/</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 01_Master_Databases/ (Location_Master, Product_Master, Supplier_Master)</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 02_Transactions/ (Supplier_Transactions, Issuance_Transactions)</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 03_Settings_and_Users/ (Users_and_Settings)</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 04_Invoices_and_Attachments/ (Purchase_Orders, Delivery_Challans)</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;├── 📁 05_Reports_and_Exports/ (Daily_Summaries, Monthly_Valuation, Supplier_Audits)</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;└── 📁 06_System_Backups/</div>
-            </div>
-          </div>
-
-          <button type="submit" class="w-full py-3 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
-            <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
-            <span>Create &amp; Provision Organization Database</span>
+      <!-- Auth Box -->
+      <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl shadow-2xl overflow-hidden">
+        
+        <!-- Auth Tabs: Sign In vs Create Account -->
+        <div class="flex border-b border-outline-variant/10 bg-surface-container-high/50">
+          <button id="authTabSignInBtn" onclick="app.switchAuthTab('signin')" class="flex-1 py-3.5 text-center font-bold text-xs border-b-2 border-primary text-primary transition cursor-pointer flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">login</span>
+            <span>Sign In</span>
           </button>
-        </form>
-
-        <!-- Existing Organizations section -->
-        <div id="onboardingExistingSection" class="pt-4 border-t border-outline-variant/10 space-y-3">
-          <p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Or Open An Existing Organization in Drive:</p>
-          <div id="onboardingOrgsList" class="space-y-2">
-            <div class="text-xs text-on-surface-variant text-center py-2">Loading existing organizations...</div>
-          </div>
+          <button id="authTabRegisterBtn" onclick="app.switchAuthTab('register')" class="flex-1 py-3.5 text-center font-semibold text-xs border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition cursor-pointer flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">person_add</span>
+            <span>Create Account</span>
+          </button>
         </div>
+
+        <div class="p-6 sm:p-8">
+          
+          <!-- 1. SIGN IN FORM -->
+          <div id="authSignInSection" class="space-y-4">
+            <form id="signInForm" onsubmit="app.handleSignInSubmit(event)" class="space-y-4 text-xs">
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Work Email Address *:</label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">mail</span>
+                  <input type="email" id="loginEmail" required placeholder="name@company.com" class="w-full pl-9 pr-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label class="block font-bold text-on-surface">Password *:</label>
+                </div>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">lock</span>
+                  <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full pl-9 pr-10 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <button type="button" onclick="app.togglePasswordVisibility('loginPassword', this)" class="absolute right-3 top-2.5 text-on-surface-variant hover:text-on-surface">
+                    <span class="material-symbols-outlined text-[18px]">visibility</span>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" id="signInSubmitBtn" class="w-full py-3 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">login</span>
+                <span>Sign In to Zolexora IMS</span>
+              </button>
+            </form>
+
+            <!-- Quick Demo Credentials Hint -->
+            <div class="pt-4 border-t border-outline-variant/10">
+              <div class="p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[15px]">info</span>
+                    <span>Admin Demo Account</span>
+                  </span>
+                  <button type="button" onclick="app.fillDemoCredentials()" class="text-[10px] text-primary hover:underline font-bold cursor-pointer">Autofill</button>
+                </div>
+                <div class="text-[11px] text-on-surface-variant font-mono space-y-0.5">
+                  <div>Email: <span class="text-on-surface font-semibold">aboishekofficial4577@gmail.com</span></div>
+                  <div>Password: <span class="text-on-surface font-semibold">admin123</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center pt-2">
+              <span class="text-xs text-on-surface-variant">Don't have an account? </span>
+              <button type="button" onclick="app.switchAuthTab('register')" class="text-xs text-primary font-bold hover:underline cursor-pointer">Create an account</button>
+            </div>
+          </div>
+
+          <!-- 2. CREATE ACCOUNT FORM -->
+          <div id="authRegisterSection" class="hidden space-y-4">
+            <form id="createAccountForm" onsubmit="app.handleRegisterSubmit(event)" class="space-y-3.5 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label class="block font-bold text-on-surface mb-1">Your Full Name *:</label>
+                  <input type="text" id="regFullName" required placeholder="e.g. John Doe" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                </div>
+                <div>
+                  <label class="block font-bold text-on-surface mb-1">Work Email *:</label>
+                  <input type="email" id="regEmail" required placeholder="john@company.com" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Create Password (min 6 characters) *:</label>
+                <input type="password" id="regPassword" required minlength="6" placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Organization / Company Name *:</label>
+                <input type="text" id="regOrgName" required placeholder="e.g. Acme Corp" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                <span class="text-[10px] text-on-surface-variant">Stored centrally in Zolexora's master database folder: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label class="block font-bold text-on-surface mb-1">Industry Sector *:</label>
+                  <select id="regIndustry" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                    <option value="Hospitality & Hotels">🏨 Hospitality &amp; Hotels</option>
+                    <option value="Restaurants & F&B">🍽️ Restaurants &amp; F&B</option>
+                    <option value="Retail & E-Commerce">🛒 Retail &amp; E-Commerce</option>
+                    <option value="Warehouses & Logistics">🏭 Warehouses &amp; Logistics</option>
+                    <option value="Corporate & Office">💼 Corporate &amp; Facilities</option>
+                    <option value="Healthcare & Medical">🏥 Healthcare &amp; Medical</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-on-surface mb-1">Base Currency *:</label>
+                  <select id="regCurrency" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                    <option value="₹">₹ (INR - Indian Rupee)</option>
+                    <option value="$">$ (USD - US Dollar)</option>
+                    <option value="€">€ (EUR - Euro)</option>
+                    <option value="£">£ (GBP - British Pound)</option>
+                    <option value="AED">AED (UAE Dirham)</option>
+                    <option value="SAR">SAR (Saudi Riyal)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Primary Store / Warehouse Name *:</label>
+                <input type="text" id="regStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+
+              <!-- Blueprint layout summary -->
+              <div class="p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl space-y-1 text-[11px] font-mono text-on-surface-variant">
+                <div class="text-primary font-bold">🌳 Directory Provisioned In Zolexora Database:</div>
+                <div>📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/ [Organization]/</div>
+                <div>&nbsp;&nbsp;├── 📁 01_Master_Databases | 02_Transactions | 03_Settings_and_Users</div>
+                <div>&nbsp;&nbsp;└── 📁 04_Invoices | 05_Reports | 06_System_Backups</div>
+              </div>
+
+              <button type="submit" id="registerSubmitBtn" class="w-full py-3 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+                <span>Create Account &amp; Provision Workspace</span>
+              </button>
+            </form>
+
+            <div class="text-center pt-2">
+              <span class="text-xs text-on-surface-variant">Already have an account? </span>
+              <button type="button" onclick="app.switchAuthTab('signin')" class="text-xs text-primary font-bold hover:underline cursor-pointer">Sign In</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Security Trust Footer -->
+      <div class="text-center text-[11px] text-on-surface-variant flex items-center justify-center gap-4">
+        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock</span> 256-Bit Encrypted</span>
+        <span>•</span>
+        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">cloud_done</span> Centralized Cloud Database</span>
+        <span>•</span>
+        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">verified_user</span> Role-Based Isolation</span>
       </div>
     </div>
   </div>
@@ -305,6 +365,15 @@
           <a id="sidebarDriveLink" href="https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx" target="_blank" title="Open Google Drive Database Folder" class="text-primary hover:underline font-body-sm">Drive Folder</a>
         </div>
         <div id="sidebarDbName" class="font-bold text-on-surface truncate text-body-sm mt-1">Zolexora IMS Database</div>
+        <div class="pt-2 border-t border-outline-variant/10 flex items-center justify-between mt-2">
+          <div class="text-[11px] text-on-surface-variant truncate max-w-[130px]">
+            <span id="sidebarUserName" class="text-on-surface font-semibold truncate block">Admin</span>
+          </div>
+          <button onclick="app.logoutUser()" title="Sign Out" class="text-[11px] text-error hover:underline font-bold flex items-center gap-1 cursor-pointer">
+            <span class="material-symbols-outlined text-[13px]">logout</span>
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
     </div>
   </aside>
@@ -369,15 +438,16 @@
           <span id="bellAlertDot" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface animate-pulse"></span>
         </button>
 
-        <!-- User Profile -->
+        <!-- User Profile & Logout -->
         <div class="flex items-center gap-md pl-md border-l border-outline-variant/20">
           <div class="text-right hidden sm:block">
-            <div id="headerUserName" class="font-body-md font-semibold text-on-surface leading-none">--</div>
-            <div id="headerUserRole" class="font-body-sm text-on-surface-variant">--</div>
+            <div id="headerUserName" class="font-body-md font-semibold text-on-surface leading-none">Admin</div>
+            <div id="headerUserRole" class="font-body-sm text-on-surface-variant text-[11px]">OrgAdmin</div>
           </div>
-          <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center cursor-pointer shadow">
-            <span class="material-symbols-outlined text-on-primary text-[20px]">person</span>
-          </div>
+          <button onclick="app.logoutUser()" title="Sign Out of Zolexora IMS" class="px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-error/20 text-on-surface-variant hover:text-error flex items-center gap-1 transition border border-outline-variant/20 text-xs font-semibold cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">logout</span>
+            <span class="hidden md:inline">Sign Out</span>
+          </button>
         </div>
       </div>
     </header>

@@ -170,6 +170,298 @@ function findFileInFolderRecursively(folder, fileName) {
 
 /**
  * =================================================================
+ * CENTRALIZED AUTHENTICATION & MULTI-TENANT USER REGISTRY
+ * All user accounts & tenants are stored in central Zolexora database: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx
+ * =================================================================
+ */
+
+const AUTH_REGISTRY_FILE_NAME = '00_Zolexora_Auth_Registry';
+
+/**
+ * SHA-256 password hashing with salt
+ */
+function hashPassword(password) {
+  if (!password) return '';
+  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(password) + '_zolexora_salt_2026');
+  let txtHash = '';
+  for (let i = 0; i < rawHash.length; i++) {
+    let hashVal = rawHash[i];
+    if (hashVal < 0) hashVal += 256;
+    let byteHex = hashVal.toString(16);
+    if (byteHex.length === 1) byteHex = '0' + byteHex;
+    txtHash += byteHex;
+  }
+  return txtHash;
+}
+
+/**
+ * Access or create the central Auth Registry workbook inside root folder
+ */
+function getAuthRegistry() {
+  const rootFolder = getDriveFolder();
+  const files = rootFolder.getFilesByName(AUTH_REGISTRY_FILE_NAME);
+  if (files.hasNext()) {
+    return SpreadsheetApp.open(files.next());
+  }
+
+  // Also check if 01_Organisations exists
+  const orgFiles = rootFolder.getFilesByName('01_Organisations');
+  if (orgFiles.hasNext()) {
+    const ss = SpreadsheetApp.open(orgFiles.next());
+    if (ss.getSheetByName('Users')) return ss;
+  }
+
+  const ss = SpreadsheetApp.create(AUTH_REGISTRY_FILE_NAME);
+  const file = DriveApp.getFileById(ss.getId());
+  ensureFileInFolder(file, rootFolder);
+  initAuthRegistry(ss);
+  return ss;
+}
+
+/**
+ * Initializes Auth Registry sheets & default superadmin account
+ */
+function initAuthRegistry(ss) {
+  let usersSheet = ss.getSheetByName('Users');
+  if (!usersSheet) {
+    usersSheet = ss.getSheets()[0];
+    usersSheet.setName('Users');
+  }
+  if (usersSheet.getLastRow() === 0) {
+    usersSheet.appendRow(['User ID', 'Email', 'Password Hash', 'Full Name', 'Role', 'Organization ID', 'Organization Name', 'Created At', 'Last Login', 'Status']);
+    formatHeaderRow(usersSheet, 10);
+    // Seed default admin account
+    usersSheet.appendRow([
+      'USR_DEFAULT_001',
+      'aboishekofficial4577@gmail.com',
+      hashPassword('admin123'),
+      'Zolexora Administrator',
+      'SuperAdmin',
+      '1rI5Oj3ZoxqRYdw_eX7pkVrMf-Rlw_BpL',
+      'Deneb & Pollux Hotels Pvt. Ltd.',
+      new Date().toISOString(),
+      new Date().toISOString(),
+      'Active'
+    ]);
+  }
+
+  let orgsSheet = ss.getSheetByName('Organizations');
+  if (!orgsSheet) {
+    orgsSheet = ss.insertSheet('Organizations');
+  }
+  if (orgsSheet.getLastRow() === 0) {
+    orgsSheet.appendRow(['Organization ID', 'Organization Name', 'Industry', 'Owner Email', 'Created At', 'Status']);
+    formatHeaderRow(orgsSheet, 6);
+    orgsSheet.appendRow([
+      '1rI5Oj3ZoxqRYdw_eX7pkVrMf-Rlw_BpL',
+      'Deneb & Pollux Hotels Pvt. Ltd.',
+      'Hospitality & Hotels',
+      'aboishekofficial4577@gmail.com',
+      new Date().toISOString(),
+      'Active'
+    ]);
+  }
+}
+
+/**
+ * Finds user by email in central Auth Registry
+ */
+function findUserByEmail(email) {
+  if (!email) return null;
+  const cleanEmail = String(email).trim().toLowerCase();
+  const ss = getAuthRegistry();
+  const usersSheet = ss.getSheetByName('Users');
+  if (!usersSheet) return null;
+
+  const data = usersSheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim().toLowerCase() === cleanEmail) {
+      return {
+        rowIndex: i + 1,
+        id: String(data[i][0]),
+        email: cleanEmail,
+        passwordHash: String(data[i][2]),
+        name: String(data[i][3]),
+        role: String(data[i][4]),
+        orgId: String(data[i][5]),
+        orgName: String(data[i][6]),
+        createdAt: String(data[i][7]),
+        lastLogin: String(data[i][8]),
+        status: String(data[i][9])
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Authenticates user credentials against central Auth Registry
+ */
+function authenticateUser(email, password) {
+  if (!email || !password) {
+    return { success: false, message: 'Email and password are required.' };
+  }
+
+  const cleanEmail = String(email).trim().toLowerCase();
+  const user = findUserByEmail(cleanEmail);
+
+  if (!user) {
+    return { success: false, message: 'No registered account found with email: ' + cleanEmail + '. Please create an account.' };
+  }
+
+  if (user.status !== 'Active') {
+    return { success: false, message: 'This account has been deactivated. Please contact your administrator.' };
+  }
+
+  const inputHash = hashPassword(password);
+  if (user.passwordHash !== inputHash) {
+    return { success: false, message: 'Incorrect password. Please verify and try again.' };
+  }
+
+  // Update Last Login in registry
+  try {
+    const ss = getAuthRegistry();
+    const sheet = ss.getSheetByName('Users');
+    if (sheet && user.rowIndex) {
+      sheet.getRange(user.rowIndex, 9).setValue(new Date().toISOString());
+    }
+  } catch (e) {
+    console.warn('Could not update last login timestamp', e);
+  }
+
+  // Set active organization in session
+  setActiveOrganization(user.orgId, user.orgName);
+
+  return {
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      orgId: user.orgId,
+      orgName: user.orgName,
+      status: user.status
+    }
+  };
+}
+
+/**
+ * Creates new user account & provisions dedicated organization in central Zolexora database
+ */
+function createAccountAndProvision(formData) {
+  if (!formData) return { success: false, message: 'Registration data missing.' };
+
+  const name = String(formData.name || '').trim();
+  const email = String(formData.email || '').trim().toLowerCase();
+  const password = String(formData.password || '').trim();
+  const orgName = String(formData.orgName || '').trim();
+  const industry = String(formData.industry || 'General Enterprise').trim();
+  const storeName = String(formData.storeName || 'Main Central Warehouse').trim();
+  const currency = String(formData.currency || '₹').trim();
+
+  if (!email || !password || !orgName) {
+    return { success: false, message: 'Full name, email, password, and organization name are required.' };
+  }
+
+  if (password.length < 6) {
+    return { success: false, message: 'Password must be at least 6 characters long.' };
+  }
+
+  const existingUser = findUserByEmail(email);
+  if (existingUser) {
+    return { success: false, message: 'An account with email "' + email + '" already exists. Please sign in.' };
+  }
+
+  // Provision organization folder and 6 structured subdirectories in central Drive
+  const orgResult = provisionOrganization({
+    name: orgName,
+    industry: industry,
+    storeName: storeName,
+    currency: currency,
+    adminName: name || 'Admin',
+    adminEmail: email
+  });
+
+  const orgId = orgResult.organization.id;
+  const newUserId = 'USR_' + Utilities.getUuid().substring(0, 8).toUpperCase();
+  const hashedPw = hashPassword(password);
+  const now = new Date().toISOString();
+
+  // Register in central Auth Registry
+  const ss = getAuthRegistry();
+  const usersSheet = ss.getSheetByName('Users');
+  usersSheet.appendRow([
+    newUserId,
+    email,
+    hashedPw,
+    name || orgName + ' Admin',
+    'OrgAdmin',
+    orgId,
+    orgName,
+    now,
+    now,
+    'Active'
+  ]);
+
+  const orgsSheet = ss.getSheetByName('Organizations');
+  if (orgsSheet) {
+    orgsSheet.appendRow([
+      orgId,
+      orgName,
+      industry,
+      email,
+      now,
+      'Active'
+    ]);
+  }
+
+  // Set active organization in session
+  setActiveOrganization(orgId, orgName);
+
+  return {
+    success: true,
+    user: {
+      id: newUserId,
+      email: email,
+      name: name || orgName + ' Admin',
+      role: 'OrgAdmin',
+      orgId: orgId,
+      orgName: orgName,
+      status: 'Active'
+    },
+    message: 'Account created and organization database provisioned successfully!'
+  };
+}
+
+/**
+ * Validates session of an authenticated user
+ */
+function validateUserSession(email, orgId) {
+  if (!email) return { success: false, message: 'No active session.' };
+  const user = findUserByEmail(email);
+  if (!user || user.status !== 'Active') {
+    return { success: false, message: 'Session expired or user inactive.' };
+  }
+  const targetOrgId = orgId || user.orgId;
+  const targetOrgName = user.orgName;
+  setActiveOrganization(targetOrgId, targetOrgName);
+  return {
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      orgId: targetOrgId,
+      orgName: targetOrgName,
+      status: user.status
+    }
+  };
+}
+
+/**
+ * =================================================================
  * MULTI-ORGANIZATION ARCHITECTURE (Inside Folder: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)
  * =================================================================
  */

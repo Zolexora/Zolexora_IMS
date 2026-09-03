@@ -19,135 +19,248 @@ const app = {
     html5QrScanner: null
   },
 
+  authUser: null,
+
   // Initialize App
   init: function() {
-    const sessionOrgId = sessionStorage.getItem('zolexora_active_org_id');
-    if (!sessionOrgId) {
-      this.showOnboardingView();
+    const stored = localStorage.getItem('zolexora_auth_user');
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        if (user && user.email) {
+          this.state.authUser = user;
+          this.showLoading('Restoring Session...', 'Connecting to ' + (user.orgName || 'organization'));
+          if (this.isGasEnv()) {
+            google.script.run
+              .withSuccessHandler(function(res) {
+                app.hideLoading();
+                if (res && res.success) {
+                  app.state.authUser = res.user;
+                  app.showDashboard(res.data);
+                } else {
+                  localStorage.removeItem('zolexora_auth_user');
+                  app.showAuthView();
+                }
+              })
+              .withFailureHandler(function(err) {
+                app.hideLoading();
+                app.showAuthView();
+              })
+              .checkUserSession(user.email, user.orgId);
+            return;
+          } else {
+            this.hideLoading();
+            this.showDashboard(this.getMockData());
+            return;
+          }
+        }
+      } catch (e) {
+        localStorage.removeItem('zolexora_auth_user');
+      }
     }
-    this.loadInitialData();
+    this.showAuthView();
   },
 
-  showOnboardingView: function() {
-    const landing = document.getElementById('onboardingLandingView');
+  showAuthView: function() {
+    const authView = document.getElementById('authLandingView');
     const appDash = document.getElementById('appDashboardContainer');
-    if (landing) landing.classList.remove('hidden');
+    if (authView) authView.classList.remove('hidden');
     if (appDash) appDash.classList.add('hidden');
-    this.renderOnboardingOrgList();
   },
 
-  hideOnboardingView: function() {
-    const landing = document.getElementById('onboardingLandingView');
+  showDashboard: function(data) {
+    const authView = document.getElementById('authLandingView');
     const appDash = document.getElementById('appDashboardContainer');
-    if (landing) landing.classList.add('hidden');
+    if (authView) authView.classList.add('hidden');
     if (appDash) appDash.classList.remove('hidden');
+
+    // Update user profile badges
+    if (this.state.authUser) {
+      const u = this.state.authUser;
+      const hName = document.getElementById('headerUserName');
+      const hRole = document.getElementById('headerUserRole');
+      if (hName) hName.innerText = u.name || u.email;
+      if (hRole) hRole.innerText = (u.role || 'Member') + ' (' + (u.orgName || 'Org') + ')';
+    }
+
+    this.handleInitialDataSuccess(data);
   },
 
-  renderOnboardingOrgList: function() {
-    const container = document.getElementById('onboardingOrgsList');
-    if (!container) return;
+  switchAuthTab: function(tab) {
+    const secSignIn = document.getElementById('authSignInSection');
+    const secRegister = document.getElementById('authRegisterSection');
+    const btnSignIn = document.getElementById('authTabSignInBtn');
+    const btnRegister = document.getElementById('authTabRegisterBtn');
 
-    const orgs = this.state.organizations || [];
-    if (orgs.length === 0) {
-      container.innerHTML = `<div class="p-3 bg-surface-container-high rounded-xl text-center text-on-surface-variant text-xs">No previous organizations found in this Google Drive folder yet.</div>`;
+    if (tab === 'register') {
+      if (secSignIn) secSignIn.classList.add('hidden');
+      if (secRegister) secRegister.classList.remove('hidden');
+      if (btnSignIn) {
+        btnSignIn.className = 'flex-1 py-3.5 text-center font-semibold text-xs border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition cursor-pointer flex items-center justify-center gap-2';
+      }
+      if (btnRegister) {
+        btnRegister.className = 'flex-1 py-3.5 text-center font-bold text-xs border-b-2 border-primary text-primary transition cursor-pointer flex items-center justify-center gap-2';
+      }
+      const fName = document.getElementById('regFullName');
+      if (fName) setTimeout(() => fName.focus(), 100);
+    } else {
+      if (secRegister) secRegister.classList.add('hidden');
+      if (secSignIn) secSignIn.classList.remove('hidden');
+      if (btnRegister) {
+        btnRegister.className = 'flex-1 py-3.5 text-center font-semibold text-xs border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition cursor-pointer flex items-center justify-center gap-2';
+      }
+      if (btnSignIn) {
+        btnSignIn.className = 'flex-1 py-3.5 text-center font-bold text-xs border-b-2 border-primary text-primary transition cursor-pointer flex items-center justify-center gap-2';
+      }
+      const lEmail = document.getElementById('loginEmail');
+      if (lEmail) setTimeout(() => lEmail.focus(), 100);
+    }
+  },
+
+  togglePasswordVisibility: function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPass = input.type === 'password';
+    input.type = isPass ? 'text' : 'password';
+    const icon = btn.querySelector('.material-symbols-outlined');
+    if (icon) icon.innerText = isPass ? 'visibility_off' : 'visibility';
+  },
+
+  fillDemoCredentials: function() {
+    const email = document.getElementById('loginEmail');
+    const pass = document.getElementById('loginPassword');
+    if (email) email.value = 'aboishekofficial4577@gmail.com';
+    if (pass) pass.value = 'admin123';
+    this.showToast('Demo admin credentials filled. Click "Sign In" to continue!', 'info');
+  },
+
+  handleSignInSubmit: function(e) {
+    if (e) e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+
+    if (!email || !password) {
+      this.showToast('Please enter both email and password.', 'error');
       return;
     }
 
-    container.innerHTML = orgs.map(org => {
-      return `
-        <div class="flex items-center justify-between p-3 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 rounded-xl transition">
-          <div class="flex items-center gap-3">
-            <span class="material-symbols-outlined text-primary text-[22px]">corporate_fare</span>
-            <div>
-              <div class="font-bold text-on-surface text-xs">${org.name}</div>
-              <div class="text-[10px] text-on-surface-variant font-mono truncate max-w-[200px]">${org.id}</div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <a href="${org.url}" target="_blank" class="p-1.5 text-on-surface-variant hover:text-primary transition" title="View Drive Folder">
-              <span class="material-symbols-outlined text-[16px]">folder_open</span>
-            </a>
-            <button onclick="app.selectOnboardingOrg('${org.id}')" class="px-3 py-1.5 bg-primary/20 hover:bg-primary text-primary hover:text-on-primary font-bold text-xs rounded-lg transition cursor-pointer">
-              Open Dashboard
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  },
+    this.showLoading('Signing in...', 'Authenticating credentials against Zolexora database');
 
-  selectOnboardingOrg: function(orgId) {
-    this.showLoading('Loading Organization...', 'Opening database workbooks');
     if (this.isGasEnv()) {
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function(res) {
           app.hideLoading();
-          sessionStorage.setItem('zolexora_active_org_id', orgId);
-          app.hideOnboardingView();
-          app.handleInitialDataSuccess(data);
-          app.showToast('Switched to ' + (data.activeOrganization ? data.activeOrganization.name : 'organization'));
+          if (res && res.success) {
+            app.state.authUser = res.user;
+            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
+            app.showDashboard(res.data);
+            app.showToast('Welcome back, ' + (res.user.name || res.user.email) + '!');
+          } else {
+            app.showToast((res && res.message) ? res.message : 'Invalid credentials. Please try again.', 'error');
+          }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
-          app.showToast('Error opening organization: ' + err.message, 'error');
+          app.showToast('Authentication error: ' + err.message, 'error');
         })
-        .switchOrganization(orgId);
+        .loginUser({ email: email, password: password });
     } else {
-      this.hideLoading();
-      sessionStorage.setItem('zolexora_active_org_id', orgId);
-      this.hideOnboardingView();
+      setTimeout(() => {
+        app.hideLoading();
+        const mockUser = {
+          id: 'USR_LOCAL',
+          email: email,
+          name: 'Demo Admin',
+          role: 'OrgAdmin',
+          orgId: 'mock_org',
+          orgName: 'Zolexora IMS'
+        };
+        app.state.authUser = mockUser;
+        localStorage.setItem('zolexora_auth_user', JSON.stringify(mockUser));
+        app.showDashboard(app.getMockData());
+        app.showToast('Signed in in local simulation mode.');
+      }, 800);
     }
   },
 
-  handleOnboardingSubmit: function(e) {
+  handleRegisterSubmit: function(e) {
     if (e) e.preventDefault();
-    const name = document.getElementById('onboardOrgName').value.trim();
-    const industry = document.getElementById('onboardOrgIndustry').value;
-    const storeName = document.getElementById('onboardOrgStoreName').value.trim();
-    const currency = document.getElementById('onboardOrgCurrency').value;
-    const adminName = document.getElementById('onboardOrgAdminName').value.trim();
-    const adminEmail = document.getElementById('onboardOrgAdminEmail').value.trim();
+    const name = document.getElementById('regFullName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value.trim();
+    const orgName = document.getElementById('regOrgName').value.trim();
+    const industry = document.getElementById('regIndustry').value;
+    const storeName = document.getElementById('regStoreName').value.trim();
+    const currency = document.getElementById('regCurrency').value;
 
-    if (!name) {
-      this.showToast('Please enter an organization name.', 'error');
+    if (!email || !password || !orgName) {
+      this.showToast('Please complete all required fields.', 'error');
       return;
     }
 
-    this.showLoading('Provisioning Organization Database...', 'Creating folder "' + name + '" & structured tree in Google Drive');
+    if (password.length < 6) {
+      this.showToast('Password must be at least 6 characters long.', 'error');
+      return;
+    }
 
-    const orgData = {
+    this.showLoading('Creating Account & Provisioning Workspace...', 'Building folder & 6 structured databases in Zolexora cloud');
+
+    const regData = {
       name: name,
+      email: email,
+      password: password,
+      orgName: orgName,
       industry: industry,
       storeName: storeName || 'Main Central Warehouse',
-      currency: currency || '₹',
-      adminName: adminName || 'Zolexora Admin',
-      adminEmail: adminEmail || 'aboishekofficial4577@gmail.com'
+      currency: currency || '₹'
     };
 
     if (this.isGasEnv()) {
       google.script.run
-        .withSuccessHandler(function(data) {
+        .withSuccessHandler(function(res) {
           app.hideLoading();
-          if (data && data.activeOrganization) {
-            sessionStorage.setItem('zolexora_active_org_id', data.activeOrganization.id);
+          if (res && res.success) {
+            app.state.authUser = res.user;
+            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
+            app.showDashboard(res.data);
+            app.showToast(res.message || 'Account created successfully!');
+          } else {
+            app.showToast((res && res.message) ? res.message : 'Registration failed.', 'error');
           }
-          app.hideOnboardingView();
-          app.handleInitialDataSuccess(data);
-          app.showToast('Organization "' + name + '" provisioned successfully with 6 structured subdirectories!');
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
-          app.showToast('Failed to create organization: ' + err.message, 'error');
+          app.showToast('Registration error: ' + err.message, 'error');
         })
-        .createNewOrganization(orgData);
+        .registerUser(regData);
     } else {
       setTimeout(() => {
         app.hideLoading();
-        sessionStorage.setItem('zolexora_active_org_id', 'mock_id');
-        app.hideOnboardingView();
-        app.showToast('Mock Organization provisioned!');
+        const mockUser = {
+          id: 'USR_NEW',
+          email: email,
+          name: name,
+          role: 'OrgAdmin',
+          orgId: 'mock_org',
+          orgName: orgName
+        };
+        app.state.authUser = mockUser;
+        localStorage.setItem('zolexora_auth_user', JSON.stringify(mockUser));
+        app.showDashboard(app.getMockData());
+        app.showToast('Account registered (local simulation)!');
       }, 1000);
     }
+  },
+
+  logoutUser: function() {
+    localStorage.removeItem('zolexora_auth_user');
+    sessionStorage.clear();
+    this.state.authUser = null;
+    this.showAuthView();
+    if (this.isGasEnv()) {
+      google.script.run.logoutUser();
+    }
+    this.showToast('Signed out successfully.');
   },
 
   // Check if running inside Google Apps Script environment
@@ -239,19 +352,11 @@ const app = {
     this.state.organizations = data.organizations || (data.workbooksInfo ? data.workbooksInfo.organizations : []);
     this.state.hasOrganization = data.hasOrganization !== false;
 
-    // Populate onboarding organization list if visible
-    this.renderOnboardingOrgList();
-
-    const sessionOrgId = sessionStorage.getItem('zolexora_active_org_id');
-
-    // If user has not selected an organization for this session, stay on the onboarding landing page
-    if (!sessionOrgId || !this.state.hasOrganization || !this.state.activeOrganization) {
-      this.showOnboardingView();
+    // If user is not authenticated, redirect to auth landing view
+    if (!this.state.authUser) {
+      this.showAuthView();
       return;
     }
-
-    // Otherwise reveal the dashboard
-    this.hideOnboardingView();
 
     this.state.metrics = data.metrics || {};
     this.state.items = data.items || [];

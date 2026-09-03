@@ -351,3 +351,49 @@ function createNewOrganization(orgData) {
   provisionOrganization(orgData);
   return getInitialData();
 }
+
+/**
+ * Server entry point for User Sign In
+ */
+function loginUser(credentials) {
+  const authRes = authenticateUser(credentials.email, credentials.password);
+  if (!authRes.success) return authRes;
+
+  const data = getInitialData();
+  return {
+    success: true,
+    user: authRes.user,
+    data: data
+  };
+}
+
+/**
+ * Server entry point for User Registration & Tenant Provisioning
+ */
+function registerUser(regData) {
+  const regRes = createAccountAndProvision(regData);
+  if (!regRes.success) return regRes;
+
+  const data = getInitialData();
+  return {
+    success: true,
+    user: regRes.user,
+    data: data,
+    message: regRes.message
+  };
+}
+
+/**
+ * Server entry point to validate session on page refresh
+ */
+function checkUserSession(email, orgId) {
+  const sessRes = validateUserSession(email, orgId);
+  if (!sessRes.success) return sessRes;
+
+  const data = getInitialData();
+  return {
+    success: true,
+    user: sessRes.user,
+    data: data
+  };
+}
