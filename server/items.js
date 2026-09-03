@@ -397,3 +397,17 @@ function checkUserSession(email, orgId) {
     data: data
   };
 }
+
+/**
+ * Server entry point for Google Authentication & Org Provisioning
+ */
+function processGoogleAuth(orgDetails) {
+  return handleGoogleAuth(orgDetails);
+}
+
+/**
+ * Server entry point to get current Google user identity
+ */
+function getGoogleAccountInfo() {
+  return getGoogleUserIdentity();
+}

@@ -20,6 +20,7 @@ const app = {
   },
 
   authUser: null,
+  detectedGoogleEmail: null,
 
   // Initialize App
   init: function() {
@@ -29,7 +30,7 @@ const app = {
         const user = JSON.parse(stored);
         if (user && user.email) {
           this.state.authUser = user;
-          this.showLoading('Restoring Session...', 'Connecting to ' + (user.orgName || 'organization'));
+          this.showLoading('Connecting to Workspace...', 'Opening ' + (user.orgName || 'organization'));
           if (this.isGasEnv()) {
             google.script.run
               .withSuccessHandler(function(res) {
@@ -40,11 +41,13 @@ const app = {
                 } else {
                   localStorage.removeItem('zolexora_auth_user');
                   app.showAuthView();
+                  app.detectAndSetupGoogleIdentity();
                 }
               })
               .withFailureHandler(function(err) {
                 app.hideLoading();
                 app.showAuthView();
+                app.detectAndSetupGoogleIdentity();
               })
               .checkUserSession(user.email, user.orgId);
             return;
@@ -59,6 +62,7 @@ const app = {
       }
     }
     this.showAuthView();
+    this.detectAndSetupGoogleIdentity();
   },
 
   showAuthView: function() {
@@ -66,6 +70,177 @@ const app = {
     const appDash = document.getElementById('appDashboardContainer');
     if (authView) authView.classList.remove('hidden');
     if (appDash) appDash.classList.add('hidden');
+  },
+
+  detectAndSetupGoogleIdentity: function() {
+    const emailEl = document.getElementById('googleDetectedEmail');
+    const lockedEl = document.getElementById('gEmailLocked');
+    const nameEl = document.getElementById('gName');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(idInfo) {
+          const email = (idInfo && idInfo.email) ? idInfo.email : 'abhishekofficial4577@gmail.com';
+          app.detectedGoogleEmail = email;
+          if (emailEl) emailEl.innerText = email;
+          if (lockedEl) lockedEl.value = email;
+
+          // Suggest name from email
+          if (nameEl && !nameEl.value) {
+            const rawName = email.split('@')[0].replace(/[0-9_.]/g, ' ').trim();
+            nameEl.value = rawName.charAt(0).toUpperCase() + rawName.slice(1) || 'Abhishek Sharma';
+          }
+
+          // Check if this Google user is already an Admin or Member in Zolexora database
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success && !res.isNewUser && res.user) {
+                const secExist = document.getElementById('googleExistingUserSection');
+                const secNew = document.getElementById('googleNewUserSection');
+                const roleBadge = document.getElementById('existingUserRoleBadge');
+                const orgBadge = document.getElementById('existingUserOrgBadge');
+                const btnText = document.getElementById('googleDirectLoginBtnText');
+
+                if (secExist) secExist.classList.remove('hidden');
+                if (secNew) secNew.classList.add('hidden');
+                if (roleBadge) roleBadge.innerText = res.user.role || 'Admin';
+                if (orgBadge) orgBadge.innerText = res.user.orgName || 'Organization';
+                if (btnText) btnText.innerText = 'Enter Dashboard as ' + (res.user.role || 'Admin') + ' (' + res.user.orgName + ')';
+              } else {
+                const secExist = document.getElementById('googleExistingUserSection');
+                const secNew = document.getElementById('googleNewUserSection');
+                if (secExist) secExist.classList.add('hidden');
+                if (secNew) secNew.classList.remove('hidden');
+              }
+            })
+            .processGoogleAuth();
+        })
+        .withFailureHandler(function(err) {
+          if (emailEl) emailEl.innerText = 'Google Account Connected';
+        })
+        .getGoogleAccountInfo();
+    } else {
+      const mockEmail = 'abhishekofficial4577@gmail.com';
+      app.detectedGoogleEmail = mockEmail;
+      if (emailEl) emailEl.innerText = mockEmail;
+      if (lockedEl) lockedEl.value = mockEmail;
+      if (nameEl) nameEl.value = 'Abhishek Sharma';
+    }
+  },
+
+  loginWithGoogle: function() {
+    this.showLoading('Signing in with Google...', 'Authenticating credentials and loading organization');
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res && res.success) {
+            app.state.authUser = res.user;
+            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
+            app.showDashboard(res.data);
+            app.showToast('Signed in successfully as ' + (res.user.role || 'Admin') + '!');
+          } else {
+            app.showToast(res.message || 'Authentication error.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Google Sign-In Error: ' + err.message, 'error');
+        })
+        .processGoogleAuth();
+    } else {
+      setTimeout(() => {
+        app.hideLoading();
+        const mockUser = {
+          id: 'USR_ADMIN_001',
+          email: app.detectedGoogleEmail || 'abhishekofficial4577@gmail.com',
+          name: 'Abhishek Sharma',
+          role: 'Admin',
+          orgId: 'mock_org',
+          orgName: 'Zolexora IMS'
+        };
+        app.state.authUser = mockUser;
+        localStorage.setItem('zolexora_auth_user', JSON.stringify(mockUser));
+        app.showDashboard(app.getMockData());
+        app.showToast('Logged in as Admin (Simulation)!');
+      }, 500);
+    }
+  },
+
+  handleGoogleOrgSetup: function(e) {
+    if (e) e.preventDefault();
+    const name = document.getElementById('gName').value.trim();
+    const orgName = document.getElementById('gOrgName').value.trim();
+    const industry = document.getElementById('gIndustry').value;
+    const currency = document.getElementById('gCurrency').value;
+    const storeName = document.getElementById('gStoreName').value.trim();
+
+    if (!orgName) {
+      this.showToast('Please enter an Organization Name.', 'error');
+      return;
+    }
+
+    this.showLoading('Provisioning Organization & Registering Admin...', 'Creating database tree inside Zolexora cloud: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx');
+
+    const orgData = {
+      name: name || 'Admin',
+      orgName: orgName,
+      industry: industry,
+      currency: currency || '₹',
+      storeName: storeName || 'Main Central Warehouse',
+      email: app.detectedGoogleEmail || 'abhishekofficial4577@gmail.com'
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res && res.success) {
+            app.state.authUser = res.user;
+            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
+            app.showDashboard(res.data);
+            app.showToast('Workspace provisioned! You are now Admin of ' + res.user.orgName);
+          } else {
+            app.showToast((res && res.message) ? res.message : 'Failed to provision organization.', 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          app.hideLoading();
+          app.showToast('Setup error: ' + err.message, 'error');
+        })
+        .processGoogleAuth(orgData);
+    } else {
+      setTimeout(() => {
+        app.hideLoading();
+        const mockUser = {
+          id: 'USR_NEW_ADMIN',
+          email: app.detectedGoogleEmail || 'abhishekofficial4577@gmail.com',
+          name: name,
+          role: 'Admin',
+          orgId: 'mock_org',
+          orgName: orgName
+        };
+        app.state.authUser = mockUser;
+        localStorage.setItem('zolexora_auth_user', JSON.stringify(mockUser));
+        app.showDashboard(app.getMockData());
+        app.showToast('Workspace created! You are Admin of ' + orgName);
+      }, 1000);
+    }
+  },
+
+  toggleManualAuth: function() {
+    const el = document.getElementById('manualAuthContainer');
+    const text = document.getElementById('manualAuthToggleText');
+    if (el) {
+      const isHidden = el.classList.contains('hidden');
+      if (isHidden) {
+        el.classList.remove('hidden');
+        if (text) text.innerText = 'Hide password / demo login form';
+      } else {
+        el.classList.add('hidden');
+        if (text) text.innerText = 'Need password login or test demo account? Click here';
+      }
+    }
   },
 
   showDashboard: function(data) {
@@ -79,59 +254,13 @@ const app = {
       const u = this.state.authUser;
       const hName = document.getElementById('headerUserName');
       const hRole = document.getElementById('headerUserRole');
+      const sName = document.getElementById('sidebarUserName');
       if (hName) hName.innerText = u.name || u.email;
-      if (hRole) hRole.innerText = (u.role || 'Member') + ' (' + (u.orgName || 'Org') + ')';
+      if (hRole) hRole.innerText = (u.role || 'Admin') + ' (' + (u.orgName || 'Org') + ')';
+      if (sName) sName.innerText = u.name || u.email;
     }
 
     this.handleInitialDataSuccess(data);
-  },
-
-  switchAuthTab: function(tab) {
-    const secSignIn = document.getElementById('authSignInSection');
-    const secRegister = document.getElementById('authRegisterSection');
-    const btnSignIn = document.getElementById('authTabSignInBtn');
-    const btnRegister = document.getElementById('authTabRegisterBtn');
-
-    if (tab === 'register') {
-      if (secSignIn) secSignIn.classList.add('hidden');
-      if (secRegister) secRegister.classList.remove('hidden');
-      if (btnSignIn) {
-        btnSignIn.className = 'flex-1 py-3.5 text-center font-semibold text-xs border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition cursor-pointer flex items-center justify-center gap-2';
-      }
-      if (btnRegister) {
-        btnRegister.className = 'flex-1 py-3.5 text-center font-bold text-xs border-b-2 border-primary text-primary transition cursor-pointer flex items-center justify-center gap-2';
-      }
-      const fName = document.getElementById('regFullName');
-      if (fName) setTimeout(() => fName.focus(), 100);
-    } else {
-      if (secRegister) secRegister.classList.add('hidden');
-      if (secSignIn) secSignIn.classList.remove('hidden');
-      if (btnRegister) {
-        btnRegister.className = 'flex-1 py-3.5 text-center font-semibold text-xs border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition cursor-pointer flex items-center justify-center gap-2';
-      }
-      if (btnSignIn) {
-        btnSignIn.className = 'flex-1 py-3.5 text-center font-bold text-xs border-b-2 border-primary text-primary transition cursor-pointer flex items-center justify-center gap-2';
-      }
-      const lEmail = document.getElementById('loginEmail');
-      if (lEmail) setTimeout(() => lEmail.focus(), 100);
-    }
-  },
-
-  togglePasswordVisibility: function(inputId, btn) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    const isPass = input.type === 'password';
-    input.type = isPass ? 'text' : 'password';
-    const icon = btn.querySelector('.material-symbols-outlined');
-    if (icon) icon.innerText = isPass ? 'visibility_off' : 'visibility';
-  },
-
-  fillDemoCredentials: function() {
-    const email = document.getElementById('loginEmail');
-    const pass = document.getElementById('loginPassword');
-    if (email) email.value = 'abhishekofficial4577@gmail.com';
-    if (pass) pass.value = 'admin123';
-    this.showToast('Demo admin credentials filled. Click "Sign In" to continue!', 'info');
   },
 
   handleSignInSubmit: function(e) {

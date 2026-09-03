@@ -140,102 +140,84 @@
       <!-- Auth Box -->
       <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl shadow-2xl overflow-hidden">
         
-        <!-- Auth Tabs: Sign In vs Create Account -->
-        <div class="flex border-b border-outline-variant/10 bg-surface-container-high/50">
-          <button id="authTabSignInBtn" onclick="app.switchAuthTab('signin')" class="flex-1 py-3.5 text-center font-bold text-xs border-b-2 border-primary text-primary transition cursor-pointer flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">login</span>
-            <span>Sign In</span>
-          </button>
-          <button id="authTabRegisterBtn" onclick="app.switchAuthTab('register')" class="flex-1 py-3.5 text-center font-semibold text-xs border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition cursor-pointer flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">person_add</span>
-            <span>Create Account</span>
-          </button>
+        <!-- Google Authentication Banner Header -->
+        <div class="p-5 sm:p-6 bg-gradient-to-r from-primary/10 via-surface-container-high/60 to-surface-container-high/40 border-b border-outline-variant/10">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow flex-shrink-0">
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-bold text-on-surface">Google Verified Identity</span>
+                  <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-secondary/15 text-secondary border border-secondary/20">Verified</span>
+                </div>
+                <div id="googleDetectedEmail" class="text-xs font-mono font-bold text-primary truncate">Connecting to Google...</div>
+              </div>
+            </div>
+            <a href="https://accounts.google.com/AccountChooser" target="_blank" title="Switch Google Account" class="px-2.5 py-1 text-[11px] font-semibold text-primary hover:text-on-primary bg-primary/10 hover:bg-primary rounded-lg transition border border-primary/20 flex-shrink-0">
+              Choose Account
+            </a>
+          </div>
         </div>
 
-        <div class="p-6 sm:p-8">
+        <div class="p-6 sm:p-8 space-y-5">
           
-          <!-- 1. SIGN IN FORM -->
-          <div id="authSignInSection" class="space-y-4">
-            <form id="signInForm" onsubmit="app.handleSignInSubmit(event)" class="space-y-4 text-xs">
-              <div>
-                <label class="block font-bold text-on-surface mb-1">Work Email Address *:</label>
-                <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">mail</span>
-                  <input type="email" id="loginEmail" required placeholder="name@company.com" class="w-full pl-9 pr-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                </div>
+          <!-- 1. EXISTING GOOGLE USER SECTION -->
+          <div id="googleExistingUserSection" class="hidden space-y-4">
+            <div class="p-4 bg-surface-container-high rounded-xl border border-outline-variant/15 text-xs space-y-2">
+              <div class="flex items-center gap-2 text-on-surface">
+                <span class="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+                <span class="font-bold">Welcome Back!</span>
               </div>
-
-              <div>
-                <div class="flex justify-between items-center mb-1">
-                  <label class="block font-bold text-on-surface">Password *:</label>
-                </div>
-                <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">lock</span>
-                  <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full pl-9 pr-10 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                  <button type="button" onclick="app.togglePasswordVisibility('loginPassword', this)" class="absolute right-3 top-2.5 text-on-surface-variant hover:text-on-surface">
-                    <span class="material-symbols-outlined text-[18px]">visibility</span>
-                  </button>
-                </div>
-              </div>
-
-              <button type="submit" id="signInSubmitBtn" class="w-full py-3 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">login</span>
-                <span>Sign In to Zolexora IMS</span>
-              </button>
-            </form>
-
-            <!-- Quick Demo Credentials Hint -->
-            <div class="pt-4 border-t border-outline-variant/10">
-              <div class="p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-primary flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[15px]">info</span>
-                    <span>Admin Demo Account</span>
-                  </span>
-                  <button type="button" onclick="app.fillDemoCredentials()" class="text-[10px] text-primary hover:underline font-bold cursor-pointer">Autofill</button>
-                </div>
-                <div class="text-[11px] text-on-surface-variant font-mono space-y-0.5">
-                  <div>Email: <span class="text-on-surface font-semibold">abhishekofficial4577@gmail.com</span></div>
-                  <div>Password: <span class="text-on-surface font-semibold">admin123</span></div>
-                </div>
-              </div>
+              <p class="text-on-surface-variant">Your Google account is registered as <strong id="existingUserRoleBadge" class="text-primary">Admin</strong> of <strong id="existingUserOrgBadge" class="text-on-surface">Organization</strong>.</p>
             </div>
-
-            <div class="text-center pt-2">
-              <span class="text-xs text-on-surface-variant">Don't have an account? </span>
-              <button type="button" onclick="app.switchAuthTab('register')" class="text-xs text-primary font-bold hover:underline cursor-pointer">Create an account</button>
-            </div>
+            <button onclick="app.loginWithGoogle()" id="googleDirectLoginBtn" class="w-full py-3.5 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
+              <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+              <span id="googleDirectLoginBtnText">Enter Dashboard as Admin</span>
+            </button>
           </div>
 
-          <!-- 2. CREATE ACCOUNT FORM -->
-          <div id="authRegisterSection" class="hidden space-y-4">
-            <form id="createAccountForm" onsubmit="app.handleRegisterSubmit(event)" class="space-y-3.5 text-xs">
+          <!-- 2. NEW GOOGLE USER -> CREATE ORGANIZATION & BECOME ADMIN -->
+          <div id="googleNewUserSection" class="space-y-4">
+            <div class="p-3.5 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
+                <div class="text-xs">
+                  <span class="font-bold text-on-surface">New Organization Setup</span>
+                  <p class="text-[11px] text-on-surface-variant">You will be designated as the <strong class="text-primary">Admin</strong> of this organization.</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary uppercase tracking-wider">Admin</span>
+            </div>
+
+            <form id="googleOrgSetupForm" onsubmit="app.handleGoogleOrgSetup(event)" class="space-y-3.5 text-xs">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label class="block font-bold text-on-surface mb-1">Your Full Name *:</label>
-                  <input type="text" id="regFullName" required placeholder="e.g. John Doe" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <label class="block font-bold text-on-surface mb-1">Admin Full Name *:</label>
+                  <input type="text" id="gName" required placeholder="e.g. Abhishek Sharma" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
                 </div>
                 <div>
-                  <label class="block font-bold text-on-surface mb-1">Work Email *:</label>
-                  <input type="email" id="regEmail" required placeholder="john@company.com" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <label class="block font-bold text-on-surface mb-1">Google Email (Locked) *:</label>
+                  <input type="email" id="gEmailLocked" readonly disabled class="w-full px-3.5 py-2.5 bg-surface-container-highest/60 border border-outline-variant/10 rounded-xl text-on-surface-variant font-mono text-xs cursor-not-allowed">
                 </div>
               </div>
 
               <div>
-                <label class="block font-bold text-on-surface mb-1">Create Password (min 6 characters) *:</label>
-                <input type="password" id="regPassword" required minlength="6" placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-              </div>
-
-              <div>
-                <label class="block font-bold text-on-surface mb-1">Organization / Company Name *:</label>
-                <input type="text" id="regOrgName" required placeholder="e.g. Acme Corp" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                <span class="text-[10px] text-on-surface-variant">Stored centrally in Zolexora's master database folder: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
+                <label class="block font-bold text-on-surface mb-1">Organization / Brand Name *:</label>
+                <input type="text" id="gOrgName" required placeholder="e.g. Zolexora Retail, Acme Hotels, etc." class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                <span class="text-[10px] text-on-surface-variant">All files provisioned inside Zolexora cloud database: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label class="block font-bold text-on-surface mb-1">Industry Sector *:</label>
-                  <select id="regIndustry" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <select id="gIndustry" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
                     <option value="Hospitality & Hotels">🏨 Hospitality &amp; Hotels</option>
                     <option value="Restaurants & F&B">🍽️ Restaurants &amp; F&B</option>
                     <option value="Retail & E-Commerce">🛒 Retail &amp; E-Commerce</option>
@@ -246,7 +228,7 @@
                 </div>
                 <div>
                   <label class="block font-bold text-on-surface mb-1">Base Currency *:</label>
-                  <select id="regCurrency" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <select id="gCurrency" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
                     <option value="₹">₹ (INR - Indian Rupee)</option>
                     <option value="$">$ (USD - US Dollar)</option>
                     <option value="€">€ (EUR - Euro)</option>
@@ -259,7 +241,7 @@
 
               <div>
                 <label class="block font-bold text-on-surface mb-1">Primary Store / Warehouse Name *:</label>
-                <input type="text" id="regStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                <input type="text" id="gStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
               </div>
 
               <!-- Blueprint layout summary -->
@@ -270,16 +252,35 @@
                 <div>&nbsp;&nbsp;└── 📁 04_Invoices | 05_Reports | 06_System_Backups</div>
               </div>
 
-              <button type="submit" id="registerSubmitBtn" class="w-full py-3 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
+              <button type="submit" id="googleOrgSubmitBtn" class="w-full py-3.5 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
                 <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
-                <span>Create Account &amp; Provision Workspace</span>
+                <span>Create Organization &amp; Become Admin</span>
               </button>
             </form>
+          </div>
 
-            <div class="text-center pt-2">
-              <span class="text-xs text-on-surface-variant">Already have an account? </span>
-              <button type="button" onclick="app.switchAuthTab('signin')" class="text-xs text-primary font-bold hover:underline cursor-pointer">Sign In</button>
-            </div>
+          <!-- Manual Login / Demo option toggle -->
+          <div class="pt-3 border-t border-outline-variant/10 text-center">
+            <button type="button" onclick="app.toggleManualAuth()" class="text-xs text-on-surface-variant hover:text-primary transition font-semibold cursor-pointer">
+              <span id="manualAuthToggleText">Need password login or test demo account? Click here</span>
+            </button>
+          </div>
+
+          <!-- Collapsible Manual / Password Auth Section -->
+          <div id="manualAuthContainer" class="hidden pt-2 space-y-4 border-t border-outline-variant/10">
+            <form id="signInForm" onsubmit="app.handleSignInSubmit(event)" class="space-y-3.5 text-xs">
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Email Address:</label>
+                <input type="email" id="loginEmail" placeholder="abhishekofficial4577@gmail.com" value="abhishekofficial4577@gmail.com" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Password:</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" value="admin123" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+              <button type="submit" class="w-full py-2.5 px-4 bg-surface-container-highest hover:bg-primary text-on-surface hover:text-on-primary text-xs font-bold rounded-xl transition">
+                Sign In with Password
+              </button>
+            </form>
           </div>
 
         </div>

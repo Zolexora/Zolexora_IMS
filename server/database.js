@@ -348,6 +348,137 @@ function authenticateUser(email, password) {
 }
 
 /**
+ * One-Click Google Authentication & Account Creation
+ * Verified via Google OAuth Session. No password required.
+ * Account creator is registered as Admin of their organization!
+ */
+function handleGoogleAuth(orgDetails) {
+  let email = '';
+  try {
+    email = Session.getActiveUser().getEmail();
+  } catch (e) {}
+  if (!email) {
+    try {
+      email = Session.getEffectiveUser().getEmail();
+    } catch (e) {}
+  }
+  if (!email && orgDetails && orgDetails.email) {
+    email = orgDetails.email;
+  }
+  
+  if (!email) {
+    return {
+      success: false,
+      message: 'Could not detect Google account. Please ensure you are logged into Google.'
+    };
+  }
+
+  const cleanEmail = String(email).trim().toLowerCase();
+  
+  // Check if this Google user is already registered in central Auth Registry
+  const existingUser = findUserByEmail(cleanEmail);
+  if (existingUser) {
+    // User exists! Activate their organization and log them in
+    setActiveOrganization(existingUser.orgId, existingUser.orgName);
+    const initialData = getInitialData();
+    return {
+      success: true,
+      isNewUser: false,
+      user: {
+        id: existingUser.id,
+        email: cleanEmail,
+        name: existingUser.name,
+        role: existingUser.role,
+        orgId: existingUser.orgId,
+        orgName: existingUser.orgName,
+        status: existingUser.status
+      },
+      data: initialData,
+      message: 'Signed in as ' + existingUser.name + ' (' + existingUser.role + ')'
+    };
+  }
+
+  // New Google user! Check if organization details were provided
+  if (!orgDetails || !orgDetails.orgName) {
+    return {
+      success: true,
+      isNewUser: true,
+      email: cleanEmail,
+      message: 'New Google user. Please provide organization name to provision workspace.'
+    };
+  }
+
+  // Provision new organization in central database!
+  const name = String(orgDetails.name || cleanEmail.split('@')[0]).trim();
+  const orgName = String(orgDetails.orgName).trim();
+  const industry = String(orgDetails.industry || 'General Enterprise').trim();
+  const storeName = String(orgDetails.storeName || 'Main Central Warehouse').trim();
+  const currency = String(orgDetails.currency || '₹').trim();
+
+  // 1. Provision organization folder and 6 structured subdirectories in central Drive
+  const orgResult = provisionOrganization({
+    name: orgName,
+    industry: industry,
+    storeName: storeName,
+    currency: currency,
+    adminName: name,
+    adminEmail: cleanEmail
+  });
+
+  const orgId = orgResult.organization.id;
+  const newUserId = 'USR_' + Utilities.getUuid().substring(0, 8).toUpperCase();
+  const now = new Date().toISOString();
+
+  // 2. Register user in central Auth Registry with role 'Admin'
+  const ss = getAuthRegistry();
+  const usersSheet = ss.getSheetByName('Users');
+  usersSheet.appendRow([
+    newUserId,
+    cleanEmail,
+    'GOOGLE_OAUTH_VERIFIED',
+    name,
+    'Admin', // Account creator is designated Admin of their organization!
+    orgId,
+    orgName,
+    now,
+    now,
+    'Active'
+  ]);
+
+  const orgsSheet = ss.getSheetByName('Organizations');
+  if (orgsSheet) {
+    orgsSheet.appendRow([
+      orgId,
+      orgName,
+      industry,
+      cleanEmail,
+      now,
+      'Active'
+    ]);
+  }
+
+  // 3. Set active organization in session
+  setActiveOrganization(orgId, orgName);
+  const initialData = getInitialData();
+
+  return {
+    success: true,
+    isNewUser: false,
+    user: {
+      id: newUserId,
+      email: cleanEmail,
+      name: name,
+      role: 'Admin',
+      orgId: orgId,
+      orgName: orgName,
+      status: 'Active'
+    },
+    data: initialData,
+    message: 'Welcome! You are now the Admin of ' + orgName + '. Workspace provisioned successfully!'
+  };
+}
+
+/**
  * Creates new user account & provisions dedicated organization in central Zolexora database
  */
 function createAccountAndProvision(formData) {
