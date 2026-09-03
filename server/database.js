@@ -678,6 +678,21 @@ function getSettings() {
         settings[String(data[i][0])] = String(data[i][1]);
       }
     }
+
+    // Force update if old branding exists in the sheet
+    const currentName = settings['HOTEL_NAME'] || '';
+    if (!currentName || currentName.includes('DNP') || currentName.includes('21 Gun Salute')) {
+      settings['HOTEL_NAME'] = 'Zolexora IMS';
+      try {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][0]) === 'HOTEL_NAME') {
+            sheet.getRange(i + 1, 2).setValue('Zolexora IMS');
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+
     return settings;
   } catch (e) {
     return { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };

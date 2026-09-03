@@ -118,6 +118,9 @@ const app = {
     this.state.locations = data.locations || [];
     this.state.users = data.users || [];
     this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
+    if (!this.state.settings.HOTEL_NAME || this.state.settings.HOTEL_NAME.includes('DNP') || this.state.settings.HOTEL_NAME.includes('21 Gun Salute')) {
+      this.state.settings.HOTEL_NAME = 'Zolexora IMS';
+    }
     this.state.supplierTransactions = data.supplierTransactions || [];
     this.state.issuanceTransactions = data.issuanceTransactions || [];
     this.state.recentTransactions = data.issuanceTransactions || data.recentTransactions || [];
@@ -494,11 +497,13 @@ const app = {
     }
 
     // Update hotel title from Settings sheet
-    const hotelName = (this.state.settings && this.state.settings.HOTEL_NAME) ? this.state.settings.HOTEL_NAME : '';
-    if (hotelName) {
-      const hEl = document.getElementById('sidebarHotelName');
-      if (hEl) hEl.innerText = hotelName;
+    let hotelName = (this.state.settings && this.state.settings.HOTEL_NAME) ? this.state.settings.HOTEL_NAME : 'Zolexora IMS';
+    if (!hotelName || hotelName.includes('DNP') || hotelName.includes('21 Gun Salute')) {
+      hotelName = 'Zolexora IMS';
+      if (this.state.settings) this.state.settings.HOTEL_NAME = 'Zolexora IMS';
     }
+    const hEl = document.getElementById('sidebarHotelName');
+    if (hEl) hEl.innerText = hotelName;
 
     // Dynamic Middle Row
     this.renderCategoryBars(m.categoryBreakdown || {});
