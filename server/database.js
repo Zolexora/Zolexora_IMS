@@ -28,21 +28,7 @@ function getDriveFolder() {
   }
 }
 
-/**
- * 1-Click Authorization Test Function
- * Open script editor -> Select "authorizeAndTestDrive" -> Click "Run" -> Click "Review permissions" -> "Allow"
- */
-function authorizeAndTestDrive() {
-  const folder = DriveApp.getFolderById('1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx');
-  Logger.log('DriveApp Authorization Verified! Folder Name: ' + folder.getName());
-  
-  // Also initialize and place 00_Zolexora_Auth_Registry in this folder
-  const ss = getAuthRegistry();
-  Logger.log('Auth Registry Spreadsheet created/verified: ' + ss.getName() + ' (ID: ' + ss.getId() + ')');
-  Logger.log('Spreadsheet URL: ' + ss.getUrl());
-  
-  return 'SUCCESS: DriveApp is authorized and 00_Zolexora_Auth_Registry is created in ' + folder.getName();
-}
+
 
 /**
  * Ensures that a file is located inside the designated Google Drive folder (or a subfolder of it)
