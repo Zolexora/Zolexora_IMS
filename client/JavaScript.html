@@ -65,30 +65,49 @@ const app = {
     this.detectAndSetupGoogleIdentity();
   },
 
-  showAuthView: function() {
-    const landingView = document.getElementById('commercialLandingView');
-    const appDash = document.getElementById('appDashboardContainer');
-    if (landingView) landingView.classList.remove('hidden');
-    if (appDash) appDash.classList.add('hidden');
-    this.closeAuthModal();
-  },
+  navigateTo: function(route) {
+    const homeView = document.getElementById('commercialLandingView');
+    const loginView = document.getElementById('loginPageView');
+    const signupView = document.getElementById('signupPageView');
+    const dashView = document.getElementById('appDashboardContainer');
 
-  openAuthModal: function(mode = 'signin') {
-    const modal = document.getElementById('authModal');
-    if (modal) modal.classList.remove('hidden');
-    this.detectAndSetupGoogleIdentity();
+    if (homeView) homeView.classList.add('hidden');
+    if (loginView) loginView.classList.add('hidden');
+    if (signupView) signupView.classList.add('hidden');
+    if (dashView) dashView.classList.add('hidden');
 
-    if (mode === 'signup') {
+    if (route === 'login') {
+      if (loginView) loginView.classList.remove('hidden');
+      this.detectAndSetupGoogleIdentity();
+      window.scrollTo(0, 0);
+    } else if (route === 'signup') {
+      if (signupView) signupView.classList.remove('hidden');
+      this.detectAndSetupGoogleIdentity();
+      window.scrollTo(0, 0);
       setTimeout(() => {
-        const inp = document.getElementById('gOrgName');
+        const inp = document.getElementById('signupOrgName');
         if (inp) inp.focus();
       }, 100);
+    } else if (route === 'dashboard') {
+      if (dashView) dashView.classList.remove('hidden');
+      window.scrollTo(0, 0);
+    } else {
+      // default: home
+      if (homeView) homeView.classList.remove('hidden');
+      window.scrollTo(0, 0);
     }
   },
 
+  showAuthView: function() {
+    this.navigateTo('home');
+  },
+
+  openAuthModal: function(mode = 'signin') {
+    this.navigateTo(mode === 'signup' ? 'signup' : 'login');
+  },
+
   closeAuthModal: function() {
-    const modal = document.getElementById('authModal');
-    if (modal) modal.classList.add('hidden');
+    this.navigateTo('home');
   },
 
   switchGoogleAccount: function(e) {
@@ -102,64 +121,59 @@ const app = {
   },
 
   detectAndSetupGoogleIdentity: function() {
-    const emailEl = document.getElementById('googleDetectedEmail');
-    const lockedEl = document.getElementById('gEmailLocked');
-    const nameEl = document.getElementById('gName');
+    const loginEmailEl = document.getElementById('loginDetectedEmail');
+    const signupEmailEl = document.getElementById('signupDetectedEmail');
+    const signupNameInp = document.getElementById('signupAdminName');
 
     if (this.isGasEnv()) {
       google.script.run
         .withSuccessHandler(function(idInfo) {
           const email = (idInfo && idInfo.email) ? idInfo.email : 'abhishekofficial4577@gmail.com';
           app.detectedGoogleEmail = email;
-          if (emailEl) emailEl.innerText = email;
-          if (lockedEl) lockedEl.value = email;
+          if (loginEmailEl) loginEmailEl.innerText = email;
+          if (signupEmailEl) signupEmailEl.innerText = email;
 
           if (idInfo && idInfo.switchAccountUrl) {
             app.switchAccountUrl = idInfo.switchAccountUrl;
-            const switchBtn = document.getElementById('switchGoogleAccountBtn');
-            if (switchBtn) switchBtn.href = idInfo.switchAccountUrl;
           }
 
           // Suggest name from email
-          if (nameEl && !nameEl.value) {
+          if (signupNameInp && !signupNameInp.value) {
             const rawName = email.split('@')[0].replace(/[0-9_.]/g, ' ').trim();
-            nameEl.value = rawName.charAt(0).toUpperCase() + rawName.slice(1) || 'Abhishek Sharma';
+            signupNameInp.value = rawName.charAt(0).toUpperCase() + rawName.slice(1) || 'Abhishek Sharma';
           }
 
           // Check if this Google user is already an Admin or Member in Zolexora database
           google.script.run
             .withSuccessHandler(function(res) {
-              if (res && res.success && !res.isNewUser && res.user) {
-                const secExist = document.getElementById('googleExistingUserSection');
-                const secNew = document.getElementById('googleNewUserSection');
-                const roleBadge = document.getElementById('existingUserRoleBadge');
-                const orgBadge = document.getElementById('existingUserOrgBadge');
-                const btnText = document.getElementById('googleDirectLoginBtnText');
+              const statusCard = document.getElementById('loginOrgStatusCard');
+              const roleBadge = document.getElementById('loginRoleBadge');
+              const orgBadge = document.getElementById('loginOrgBadge');
+              const primaryBtnText = document.getElementById('loginPrimaryBtnText');
 
-                if (secExist) secExist.classList.remove('hidden');
-                if (secNew) secNew.classList.add('hidden');
+              if (res && res.success && !res.isNewUser && res.user) {
+                if (statusCard) statusCard.classList.remove('hidden');
                 if (roleBadge) roleBadge.innerText = res.user.role || 'Admin';
                 if (orgBadge) orgBadge.innerText = res.user.orgName || 'Organization';
-                if (btnText) btnText.innerText = 'Enter Dashboard as ' + (res.user.role || 'Admin') + ' (' + res.user.orgName + ')';
+                if (primaryBtnText) primaryBtnText.innerText = 'Enter Dashboard as ' + (res.user.role || 'Admin') + ' (' + res.user.orgName + ')';
               } else {
-                const secExist = document.getElementById('googleExistingUserSection');
-                const secNew = document.getElementById('googleNewUserSection');
-                if (secExist) secExist.classList.add('hidden');
-                if (secNew) secNew.classList.remove('hidden');
+                if (statusCard) statusCard.classList.add('hidden');
+                if (primaryBtnText) primaryBtnText.innerText = 'Continue with Google Account';
               }
             })
             .processGoogleAuth();
         })
         .withFailureHandler(function(err) {
-          if (emailEl) emailEl.innerText = 'Google Account Connected';
+          if (loginEmailEl) loginEmailEl.innerText = 'Google Account Connected';
+          if (signupEmailEl) signupEmailEl.innerText = 'Google Account Connected';
         })
         .getGoogleAccountInfo();
     } else {
       const mockEmail = 'abhishekofficial4577@gmail.com';
       app.detectedGoogleEmail = mockEmail;
-      if (emailEl) emailEl.innerText = mockEmail;
-      if (lockedEl) lockedEl.value = mockEmail;
-      if (nameEl) nameEl.value = 'Abhishek Sharma';
+      if (loginEmailEl) loginEmailEl.innerText = mockEmail;
+      if (signupEmailEl) signupEmailEl.innerText = mockEmail;
+      if (signupNameInp) signupNameInp.value = 'Abhishek Sharma';
     }
   },
 
@@ -204,11 +218,16 @@ const app = {
 
   handleGoogleOrgSetup: function(e) {
     if (e) e.preventDefault();
-    const name = document.getElementById('gName').value.trim();
-    const orgName = document.getElementById('gOrgName').value.trim();
-    const industry = document.getElementById('gIndustry').value;
-    const currency = document.getElementById('gCurrency').value;
-    const storeName = document.getElementById('gStoreName').value.trim();
+    const name = (document.getElementById('signupAdminName') ? document.getElementById('signupAdminName').value.trim() : '') ||
+                 (document.getElementById('gName') ? document.getElementById('gName').value.trim() : 'Admin');
+    const orgName = (document.getElementById('signupOrgName') ? document.getElementById('signupOrgName').value.trim() : '') ||
+                    (document.getElementById('gOrgName') ? document.getElementById('gOrgName').value.trim() : '');
+    const industry = (document.getElementById('signupIndustry') ? document.getElementById('signupIndustry').value : '') ||
+                     (document.getElementById('gIndustry') ? document.getElementById('gIndustry').value : 'Retail & E-Commerce');
+    const currency = (document.getElementById('signupCurrency') ? document.getElementById('signupCurrency').value : '') ||
+                     (document.getElementById('gCurrency') ? document.getElementById('gCurrency').value : '₹');
+    const storeName = (document.getElementById('signupStoreName') ? document.getElementById('signupStoreName').value.trim() : '') ||
+                      (document.getElementById('gStoreName') ? document.getElementById('gStoreName').value.trim() : 'Main Central Warehouse');
 
     if (!orgName) {
       this.showToast('Please enter an Organization Name.', 'error');
@@ -263,13 +282,8 @@ const app = {
     }
   },
 
-
   showDashboard: function(data) {
-    const landingView = document.getElementById('commercialLandingView');
-    const appDash = document.getElementById('appDashboardContainer');
-    if (landingView) landingView.classList.add('hidden');
-    if (appDash) appDash.classList.remove('hidden');
-    this.closeAuthModal();
+    this.navigateTo('dashboard');
 
     // Update user profile badges
     if (this.state.authUser) {
