@@ -119,180 +119,544 @@
 <body class="bg-background font-body-md text-on-background min-h-screen">
 
   <!-- ============================================================== -->
-  <!-- 0. AUTHENTICATION & ONBOARDING PORTAL (PRIMARY LANDING VIEW) -->
+  <!-- 0. COMMERCIAL LANDING PAGE & ONBOARDING PORTAL -->
   <!-- ============================================================== -->
-  <div id="authLandingView" class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-[#0b0d14] text-on-surface">
-    <div class="max-w-xl w-full space-y-6">
-      <!-- Brand Header -->
-      <div class="text-center space-y-2">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 text-primary mb-2 shadow-lg shadow-primary/10">
-          <span class="material-symbols-outlined text-[36px]">inventory_2</span>
-        </div>
-        <div class="flex items-center justify-center gap-2">
-          <h1 class="text-3xl font-extrabold text-on-surface tracking-tight">Zolexora IMS</h1>
-          <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary/15 text-primary border border-primary/25">Cloud SaaS</span>
-        </div>
-        <p class="text-sm text-on-surface-variant max-w-md mx-auto">
-          Centralized Enterprise Inventory Management SaaS. Authenticate to access your organization workspace.
-        </p>
-      </div>
-
-      <!-- Auth Box -->
-      <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl shadow-2xl overflow-hidden">
+  <div id="commercialLandingView" class="min-h-screen bg-[#0b0d14] text-on-surface flex flex-col selection:bg-primary selection:text-white">
+    
+    <!-- Top Sticky Commercial Navigation Bar -->
+    <header class="sticky top-0 z-40 bg-[#0b0d14]/90 backdrop-blur-xl border-b border-outline-variant/15 px-4 sm:px-8 py-3.5 transition-all">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
         
-        <!-- Google Authentication Banner Header -->
-        <div class="p-5 sm:p-6 bg-gradient-to-r from-primary/10 via-surface-container-high/60 to-surface-container-high/40 border-b border-outline-variant/10">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow flex-shrink-0">
-                <svg class="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-              </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold text-on-surface">Google Verified Identity</span>
-                  <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-secondary/15 text-secondary border border-secondary/20">Verified</span>
-                </div>
-                <div id="googleDetectedEmail" class="text-xs font-mono font-bold text-primary truncate">Connecting to Google...</div>
-              </div>
+        <!-- Logo & Brand Badge -->
+        <a href="#hero" class="flex items-center gap-3 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-primary-fixed-dim p-0.5 shadow-lg shadow-primary/20 flex items-center justify-center">
+            <div class="w-full h-full bg-[#0b0d14] rounded-[10px] flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-[22px]">inventory_2</span>
             </div>
-            <a href="https://accounts.google.com/AccountChooser" target="_blank" title="Switch Google Account" class="px-2.5 py-1 text-[11px] font-semibold text-primary hover:text-on-primary bg-primary/10 hover:bg-primary rounded-lg transition border border-primary/20 flex-shrink-0">
-              Choose Account
-            </a>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-base font-extrabold tracking-tight text-white group-hover:text-primary transition-colors">Zolexora IMS</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary border border-primary/25 uppercase tracking-wider">Cloud</span>
+            </div>
+            <p class="text-[10px] text-on-surface-variant font-medium tracking-wide">Multi-Store Enterprise</p>
+          </div>
+        </a>
+
+        <!-- Center Navigation Links (Desktop) -->
+        <nav class="hidden md:flex items-center gap-6 text-xs font-semibold text-on-surface-variant">
+          <a href="#features" class="hover:text-white transition-colors">Features</a>
+          <a href="#architecture" class="hover:text-white transition-colors">Multi-Store Setup</a>
+          <a href="#how-it-works" class="hover:text-white transition-colors">How It Works</a>
+          <a href="#security" class="hover:text-white transition-colors">Data Security</a>
+        </nav>
+
+        <!-- Right Corner Actions: Sign In & Sign Up Buttons -->
+        <div class="flex items-center gap-2.5">
+          <button onclick="app.openAuthModal('signin')" class="px-3.5 py-2 text-xs font-semibold text-on-surface hover:text-white bg-surface-container-high/60 hover:bg-surface-container-high border border-outline-variant/20 rounded-xl transition cursor-pointer flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px]">login</span>
+            <span>Sign In</span>
+          </button>
+          <button onclick="app.openAuthModal('signup')" class="px-4 py-2 text-xs font-bold text-on-primary bg-primary hover:bg-primary-container rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition cursor-pointer flex items-center gap-1.5">
+            <span>Sign Up</span>
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="hero" class="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-28 px-4 sm:px-8 border-b border-outline-variant/10">
+      <!-- Ambient Glow Background -->
+      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-gradient-to-b from-primary/20 via-secondary/10 to-transparent blur-3xl pointer-events-none -z-10 rounded-full"></div>
+
+      <div class="max-w-5xl mx-auto text-center space-y-8">
+        
+        <!-- Pill Badge -->
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-high/70 border border-outline-variant/20 text-xs font-medium text-on-surface-variant backdrop-blur-md">
+          <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          <span class="text-white font-semibold">Live Google Sheets Cloud Database</span>
+          <span class="text-outline">•</span>
+          <span>Zero Server Maintenance</span>
+        </div>
+
+        <!-- Main Headline -->
+        <h1 class="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.1] max-w-4xl mx-auto">
+          Centralized Multi-Store Inventory.<br class="hidden sm:inline"/>
+          <span class="bg-clip-text text-transparent bg-gradient-to-r from-primary-fixed-dim via-primary to-secondary">Engineered for Scale.</span>
+        </h1>
+
+        <!-- Subheadline -->
+        <p class="text-sm sm:text-lg text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
+          Run central depot warehouses, retail branch outlets, live barcode fulfillment, and real-time asset valuation — hosted directly inside your private Google Drive database.
+        </p>
+
+        <!-- CTA Button Group -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+          <button onclick="app.openAuthModal('signup')" class="w-full sm:w-auto px-7 py-3.5 bg-primary hover:bg-primary-container text-on-primary font-bold text-sm rounded-xl shadow-xl shadow-primary/30 hover:shadow-primary/50 transition flex items-center justify-center gap-2 cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+            <span>Start Free Organization</span>
+          </button>
+          <button onclick="app.openAuthModal('signin')" class="w-full sm:w-auto px-6 py-3.5 bg-surface-container-high/80 hover:bg-surface-container-high text-white font-semibold text-sm rounded-xl border border-outline-variant/25 transition flex items-center justify-center gap-2 cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">verified_user</span>
+            <span>Sign In with Google</span>
+          </button>
+        </div>
+
+        <!-- Trust & Tech Spec Strip -->
+        <div class="pt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
+          <div class="p-3 bg-surface-container-lowest/60 border border-outline-variant/15 rounded-xl backdrop-blur">
+            <div class="text-[11px] text-on-surface-variant font-medium">Data Storage</div>
+            <div class="text-xs font-bold text-white mt-0.5 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-secondary text-[16px]">folder_shared</span>
+              Google Drive Private
+            </div>
+          </div>
+          <div class="p-3 bg-surface-container-lowest/60 border border-outline-variant/15 rounded-xl backdrop-blur">
+            <div class="text-[11px] text-on-surface-variant font-medium">Multi-Store Fencing</div>
+            <div class="text-xs font-bold text-white mt-0.5 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-primary text-[16px]">hub</span>
+              Depot + 2 Branch Stores
+            </div>
+          </div>
+          <div class="p-3 bg-surface-container-lowest/60 border border-outline-variant/15 rounded-xl backdrop-blur">
+            <div class="text-[11px] text-on-surface-variant font-medium">Authentication</div>
+            <div class="text-xs font-bold text-white mt-0.5 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-tertiary text-[16px]">badge</span>
+              1-Click Google OAuth
+            </div>
+          </div>
+          <div class="p-3 bg-surface-container-lowest/60 border border-outline-variant/15 rounded-xl backdrop-blur">
+            <div class="text-[11px] text-on-surface-variant font-medium">Hardware Support</div>
+            <div class="text-xs font-bold text-white mt-0.5 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-secondary text-[16px]">qr_code_scanner</span>
+              Webcam Barcode Scan
+            </div>
           </div>
         </div>
 
-        <div class="p-6 sm:p-8 space-y-5">
-          
-          <!-- 1. EXISTING GOOGLE USER SECTION -->
-          <div id="googleExistingUserSection" class="hidden space-y-4">
-            <div class="p-4 bg-surface-container-high rounded-xl border border-outline-variant/15 text-xs space-y-2">
-              <div class="flex items-center gap-2 text-on-surface">
-                <span class="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
-                <span class="font-bold">Welcome Back!</span>
-              </div>
-              <p class="text-on-surface-variant">Your Google account is registered as <strong id="existingUserRoleBadge" class="text-primary">Admin</strong> of <strong id="existingUserOrgBadge" class="text-on-surface">Organization</strong>.</p>
-            </div>
-            <button onclick="app.loginWithGoogle()" id="googleDirectLoginBtn" class="w-full py-3.5 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
-              <span id="googleDirectLoginBtnText">Enter Dashboard as Admin</span>
-            </button>
-          </div>
-
-          <!-- 2. NEW GOOGLE USER -> CREATE ORGANIZATION & BECOME ADMIN -->
-          <div id="googleNewUserSection" class="space-y-4">
-            <div class="p-3.5 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
+        <!-- Hero Mockup Preview Card -->
+        <div class="pt-10 max-w-4xl mx-auto">
+          <div class="rounded-2xl border border-outline-variant/20 bg-surface-container-low shadow-2xl shadow-black/80 overflow-hidden text-left">
+            <!-- Mockup Window Bar -->
+            <div class="px-4 py-3 bg-surface-container-high/70 border-b border-outline-variant/15 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
-                <div class="text-xs">
-                  <span class="font-bold text-on-surface">New Organization Setup</span>
-                  <p class="text-[11px] text-on-surface-variant">You will be designated as the <strong class="text-primary">Admin</strong> of this organization.</p>
-                </div>
+                <span class="w-3 h-3 rounded-full bg-[#ff5f56]"></span>
+                <span class="w-3 h-3 rounded-full bg-[#ffbd2e]"></span>
+                <span class="w-3 h-3 rounded-full bg-[#27c93f]"></span>
+                <span class="ml-3 text-[11px] font-mono text-on-surface-variant">Zolexora IMS Cloud • Production Workspace</span>
               </div>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary uppercase tracking-wider">Admin</span>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary/15 text-secondary border border-secondary/20">Live Syncing</span>
+              </div>
             </div>
 
-            <form id="googleOrgSetupForm" onsubmit="app.handleGoogleOrgSetup(event)" class="space-y-3.5 text-xs">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label class="block font-bold text-on-surface mb-1">Admin Full Name *:</label>
-                  <input type="text" id="gName" required placeholder="e.g. Abhishek Sharma" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+            <!-- Mockup Body Content -->
+            <div class="p-5 sm:p-6 space-y-5 bg-[#0e1019]">
+              <!-- Mock KPIs -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                  <span class="text-[10px] font-bold text-on-surface-variant uppercase">Total Valuation</span>
+                  <div class="text-lg font-bold text-white font-mono mt-1">₹4,82,500</div>
+                  <span class="text-[10px] text-secondary font-medium">Across all stores</span>
                 </div>
-                <div>
-                  <label class="block font-bold text-on-surface mb-1">Google Email (Locked) *:</label>
-                  <input type="email" id="gEmailLocked" readonly disabled class="w-full px-3.5 py-2.5 bg-surface-container-highest/60 border border-outline-variant/10 rounded-xl text-on-surface-variant font-mono text-xs cursor-not-allowed">
+                <div class="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                  <span class="text-[10px] font-bold text-on-surface-variant uppercase">Catalog SKUs</span>
+                  <div class="text-lg font-bold text-primary font-mono mt-1">1,280 Items</div>
+                  <span class="text-[10px] text-primary-fixed-dim font-medium">100% Barcoded</span>
                 </div>
-              </div>
-
-              <div>
-                <label class="block font-bold text-on-surface mb-1">Organization / Brand Name *:</label>
-                <input type="text" id="gOrgName" required placeholder="e.g. Zolexora Retail, Acme Hotels, etc." class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                <span class="text-[10px] text-on-surface-variant">All files provisioned inside Zolexora cloud database: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label class="block font-bold text-on-surface mb-1">Industry Sector *:</label>
-                  <select id="gIndustry" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                    <option value="Hospitality & Hotels">🏨 Hospitality &amp; Hotels</option>
-                    <option value="Restaurants & F&B">🍽️ Restaurants &amp; F&B</option>
-                    <option value="Retail & E-Commerce">🛒 Retail &amp; E-Commerce</option>
-                    <option value="Warehouses & Logistics">🏭 Warehouses &amp; Logistics</option>
-                    <option value="Corporate & Office">💼 Corporate &amp; Facilities</option>
-                    <option value="Healthcare & Medical">🏥 Healthcare &amp; Medical</option>
-                  </select>
+                <div class="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                  <span class="text-[10px] font-bold text-on-surface-variant uppercase">Active Stores</span>
+                  <div class="text-lg font-bold text-white font-mono mt-1">3 Outlets</div>
+                  <span class="text-[10px] text-secondary font-medium">Depot + S001 + S002</span>
                 </div>
-                <div>
-                  <label class="block font-bold text-on-surface mb-1">Base Currency *:</label>
-                  <select id="gCurrency" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-                    <option value="₹">₹ (INR - Indian Rupee)</option>
-                    <option value="$">$ (USD - US Dollar)</option>
-                    <option value="€">€ (EUR - Euro)</option>
-                    <option value="£">£ (GBP - British Pound)</option>
-                    <option value="AED">AED (UAE Dirham)</option>
-                    <option value="SAR">SAR (Saudi Riyal)</option>
-                  </select>
+                <div class="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                  <span class="text-[10px] font-bold text-on-surface-variant uppercase">Requisitions</span>
+                  <div class="text-lg font-bold text-tertiary font-mono mt-1">12 Pending</div>
+                  <span class="text-[10px] text-tertiary font-medium">Workflow Active</span>
                 </div>
               </div>
 
-              <div>
-                <label class="block font-bold text-on-surface mb-1">Primary Store / Warehouse Name *:</label>
-                <input type="text" id="gStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              <!-- Mock Table Snippet -->
+              <div class="rounded-xl border border-outline-variant/15 overflow-hidden bg-surface-container-low/80">
+                <div class="px-3.5 py-2.5 bg-surface-container-high/40 border-b border-outline-variant/10 flex items-center justify-between text-xs font-semibold text-on-surface">
+                  <span>Recent Multi-Store Movements</span>
+                  <button onclick="app.openAuthModal('signin')" class="text-primary hover:underline text-[11px]">Open Full System →</button>
+                </div>
+                <div class="divide-y divide-outline-variant/10 text-xs font-mono">
+                  <div class="p-3 flex items-center justify-between text-on-surface-variant">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                      <span class="font-bold text-white">TXN-9812</span>
+                      <span class="text-outline">[Stock In]</span>
+                      <span>Assam Tea Leaves 40Kg delivered to Central Depot</span>
+                    </div>
+                    <span class="text-secondary font-bold">+40 Units</span>
+                  </div>
+                  <div class="p-3 flex items-center justify-between text-on-surface-variant">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full bg-primary"></span>
+                      <span class="font-bold text-white">TRF-4029</span>
+                      <span class="text-outline">[Transfer]</span>
+                      <span>Dispatched from Central Depot to Store 1 (Main Branch)</span>
+                    </div>
+                    <span class="text-primary-fixed-dim font-bold">Transfer In Transit</span>
+                  </div>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
 
-              <!-- Blueprint layout summary -->
-              <div class="p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl space-y-1 text-[11px] font-mono text-on-surface-variant">
-                <div class="text-primary font-bold">🌳 Directory Provisioned In Zolexora Database:</div>
-                <div>📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/ [Organization]/</div>
-                <div>&nbsp;&nbsp;├── 📁 01_Master_Databases | 02_Transactions | 03_Settings_and_Users</div>
-                <div>&nbsp;&nbsp;└── 📁 04_Invoices | 05_Reports | 06_System_Backups</div>
-              </div>
+      </div>
+    </section>
 
-              <button type="submit" id="googleOrgSubmitBtn" class="w-full py-3.5 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
-                <span>Create Organization &amp; Become Admin</span>
-              </button>
-            </form>
+    <!-- Core Features Section -->
+    <section id="features" class="py-20 px-4 sm:px-8 max-w-7xl mx-auto w-full space-y-12">
+      <div class="text-center space-y-3 max-w-2xl mx-auto">
+        <span class="text-xs font-bold text-primary uppercase tracking-widest">Enterprise Capabilities</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Everything you need to govern physical inventory.</h2>
+        <p class="text-sm text-on-surface-variant">Designed specifically for multi-store chains, retail operations, and centralized warehouses with zero database maintenance.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/15 hover:border-primary/40 transition group">
+          <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]">warehouse</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Multi-Store &amp; Depot Fencing</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">
+            Manage your Central Depot Warehouse alongside individual Store 1 and Store 2 outlets with isolated ledgers, location-specific stock counts, and department-level issue logs.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/15 hover:border-secondary/40 transition group">
+          <div class="w-12 h-12 rounded-xl bg-secondary/10 border border-secondary/20 text-secondary flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]">cloud_sync</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Google Drive Database Engine</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">
+            Zero vendor lock-in. All master databases and transaction logs are stored inside your private Google Drive folder, exportable to Excel or CSV at any time.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/15 hover:border-tertiary/40 transition group">
+          <div class="w-12 h-12 rounded-xl bg-tertiary/10 border border-tertiary/20 text-tertiary flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]">qr_code_scanner</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Built-in Barcode &amp; Label Engine</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">
+            Scan SKUs in real time using your smartphone or laptop webcam. Generate compliant Code128 barcodes and print adhesive labels directly from the browser.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/15 hover:border-primary/40 transition group">
+          <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]">monitoring</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Automated Valuation &amp; Alerts</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">
+            Calculate your total inventory asset value in real time across stores. Set safety minimum thresholds and receive automated low-stock warnings before stockouts occur.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/15 hover:border-secondary/40 transition group">
+          <div class="w-12 h-12 rounded-xl bg-secondary/10 border border-secondary/20 text-secondary flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]">swap_horiz</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Inter-Store Requisitions &amp; Audits</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">
+            Transfer stock between branches with automated source validation and destination receipt confirmation. Perform physical stock audits with automatic variance adjustments.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-outline-variant/15 hover:border-tertiary/40 transition group">
+          <div class="w-12 h-12 rounded-xl bg-tertiary/10 border border-tertiary/20 text-tertiary flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-[26px]">admin_panel_settings</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Role-Based Organization Admin</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">
+            When you register, you are designated as the Organization Admin. Multi-tenant security ensures your data is strictly isolated and inaccessible to other organizations.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20 px-4 sm:px-8 bg-surface-container-lowest/50 border-y border-outline-variant/10">
+      <div class="max-w-7xl mx-auto space-y-12">
+        <div class="text-center space-y-3 max-w-2xl mx-auto">
+          <span class="text-xs font-bold text-secondary uppercase tracking-widest">Guided Onboarding</span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Up and running in 4 simple steps.</h2>
+          <p class="text-sm text-on-surface-variant">No database provisioning, no complex server installations. Google handles the identity and storage automatically.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Step 1 -->
+          <div class="p-6 bg-surface-container-low rounded-2xl border border-outline-variant/15 relative space-y-3">
+            <div class="text-2xl font-extrabold text-primary font-mono">01</div>
+            <h4 class="text-base font-bold text-white">Google 1-Click Verification</h4>
+            <p class="text-xs text-on-surface-variant leading-relaxed">
+              Authenticate via the Google Account Chooser. Your identity is cryptographically verified without requiring passwords or activation emails.
+            </p>
           </div>
 
-          <!-- Manual Login / Demo option toggle -->
-          <div class="pt-3 border-t border-outline-variant/10 text-center">
-            <button type="button" onclick="app.toggleManualAuth()" class="text-xs text-on-surface-variant hover:text-primary transition font-semibold cursor-pointer">
-              <span id="manualAuthToggleText">Need password login or test demo account? Click here</span>
+          <!-- Step 2 -->
+          <div class="p-6 bg-surface-container-low rounded-2xl border border-outline-variant/15 relative space-y-3">
+            <div class="text-2xl font-extrabold text-secondary font-mono">02</div>
+            <h4 class="text-base font-bold text-white">Provision Organization</h4>
+            <p class="text-xs text-on-surface-variant leading-relaxed">
+              Enter your brand name and industry sector. The system automatically initializes 6 isolated database workbooks inside Google Drive.
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="p-6 bg-surface-container-low rounded-2xl border border-outline-variant/15 relative space-y-3">
+            <div class="text-2xl font-extrabold text-tertiary font-mono">03</div>
+            <h4 class="text-base font-bold text-white">Catalog &amp; Store Setup</h4>
+            <p class="text-xs text-on-surface-variant leading-relaxed">
+              Add your inventory SKUs, configure unit costs, minimum warning thresholds, and map suppliers and bin storage locations.
+            </p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="p-6 bg-surface-container-low rounded-2xl border border-outline-variant/15 relative space-y-3">
+            <div class="text-2xl font-extrabold text-primary-fixed-dim font-mono">04</div>
+            <h4 class="text-base font-bold text-white">Run Daily Operations</h4>
+            <p class="text-xs text-on-surface-variant leading-relaxed">
+              Record purchase deliveries, issue materials to sales counters, execute branch transfers, and export audit-ready Excel reports.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture & Security Section -->
+    <section id="security" class="py-20 px-4 sm:px-8 max-w-7xl mx-auto w-full space-y-12">
+      <div class="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-surface-container-high/60 via-surface-container-low to-surface-container-low border border-outline-variant/20 shadow-2xl space-y-8">
+        <div class="max-w-3xl space-y-3">
+          <span class="text-xs font-bold text-primary uppercase tracking-widest">Enterprise Multi-Tenant Security</span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Your data is strictly yours. Zero cross-tenant leakage.</h2>
+          <p class="text-sm text-on-surface-variant leading-relaxed">
+            Zolexora IMS employs two distinct layers of physical and logical isolation. The root Google Drive folder is completely private to the platform administrator. Every tenant’s queries are strictly filtered by their authenticated Organization ID.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
+          <div class="p-5 bg-surface-container-lowest/60 rounded-2xl border border-outline-variant/15 space-y-2">
+            <span class="material-symbols-outlined text-primary text-[24px]">shield</span>
+            <div class="text-sm font-bold text-white">Logical Tenant Fencing</div>
+            <p class="text-xs text-on-surface-variant">Server-side verification blocks unauthorized API requests between organizations.</p>
+          </div>
+          <div class="p-5 bg-surface-container-lowest/60 rounded-2xl border border-outline-variant/15 space-y-2">
+            <span class="material-symbols-outlined text-secondary text-[24px]">lock</span>
+            <div class="text-sm font-bold text-white">Google OAuth Encryption</div>
+            <p class="text-xs text-on-surface-variant">Protected by Google's native SSL infrastructure with no insecure plaintext password storage.</p>
+          </div>
+          <div class="p-5 bg-surface-container-lowest/60 rounded-2xl border border-outline-variant/15 space-y-2">
+            <span class="material-symbols-outlined text-tertiary text-[24px]">download</span>
+            <div class="text-sm font-bold text-white">Direct Data Portability</div>
+            <p class="text-xs text-on-surface-variant">Download complete CSV dumps of your product catalog and transaction history with 1 click.</p>
+          </div>
+        </div>
+
+        <div class="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-outline-variant/15">
+          <div class="text-xs text-on-surface-variant">
+            Ready to deploy your organization's inventory cloud?
+          </div>
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <button onclick="app.openAuthModal('signup')" class="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary-container text-on-primary font-bold text-xs rounded-xl shadow-lg shadow-primary/20 transition cursor-pointer">
+              Launch Free Organization
+            </button>
+            <button onclick="app.openAuthModal('signin')" class="w-full sm:w-auto px-5 py-2.5 bg-surface-container-highest hover:bg-surface-bright text-white font-semibold text-xs rounded-xl transition border border-outline-variant/20 cursor-pointer">
+              Sign In
             </button>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <!-- Collapsible Manual / Password Auth Section -->
-          <div id="manualAuthContainer" class="hidden pt-2 space-y-4 border-t border-outline-variant/10">
-            <form id="signInForm" onsubmit="app.handleSignInSubmit(event)" class="space-y-3.5 text-xs">
-              <div>
-                <label class="block font-bold text-on-surface mb-1">Email Address:</label>
-                <input type="email" id="loginEmail" placeholder="abhishekofficial4577@gmail.com" value="abhishekofficial4577@gmail.com" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-              </div>
-              <div>
-                <label class="block font-bold text-on-surface mb-1">Password:</label>
-                <input type="password" id="loginPassword" placeholder="••••••••" value="admin123" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
-              </div>
-              <button type="submit" class="w-full py-2.5 px-4 bg-surface-container-highest hover:bg-primary text-on-surface hover:text-on-primary text-xs font-bold rounded-xl transition">
-                Sign In with Password
-              </button>
-            </form>
+    <!-- Commercial Footer -->
+    <footer class="mt-auto py-10 px-4 sm:px-8 border-t border-outline-variant/15 bg-surface-container-lowest text-xs text-on-surface-variant">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary text-[20px]">inventory_2</span>
+          <span class="font-bold text-white text-sm">Zolexora IMS</span>
+          <span>•</span>
+          <span>Enterprise Multi-Store Inventory SaaS</span>
+        </div>
+
+        <div class="flex items-center gap-6">
+          <a href="#features" class="hover:text-white transition-colors">Features</a>
+          <a href="#how-it-works" class="hover:text-white transition-colors">How It Works</a>
+          <a href="#security" class="hover:text-white transition-colors">Security</a>
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary/15 text-secondary border border-secondary/20 text-[10px] font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+            Operational
+          </span>
+        </div>
+
+        <div class="text-[11px] text-outline">
+          &copy; 2026 Zolexora Technologies. All rights reserved.
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- AUTHENTICATION & REGISTRATION MODAL (POPUP DIALOG) -->
+  <!-- ============================================================== -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden transition-all">
+    <div class="max-w-xl w-full bg-surface-container-low border border-outline-variant/25 rounded-2xl shadow-2xl overflow-hidden animate-[fadeIn_0.2s_ease-in-out]">
+      
+      <!-- Modal Header Bar -->
+      <div class="p-5 sm:p-6 bg-gradient-to-r from-primary/10 via-surface-container-high/60 to-surface-container-high/40 border-b border-outline-variant/15 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow flex-shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
           </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold text-on-surface">Google Verified Identity</span>
+              <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-secondary/15 text-secondary border border-secondary/20">Verified</span>
+            </div>
+            <div id="googleDetectedEmail" class="text-xs font-mono font-bold text-primary truncate">Connecting to Google...</div>
+          </div>
+        </div>
 
+        <div class="flex items-center gap-2">
+          <a href="https://accounts.google.com/AccountChooser" target="_blank" title="Switch Google Account" class="px-2.5 py-1 text-[11px] font-semibold text-primary hover:text-on-primary bg-primary/10 hover:bg-primary rounded-lg transition border border-primary/20 flex-shrink-0">
+            Choose Account
+          </a>
+          <button onclick="app.closeAuthModal()" title="Close dialog" class="w-8 h-8 rounded-lg bg-surface-container-highest hover:bg-surface-bright text-on-surface flex items-center justify-center transition cursor-pointer">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
         </div>
       </div>
 
-      <!-- Security Trust Footer -->
-      <div class="text-center text-[11px] text-on-surface-variant flex items-center justify-center gap-4">
-        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock</span> 256-Bit Encrypted</span>
-        <span>•</span>
-        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">cloud_done</span> Centralized Cloud Database</span>
-        <span>•</span>
-        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">verified_user</span> Role-Based Isolation</span>
+      <!-- Modal Body Form -->
+      <div class="p-6 sm:p-8 space-y-5 max-h-[80vh] overflow-y-auto">
+        
+        <!-- 1. EXISTING GOOGLE USER SECTION -->
+        <div id="googleExistingUserSection" class="hidden space-y-4">
+          <div class="p-4 bg-surface-container-high rounded-xl border border-outline-variant/15 text-xs space-y-2">
+            <div class="flex items-center gap-2 text-on-surface">
+              <span class="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+              <span class="font-bold">Welcome Back!</span>
+            </div>
+            <p class="text-on-surface-variant">Your Google account is registered as <strong id="existingUserRoleBadge" class="text-primary">Admin</strong> of <strong id="existingUserOrgBadge" class="text-on-surface">Organization</strong>.</p>
+          </div>
+          <button onclick="app.loginWithGoogle()" id="googleDirectLoginBtn" class="w-full py-3.5 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+            <span id="googleDirectLoginBtnText">Enter Dashboard as Admin</span>
+          </button>
+        </div>
+
+        <!-- 2. NEW GOOGLE USER -> CREATE ORGANIZATION & BECOME ADMIN -->
+        <div id="googleNewUserSection" class="space-y-4">
+          <div class="p-3.5 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
+              <div class="text-xs">
+                <span class="font-bold text-on-surface">New Organization Setup</span>
+                <p class="text-[11px] text-on-surface-variant">You will be designated as the <strong class="text-primary">Admin</strong> of this organization.</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary uppercase tracking-wider">Admin</span>
+          </div>
+
+          <form id="googleOrgSetupForm" onsubmit="app.handleGoogleOrgSetup(event)" class="space-y-3.5 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Admin Full Name *:</label>
+                <input type="text" id="gName" required placeholder="e.g. Abhishek Sharma" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              </div>
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Google Email (Locked) *:</label>
+                <input type="email" id="gEmailLocked" readonly disabled class="w-full px-3.5 py-2.5 bg-surface-container-highest/60 border border-outline-variant/10 rounded-xl text-on-surface-variant font-mono text-xs cursor-not-allowed">
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold text-on-surface mb-1">Organization / Brand Name *:</label>
+              <input type="text" id="gOrgName" required placeholder="e.g. Zolexora Retail, Acme Enterprise, etc." class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+              <span class="text-[10px] text-on-surface-variant">Database created securely inside: 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Industry Sector *:</label>
+                <select id="gIndustry" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <option value="Retail & E-Commerce">🛒 Retail &amp; E-Commerce</option>
+                  <option value="Warehouses & Logistics">🏭 Warehouses &amp; Logistics</option>
+                  <option value="Hospitality & Hotels">🏨 Hospitality &amp; Hotels</option>
+                  <option value="Restaurants & F&B">🍽️ Restaurants &amp; F&B</option>
+                  <option value="Corporate & Office">💼 Corporate &amp; Facilities</option>
+                  <option value="Healthcare & Medical">🏥 Healthcare &amp; Medical</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-on-surface mb-1">Base Currency *:</label>
+                <select id="gCurrency" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+                  <option value="₹">₹ (INR - Indian Rupee)</option>
+                  <option value="$">$ (USD - US Dollar)</option>
+                  <option value="€">€ (EUR - Euro)</option>
+                  <option value="£">£ (GBP - British Pound)</option>
+                  <option value="AED">AED (UAE Dirham)</option>
+                  <option value="SAR">SAR (Saudi Riyal)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold text-on-surface mb-1">Primary Store / Warehouse Name *:</label>
+              <input type="text" id="gStoreName" required placeholder="e.g. Main Central Warehouse" value="Main Central Warehouse" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+            </div>
+
+            <button type="submit" id="googleOrgSubmitBtn" class="w-full py-3.5 px-4 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer">
+              <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+              <span>Create Organization &amp; Become Admin</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Manual Login / Demo option toggle -->
+        <div class="pt-3 border-t border-outline-variant/10 text-center">
+          <button type="button" onclick="app.toggleManualAuth()" class="text-xs text-on-surface-variant hover:text-primary transition font-semibold cursor-pointer">
+            <span id="manualAuthToggleText">Need password login or test demo account? Click here</span>
+          </button>
+        </div>
+
+        <!-- Collapsible Manual / Password Auth Section -->
+        <div id="manualAuthContainer" class="hidden pt-2 space-y-4 border-t border-outline-variant/10">
+          <form id="signInForm" onsubmit="app.handleSignInSubmit(event)" class="space-y-3.5 text-xs">
+            <div>
+              <label class="block font-bold text-on-surface mb-1">Email Address:</label>
+              <input type="email" id="loginEmail" placeholder="abhishekofficial4577@gmail.com" value="abhishekofficial4577@gmail.com" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+            </div>
+            <div>
+              <label class="block font-bold text-on-surface mb-1">Password:</label>
+              <input type="password" id="loginPassword" placeholder="••••••••" value="admin123" class="w-full px-3.5 py-2.5 bg-surface-container-high border border-outline-variant/20 rounded-xl text-on-surface text-xs focus:border-primary outline-none">
+            </div>
+            <button type="submit" class="w-full py-2.5 px-4 bg-surface-container-highest hover:bg-primary text-on-surface hover:text-on-primary text-xs font-bold rounded-xl transition">
+              Sign In with Password
+            </button>
+          </form>
+        </div>
+
       </div>
     </div>
   </div>

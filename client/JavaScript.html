@@ -66,10 +66,29 @@ const app = {
   },
 
   showAuthView: function() {
-    const authView = document.getElementById('authLandingView');
+    const landingView = document.getElementById('commercialLandingView');
     const appDash = document.getElementById('appDashboardContainer');
-    if (authView) authView.classList.remove('hidden');
+    if (landingView) landingView.classList.remove('hidden');
     if (appDash) appDash.classList.add('hidden');
+    this.closeAuthModal();
+  },
+
+  openAuthModal: function(mode = 'signin') {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.classList.remove('hidden');
+    this.detectAndSetupGoogleIdentity();
+
+    if (mode === 'signup') {
+      setTimeout(() => {
+        const inp = document.getElementById('gOrgName');
+        if (inp) inp.focus();
+      }, 100);
+    }
+  },
+
+  closeAuthModal: function() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.classList.add('hidden');
   },
 
   detectAndSetupGoogleIdentity: function() {
@@ -244,10 +263,11 @@ const app = {
   },
 
   showDashboard: function(data) {
-    const authView = document.getElementById('authLandingView');
+    const landingView = document.getElementById('commercialLandingView');
     const appDash = document.getElementById('appDashboardContainer');
-    if (authView) authView.classList.add('hidden');
+    if (landingView) landingView.classList.add('hidden');
     if (appDash) appDash.classList.remove('hidden');
+    this.closeAuthModal();
 
     // Update user profile badges
     if (this.state.authUser) {
