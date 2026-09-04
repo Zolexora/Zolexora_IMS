@@ -12,6 +12,8 @@ const COOKIE_NAME = 'zolexora_session';
 const SALT = '_zolexora_salt_2026';
 
 import { APP_HTML } from './ui.js';
+import { INVENTORY_DASHBOARD_HTML } from './inv-dashboard-ui.js';
+import { POS_DASHBOARD_HTML } from './pos-dashboard-ui.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -32,31 +34,34 @@ export default {
       return handleSessionApi(request, env, url);
     }
 
-    // 4. Universal RPC Bridge for D1 Database (/api/rpc/:functionName)
+    // 4. Standalone Dedicated Dashboard Web Pages
+    if (url.pathname === '/inv-dashboard' || url.pathname === '/inventory-dashboard' || url.pathname === '/inventory') {
+      return htmlResponse(INVENTORY_DASHBOARD_HTML);
+    }
+    if (url.pathname === '/pos-dashboard' || url.pathname === '/pos') {
+      return htmlResponse(POS_DASHBOARD_HTML);
+    }
+
+    // 5. Universal RPC Bridge for D1 Database (/api/rpc/:functionName)
     if (url.pathname.startsWith('/api/rpc/')) {
       const functionName = url.pathname.replace('/api/rpc/', '').trim();
       return handleD1Rpc(request, env, functionName);
     }
 
-    // 5. Direct REST APIs for D1 Database
+    // 6. Direct REST APIs for D1 Database (/api/inv-dashboard, /api/pos-dashboard, etc.)
     if (url.pathname.startsWith('/api/')) {
       const restResponse = await handleRestApi(request, env, url);
       if (restResponse) return restResponse;
+      return jsonResponse({ success: false, error: `API endpoint '${url.pathname}' not found on edge database` }, 404, request);
     }
 
-    // 6. Direct Edge-Hosted UI (Eliminates Google Login redirect completely)
+    // 7. Direct Edge-Hosted UI (Eliminates Google Login redirect completely)
     if (url.pathname === '/' || url.pathname === '/index.html' || !url.pathname.startsWith('/api/')) {
-      return new Response(APP_HTML, {
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'x-edge-worker': 'zolexora-ims-edge'
-        }
-      });
+      return htmlResponse(APP_HTML);
     }
 
-    // 7. Fallback to GAS Proxy
-    return handleProxyRequest(request, env, url);
+    // 8. Fallback
+    return htmlResponse(APP_HTML);
   }
 };
 
@@ -134,6 +139,14 @@ async function handleD1Rpc(request, env, functionName) {
     switch (functionName) {
       case 'getInitialData':
         result = await getInitialData(db);
+        break;
+
+      case 'getInventoryDashboardData':
+        result = await getInventoryDashboardData(db);
+        break;
+
+      case 'getPosDashboardData':
+        result = await getPosDashboardData(db);
         break;
 
       case 'loginUser':
@@ -290,12 +303,27 @@ async function handleRestApi(request, env, url) {
 
   const path = url.pathname;
   const method = request.method;
+  const isGetOrHead = method === 'GET' || method === 'HEAD';
 
-  if (path === '/api/dashboard' && method === 'GET') {
+  if (path === '/api/dashboard' && isGetOrHead) {
     return jsonResponse(await getInitialData(db), 200, request);
   }
 
-  if (path === '/api/products' && method === 'GET') {
+  if (path === '/api/inv-dashboard' && isGetOrHead) {
+    if (prefersHtml(request, url)) {
+      return htmlResponse(INVENTORY_DASHBOARD_HTML);
+    }
+    return jsonResponse(await getInventoryDashboardData(db), 200, request);
+  }
+
+  if (path === '/api/pos-dashboard' && isGetOrHead) {
+    if (prefersHtml(request, url)) {
+      return htmlResponse(POS_DASHBOARD_HTML);
+    }
+    return jsonResponse(await getPosDashboardData(db), 200, request);
+  }
+
+  if (path === '/api/products' && isGetOrHead) {
     return jsonResponse({ success: true, items: await getProducts(db) }, 200, request);
   }
 
@@ -304,19 +332,19 @@ async function handleRestApi(request, env, url) {
     return jsonResponse(await saveProduct(db, payload), 200, request);
   }
 
-  if (path === '/api/stores' && method === 'GET') {
+  if (path === '/api/stores' && isGetOrHead) {
     return jsonResponse({ success: true, stores: await getStores(db) }, 200, request);
   }
 
-  if (path === '/api/selling-points' && method === 'GET') {
+  if (path === '/api/selling-points' && isGetOrHead) {
     return jsonResponse({ success: true, sellingPoints: await getSellingPoints(db) }, 200, request);
   }
 
-  if (path === '/api/suppliers' && method === 'GET') {
+  if (path === '/api/suppliers' && isGetOrHead) {
     return jsonResponse({ success: true, suppliers: await getSuppliers(db) }, 200, request);
   }
 
-  if (path === '/api/users' && method === 'GET') {
+  if (path === '/api/users' && isGetOrHead) {
     return jsonResponse({ success: true, users: await getUsers(db) }, 200, request);
   }
 
@@ -471,6 +499,301 @@ function calculateMetrics(items, supTxns, issTxns, storesList) {
       stockOut: 0,
       stockOutValue: 0
     }
+  };
+}
+
+async function getInventoryDashboardData(db) {
+  const [org, stores, suppliers, products, supTxns, issTxns] = await Promise.all([
+    db.prepare('SELECT * FROM organizations LIMIT 1;').first(),
+    db.prepare('SELECT * FROM stores ORDER BY code ASC;').all(),
+    db.prepare('SELECT * FROM suppliers ORDER BY code ASC;').all(),
+    db.prepare('SELECT * FROM products ORDER BY item_code ASC;').all(),
+    db.prepare('SELECT * FROM supplier_transactions ORDER BY timestamp DESC LIMIT 25;').all(),
+    db.prepare('SELECT * FROM issuance_transactions ORDER BY timestamp DESC LIMIT 25;').all()
+  ]);
+
+  const items = (products.results || []).map(p => formatProductFromRow(p));
+  const storesList = (stores.results || []).map(s => ({
+    code: s.code,
+    name: s.name,
+    type: s.type || 'Store',
+    status: s.status || 'Active'
+  }));
+  const suppliersList = (suppliers.results || []).map(s => ({
+    code: s.code,
+    name: s.name,
+    category: s.category || 'General',
+    contactPerson: s.contact_person || '',
+    phone: s.phone || '',
+    email: s.email || '',
+    status: s.status || 'Active'
+  }));
+
+  let totalValuation = 0;
+  let totalUnits = 0;
+  let lowStockCount = 0;
+  let outOfStockCount = 0;
+  const categoryBreakdown = {};
+  const lowStockAlerts = [];
+  const warehouseBreakdown = {};
+
+  storesList.forEach(st => {
+    warehouseBreakdown[st.code] = {
+      code: st.code,
+      name: st.name,
+      type: st.type,
+      units: 0,
+      valuation: 0
+    };
+  });
+
+  items.forEach(itm => {
+    const units = Number(itm.totalStock) || 0;
+    const rate = Number(itm.rate) || 0;
+    const val = Number(itm.totalValue) || (units * rate);
+    const minStock = Number(itm.minStock) || 0;
+
+    totalUnits += units;
+    totalValuation += val;
+
+    if (units <= 0) {
+      outOfStockCount++;
+      lowStockCount++;
+      lowStockAlerts.push({
+        code: itm.code,
+        name: itm.name,
+        category: itm.category,
+        currentStock: units,
+        minStock: minStock,
+        status: 'OUT_OF_STOCK',
+        rate: rate,
+        supplierCode: itm.supplierCode || ''
+      });
+    } else if (units <= minStock) {
+      lowStockCount++;
+      lowStockAlerts.push({
+        code: itm.code,
+        name: itm.name,
+        category: itm.category,
+        currentStock: units,
+        minStock: minStock,
+        status: 'LOW_STOCK',
+        rate: rate,
+        supplierCode: itm.supplierCode || ''
+      });
+    }
+
+    const cat = itm.category || 'General';
+    if (!categoryBreakdown[cat]) {
+      categoryBreakdown[cat] = { count: 0, units: 0, valuation: 0 };
+    }
+    categoryBreakdown[cat].count++;
+    categoryBreakdown[cat].units += units;
+    categoryBreakdown[cat].valuation += val;
+
+    if (warehouseBreakdown['S_000']) {
+      const u = Number(itm.centralStock) || 0;
+      warehouseBreakdown['S_000'].units += u;
+      warehouseBreakdown['S_000'].valuation += u * rate;
+    }
+    if (warehouseBreakdown['S_001']) {
+      const u = Number(itm.stockS001) || 0;
+      warehouseBreakdown['S_001'].units += u;
+      warehouseBreakdown['S_001'].valuation += u * rate;
+    }
+    if (warehouseBreakdown['S_002']) {
+      const u = Number(itm.stockS002) || 0;
+      warehouseBreakdown['S_002'].units += u;
+      warehouseBreakdown['S_002'].valuation += u * rate;
+    }
+  });
+
+  const recentMovements = [
+    ...(supTxns.results || []).map(t => ({
+      type: 'INWARD_PURCHASE',
+      id: t.id,
+      timestamp: t.timestamp,
+      itemCode: t.item_code,
+      itemName: t.item_description,
+      quantity: t.quantity,
+      rate: t.rate,
+      totalAmount: t.total_amount,
+      source: t.supplier_name || t.supplier_code,
+      destination: t.receiving_store_name || t.receiving_store_code
+    })),
+    ...(issTxns.results || []).map(t => ({
+      type: 'OUTWARD_TRANSFER',
+      id: t.id,
+      timestamp: t.timestamp,
+      itemCode: t.item_code,
+      itemName: t.item_description,
+      quantity: t.quantity,
+      rate: t.unit_rate,
+      totalAmount: t.total_value,
+      source: t.from_store_name || t.from_store_code,
+      destination: t.to_selling_point_name || t.to_selling_point_code
+    }))
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 20);
+
+  return {
+    success: true,
+    dashboardType: 'inventory',
+    title: 'Zolexora Inventory & Warehouse Operations Dashboard',
+    organization: org || { id: 'ORG_ZOLEXORA_001', name: "Zolexora_1's org" },
+    timestamp: new Date().toISOString(),
+    summary: {
+      totalSkus: items.length,
+      totalUnits: totalUnits,
+      totalValuation: Math.round(totalValuation),
+      lowStockCount: lowStockCount,
+      outOfStockCount: outOfStockCount,
+      totalWarehouses: storesList.length,
+      totalSuppliers: suppliersList.length
+    },
+    warehouses: Object.values(warehouseBreakdown),
+    categoryBreakdown: categoryBreakdown,
+    lowStockAlerts: lowStockAlerts,
+    recentStockMovements: recentMovements,
+    items: items
+  };
+}
+
+async function getPosDashboardData(db) {
+  const [org, sellingPoints, salesRes, purchasesRes, expensesRes] = await Promise.all([
+    db.prepare('SELECT * FROM organizations LIMIT 1;').first(),
+    db.prepare('SELECT * FROM selling_points ORDER BY code ASC;').all(),
+    db.prepare('SELECT * FROM selling_point_sales ORDER BY timestamp DESC;').all(),
+    db.prepare('SELECT * FROM selling_point_purchases ORDER BY timestamp DESC;').all(),
+    db.prepare('SELECT * FROM selling_point_expenses ORDER BY timestamp DESC;').all()
+  ]);
+
+  const sales = (salesRes.results || []).map(s => formatSaleFromRow(s));
+  const purchases = (purchasesRes.results || []).map(p => ({
+    id: p.id,
+    timestamp: p.timestamp,
+    date: p.date,
+    sellingPointCode: p.selling_point_code,
+    sellingPointName: p.selling_point_name,
+    itemCode: p.item_code,
+    itemName: p.item_name,
+    quantity: p.quantity,
+    costRate: p.cost_rate,
+    totalCost: p.total_cost,
+    invoiceRef: p.invoice_ref,
+    paymentStatus: p.payment_status,
+    receivedBy: p.received_by
+  }));
+  const expenses = (expensesRes.results || []).map(e => ({
+    id: e.id,
+    timestamp: e.timestamp,
+    date: e.date,
+    sellingPointCode: e.selling_point_code,
+    sellingPointName: e.selling_point_name,
+    category: e.category,
+    amount: e.amount,
+    paymentMode: e.payment_mode,
+    paidTo: e.paid_to,
+    voucherRef: e.voucher_ref,
+    recordedBy: e.recorded_by,
+    status: e.status
+  }));
+
+  const sellingPointsList = (sellingPoints.results || []).map(sp => ({
+    code: sp.code,
+    name: sp.name,
+    assignedStoreCode: sp.assigned_store_code || 'S_001',
+    type: sp.type || 'Selling Point',
+    status: sp.status || 'Active'
+  }));
+
+  let totalRevenue = 0;
+  let totalUnitsSold = 0;
+  let todayRevenue = 0;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const paymentBreakdown = { Cash: 0, UPI: 0, Card: 0, Other: 0 };
+  const counterStats = {};
+  const itemSalesMap = {};
+
+  sellingPointsList.forEach(sp => {
+    counterStats[sp.code] = {
+      code: sp.code,
+      name: sp.name,
+      assignedStore: sp.assignedStoreCode,
+      salesCount: 0,
+      totalRevenue: 0,
+      todayRevenue: 0
+    };
+  });
+
+  sales.forEach(s => {
+    const amt = Number(s.totalAmount) || 0;
+    const qty = Number(s.quantity) || 0;
+    totalRevenue += amt;
+    totalUnitsSold += qty;
+
+    if (s.date === todayStr || (s.timestamp && s.timestamp.startsWith(todayStr))) {
+      todayRevenue += amt;
+    }
+
+    const mode = s.paymentMode || 'Cash';
+    if (paymentBreakdown[mode] !== undefined) {
+      paymentBreakdown[mode] += amt;
+    } else {
+      paymentBreakdown.Other += amt;
+    }
+
+    if (counterStats[s.sellingPointCode]) {
+      counterStats[s.sellingPointCode].salesCount++;
+      counterStats[s.sellingPointCode].totalRevenue += amt;
+      if (s.date === todayStr || (s.timestamp && s.timestamp.startsWith(todayStr))) {
+        counterStats[s.sellingPointCode].todayRevenue += amt;
+      }
+    }
+
+    const itmCode = s.itemCode || s.itemName || 'OTHER';
+    if (!itemSalesMap[itmCode]) {
+      itemSalesMap[itmCode] = {
+        code: itmCode,
+        name: s.itemName || itmCode,
+        category: s.category || 'General',
+        unitsSold: 0,
+        revenue: 0
+      };
+    }
+    itemSalesMap[itmCode].unitsSold += qty;
+    itemSalesMap[itmCode].revenue += amt;
+  });
+
+  const totalPurchasesCost = purchases.reduce((sum, p) => sum + (Number(p.totalCost) || 0), 0);
+  const totalExpensesAmt = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const netCashFlow = totalRevenue - (totalPurchasesCost + totalExpensesAmt);
+
+  const topSellingItems = Object.values(itemSalesMap)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  return {
+    success: true,
+    dashboardType: 'pos',
+    title: 'Zolexora Point of Sale (POS) & Counter Operations Dashboard',
+    organization: org || { id: 'ORG_ZOLEXORA_001', name: "Zolexora_1's org" },
+    timestamp: new Date().toISOString(),
+    summary: {
+      totalRevenue: totalRevenue,
+      todayRevenue: todayRevenue,
+      totalBills: sales.length,
+      totalUnitsSold: totalUnitsSold,
+      averageBillValue: sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0,
+      totalPurchasesCost: totalPurchasesCost,
+      totalExpensesAmt: totalExpensesAmt,
+      netCashFlow: netCashFlow,
+      paymentBreakdown: paymentBreakdown
+    },
+    counters: Object.values(counterStats),
+    topSellingItems: topSellingItems,
+    recentSales: sales.slice(0, 50),
+    recentPurchases: purchases.slice(0, 50),
+    recentExpenses: expenses.slice(0, 50)
   };
 }
 
@@ -1295,3 +1618,25 @@ function jsonResponse(data, status = 200, request = null, extraHeaders = undefin
     headers: headers
   });
 }
+
+function htmlResponse(html) {
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'x-edge-worker': 'zolexora-ims-edge'
+    }
+  });
+}
+
+function prefersHtml(request, url) {
+  if (url.searchParams.has('json') || url.searchParams.get('format') === 'json') {
+    return false;
+  }
+  if (url.searchParams.has('view') || url.searchParams.get('format') === 'html') {
+    return true;
+  }
+  const accept = request.headers.get('accept') || '';
+  return accept.includes('text/html');
+}
+
