@@ -1943,42 +1943,76 @@
       <!-- TAB 2: PRODUCTS (INVENTORY CATALOG) -->
       <!-- ========================================================== -->
       <div id="tabContent-products" class="tab-pane hidden flex flex-col w-full gap-lg">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-low p-lg rounded-xl border border-outline-variant/10">
-          <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Inventory Products Catalog</h2>
-            <p class="font-body-sm text-on-surface-variant">Live multi-property catalog with SKU barcodes and valuation</p>
-          </div>
-          <div class="flex items-center flex-wrap gap-xs">
-            <button onclick="app.openAddItemModal()" class="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-lg flex items-center gap-1.5 shadow transition cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">add_circle</span>
-              <span>+ Add New Item</span>
-            </button>
-            <button onclick="app.openEditItemModal()" class="px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-lg flex items-center gap-1.5 border border-outline-variant/20 transition cursor-pointer" title="Edit existing product details">
-              <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
-              <span>Edit Item</span>
-            </button>
-            <button onclick="app.exportCatalogCSV()" class="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-lg flex items-center gap-1 border border-outline-variant/20 transition cursor-pointer" title="Export CSV">
-              <span class="material-symbols-outlined text-[18px]">download</span>
-              <span>CSV</span>
-            </button>
-          </div>
-        </div>
+        <!-- UNIFIED PRODUCTS TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-col gap-3.5">
+          <!-- Row 1: Title, Warehouse Store Location & Quick Action Buttons -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+                  <span class="material-symbols-outlined text-[24px]">inventory</span>
+                </div>
+                <div>
+                  <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Products &amp; SKUs Catalog</h1>
+                  <p class="text-xs text-on-surface-variant">Live multi-property catalog with SKU barcodes, unit costs &amp; real-time valuation</p>
+                </div>
+              </div>
 
-        <!-- Filter Controls -->
-        <div class="flex flex-wrap items-center gap-md bg-surface-container-low p-md rounded-xl border border-outline-variant/10">
-          <div class="flex-1 min-w-[200px]">
-            <input type="text" id="catalogSearchInput" oninput="app.filterCatalog()" placeholder="Filter by Name, SKU, Barcode, or Supplier..." class="w-full bg-surface-container-high border border-outline-variant/20 rounded-lg px-md py-2 text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary">
+              <!-- Store Location Selector -->
+              <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
+                <span class="material-symbols-outlined text-primary text-[18px] mr-1.5">storefront</span>
+                <div class="flex flex-col">
+                  <span class="text-[9px] uppercase tracking-wider font-bold text-primary leading-tight">Store Location:</span>
+                  <select id="prodStoreSelect" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+                    <option value="ALL">All Stores &amp; Outlets</option>
+                    <option value="S_000">Central Depot (S_000)</option>
+                    <option value="S_001">Store 1 - Main (S_001)</option>
+                    <option value="S_002">Store 2 - Outlet (S_002)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="app.openAddItemModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/30 transition cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                <span>+ Add SKU</span>
+              </button>
+              <button onclick="app.openEditItemModal()" class="px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-xl flex items-center gap-1.5 border border-outline-variant/20 transition cursor-pointer" title="Edit existing product details">
+                <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
+                <span>Edit Item</span>
+              </button>
+              <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition border border-outline-variant/20 cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+              </button>
+              <button onclick="app.exportCatalogCSV()" class="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-xl flex items-center gap-1 border border-outline-variant/20 transition cursor-pointer" title="Export Catalog to CSV">
+                <span class="material-symbols-outlined text-[18px]">download</span>
+                <span>CSV</span>
+              </button>
+            </div>
           </div>
-          <select id="catalogCategoryFilter" onchange="app.filterCatalog()" class="bg-surface-container-high text-xs text-on-surface border border-outline-variant/20 rounded-lg px-md py-2 outline-none">
-            <option value="ALL">All Categories</option>
-          </select>
-          <select id="catalogStockFilter" onchange="app.filterCatalog()" class="bg-surface-container-high text-xs text-on-surface border border-outline-variant/20 rounded-lg px-md py-2 outline-none">
-            <option value="ALL">All Stock Levels</option>
-            <option value="LOW">Low Stock Only</option>
-            <option value="OUT">Out of Stock</option>
-            <option value="OK">Healthy Stock</option>
-          </select>
-          <span id="catalogCountLabel" class="font-data-tabular text-data-tabular text-on-surface-variant">0 items</span>
+
+          <!-- Row 2: Search Input, Category Filter, Stock Level Filter, and Count -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/10">
+            <div class="flex items-center bg-surface-container-high px-3.5 py-2 rounded-xl flex-1 min-w-[220px] max-w-md border border-outline-variant/20 focus-within:border-primary transition-colors">
+              <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+              <input type="text" id="catalogSearchInput" oninput="app.filterCatalog()" placeholder="Filter by Name, SKU, Barcode, or Supplier..." class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline">
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="catalogCategoryFilter" onchange="app.filterCatalog()" class="bg-surface-container-high text-xs font-semibold text-on-surface border border-outline-variant/20 rounded-xl px-3 py-2 outline-none cursor-pointer">
+                <option value="ALL">All Categories</option>
+              </select>
+              <select id="catalogStockFilter" onchange="app.filterCatalog()" class="bg-surface-container-high text-xs font-semibold text-on-surface border border-outline-variant/20 rounded-xl px-3 py-2 outline-none cursor-pointer">
+                <option value="ALL">All Stock Levels</option>
+                <option value="LOW">Low Stock Only</option>
+                <option value="OUT">Out of Stock</option>
+                <option value="OK">Healthy Stock</option>
+              </select>
+              <span id="catalogCountLabel" class="font-data-tabular text-xs text-on-surface-variant bg-surface-container-high px-3 py-2 rounded-xl border border-outline-variant/20 font-semibold">0 items</span>
+            </div>
+          </div>
         </div>
 
         <!-- Products Table -->
@@ -2010,15 +2044,21 @@
       <!-- ========================================================== -->
       <!-- TAB 3: REQUISITIONS -->
       <!-- ========================================================== -->
-      <div id="tabContent-requisitions" class="tab-pane hidden flex flex-col w-full gap-lg">
-        <div class="bg-surface-container-low p-lg rounded-xl border border-outline-variant/10 flex justify-between items-center">
-          <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Department Requisitions</h2>
-            <p class="font-body-sm text-on-surface-variant">Requisition orders from Housekeeping, F&amp;B Kitchen, Front Desk, and Maintenance</p>
+      <div id="tabContent-requisitions" class="tab-pane hidden flex flex-col w-full gap-4">
+        <!-- UNIFIED REQUISITIONS TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+              <span class="material-symbols-outlined text-[24px]">request_quote</span>
+            </div>
+            <div>
+              <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Department Requisitions</h1>
+              <p class="text-xs text-on-surface-variant">Requisition orders from Housekeeping, F&amp;B Kitchen, Front Desk, and Maintenance</p>
+            </div>
           </div>
-          <button onclick="app.openStockOutModal()" class="px-4 py-2 bg-primary-container text-on-primary-container font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow">
+          <button onclick="app.openStockOutModal()" class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-primary/25 transition cursor-pointer">
             <span class="material-symbols-outlined text-[18px]">add</span>
-            <span>New Requisition Issue</span>
+            <span>+ New Requisition Issue</span>
           </button>
         </div>
 
@@ -2048,15 +2088,21 @@
       <!-- ========================================================== -->
       <!-- TAB 4: SUPPLIERS DIRECTORY -->
       <!-- ========================================================== -->
-      <div id="tabContent-suppliers" class="tab-pane hidden flex flex-col w-full gap-lg">
-        <div class="flex justify-between items-center bg-surface-container-low p-lg rounded-xl border border-outline-variant/10">
-          <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Approved Vendors &amp; Suppliers</h2>
-            <p class="font-body-sm text-on-surface-variant">Vendor contacts and product categories supplied for this organization</p>
+      <div id="tabContent-suppliers" class="tab-pane hidden flex flex-col w-full gap-4">
+        <!-- UNIFIED SUPPLIERS TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+              <span class="material-symbols-outlined text-[24px]">local_shipping</span>
+            </div>
+            <div>
+              <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Approved Vendors &amp; Suppliers</h1>
+              <p class="text-xs text-on-surface-variant">Vendor contacts and product categories supplied for this organization</p>
+            </div>
           </div>
-          <button onclick="app.openSupplierModal()" class="px-4 py-2 bg-primary-container text-on-primary-container font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow">
+          <button onclick="app.openSupplierModal()" class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-primary/25 transition cursor-pointer">
             <span class="material-symbols-outlined text-[18px]">add</span>
-            <span>Add Supplier</span>
+            <span>+ Add Supplier</span>
           </button>
         </div>
 
@@ -2068,30 +2114,40 @@
       <!-- ========================================================== -->
       <!-- TAB 5: ISSUANCE & AUDIT MOVEMENTS -->
       <!-- ========================================================== -->
-      <div id="tabContent-issuance" class="tab-pane hidden flex flex-col w-full gap-lg">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-low p-lg rounded-xl border border-outline-variant/10">
-          <div>
-            <h2 class="font-headline-md text-headline-md text-on-surface">Stock Issuance &amp; Audit Log</h2>
-            <p class="font-body-sm text-on-surface-variant">Complete audit ledger of Stock In, Stock Out, Transfers, and Audit Adjustments</p>
-          </div>
-          <div class="flex items-center gap-xs">
-            <button onclick="app.exportTransactionsCSV()" class="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-lg flex items-center gap-1 border border-outline-variant/20 transition">
+      <div id="tabContent-issuance" class="tab-pane hidden flex flex-col w-full gap-4">
+        <!-- UNIFIED ISSUANCE TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-col gap-3.5">
+          <!-- Row 1: Title & Export Action -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+                <span class="material-symbols-outlined text-[24px]">outbox</span>
+              </div>
+              <div>
+                <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Stock Issuance &amp; Audit Log</h1>
+                <p class="text-xs text-on-surface-variant">Complete audit ledger of Stock In, Stock Out, Transfers, and Audit Adjustments</p>
+              </div>
+            </div>
+            <button onclick="app.exportTransactionsCSV()" class="px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-xl flex items-center gap-1.5 border border-outline-variant/20 transition cursor-pointer" title="Export Ledger to CSV">
               <span class="material-symbols-outlined text-[18px]">download</span>
               <span>Export Log CSV</span>
             </button>
           </div>
-        </div>
 
-        <!-- Filter bar -->
-        <div class="flex flex-wrap items-center gap-md bg-surface-container-low p-md rounded-xl border border-outline-variant/10">
-          <input type="text" id="txnSearchInput" oninput="app.filterTransactions()" placeholder="Search transactions by item, PO, reference, staff..." class="flex-1 bg-surface-container-high border border-outline-variant/20 rounded-lg px-md py-2 text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary">
-          <select id="txnTypeFilter" onchange="app.filterTransactions()" class="bg-surface-container-high text-xs text-on-surface border border-outline-variant/20 rounded-lg px-md py-2 outline-none">
-            <option value="ALL">All Types</option>
-            <option value="STOCK_IN">Stock In (Purchases)</option>
-            <option value="STOCK_OUT">Stock Out (Disbursed)</option>
-            <option value="TRANSFER">Transfers</option>
-            <option value="ADJUSTMENT">Adjustments</option>
-          </select>
+          <!-- Row 2: Search & Filter Row -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/10">
+            <div class="flex items-center bg-surface-container-high px-3.5 py-2 rounded-xl flex-1 min-w-[220px] max-w-md border border-outline-variant/20 focus-within:border-primary transition-colors">
+              <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+              <input type="text" id="txnSearchInput" oninput="app.filterTransactions()" placeholder="Search transactions by item, PO, reference, staff..." class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline">
+            </div>
+            <select id="txnTypeFilter" onchange="app.filterTransactions()" class="bg-surface-container-high text-xs font-semibold text-on-surface border border-outline-variant/20 rounded-xl px-3 py-2 outline-none cursor-pointer">
+              <option value="ALL">All Transaction Types</option>
+              <option value="STOCK_IN">Stock In (Purchases)</option>
+              <option value="STOCK_OUT">Stock Out (Disbursed)</option>
+              <option value="TRANSFER">Transfers</option>
+              <option value="ADJUSTMENT">Adjustments</option>
+            </select>
+          </div>
         </div>
 
         <div class="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden">
@@ -2122,10 +2178,18 @@
       <!-- ========================================================== -->
       <!-- TAB 6: REPORTS & ANALYTICS -->
       <!-- ========================================================== -->
-      <div id="tabContent-reports" class="tab-pane hidden flex flex-col w-full gap-lg">
-        <div class="bg-surface-container-low p-lg rounded-xl border border-outline-variant/10">
-          <h2 class="font-headline-md text-headline-md text-on-surface">Enterprise Inventory Valuation &amp; Analytics</h2>
-          <p class="font-body-sm text-on-surface-variant">Real-time asset valuation, turnaround velocity, and category allocation across locations</p>
+      <div id="tabContent-reports" class="tab-pane hidden flex flex-col w-full gap-4">
+        <!-- UNIFIED REPORTS TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+              <span class="material-symbols-outlined text-[24px]">analytics</span>
+            </div>
+            <div>
+              <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Enterprise Valuation &amp; Analytics</h1>
+              <p class="text-xs text-on-surface-variant">Real-time asset valuation, turnaround velocity, and category allocation across locations</p>
+            </div>
+          </div>
         </div>
 
         <!-- ====================================================== -->
@@ -2276,15 +2340,19 @@
       <!-- ========================================================== -->
       <div id="tabContent-users" class="tab-pane hidden flex flex-col w-full gap-4">
 
-        <!-- Header Card -->
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-surface-container-low p-md lg:p-lg rounded-2xl border border-outline-variant/10">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-[28px]">manage_accounts</span>
-              <h1 class="font-display-lg text-headline-md font-bold text-on-surface tracking-tight">Users &amp; Role-Based Access Control (RBAC)</h1>
-              <span class="bg-primary/15 text-primary text-xs font-bold px-2 py-0.5 rounded border border-primary/20">ENTERPRISE SCOPE</span>
+        <!-- UNIFIED USERS TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+              <span class="material-symbols-outlined text-[24px]">manage_accounts</span>
             </div>
-            <p class="font-body-sm text-on-surface-variant mt-1">Assign staff to dedicated Selling Points (e.g. SP_001) or Inventory Stores (e.g. S_001) for strict operational isolation</p>
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Users &amp; Role-Based Access Control (RBAC)</h1>
+                <span class="bg-primary/15 text-primary text-xs font-bold px-2 py-0.5 rounded border border-primary/20">ENTERPRISE SCOPE</span>
+              </div>
+              <p class="text-xs text-on-surface-variant">Assign staff to dedicated Selling Points (e.g. SP_001) or Inventory Stores (e.g. S_001) for strict operational isolation</p>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="app.openUserModal()" class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-primary/25 transition cursor-pointer">
@@ -2417,24 +2485,24 @@
       <!-- ========================================================== -->
       <!-- TAB 7: DATABASE & DRIVE SETTINGS -->
       <!-- ========================================================== -->
-      <div id="tabContent-settings" class="tab-pane hidden flex flex-col w-full gap-lg">
-        
-        <!-- Google Drive Multi-Workbook Database Ecosystem -->
-        <div class="bg-surface-container-low rounded-xl border border-outline-variant/10 p-lg space-y-md">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-md border-b border-outline-variant/10">
-            <div>
-              <h3 class="text-headline-sm font-bold text-on-surface flex items-center gap-2">
-                <i class="fa-brands fa-google-drive text-primary text-xl"></i>
-                Multi-Workbook Database Ecosystem
-              </h3>
-              <p class="font-body-sm text-on-surface-variant">Bifurcated Google Drive database workbooks in your designated Drive folder.</p>
+      <div id="tabContent-settings" class="tab-pane hidden flex flex-col w-full gap-4">
+        <!-- UNIFIED SETTINGS TOP COMMAND CARD (Responsive & Zoom-Proof) -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+              <span class="material-symbols-outlined text-[24px]">settings</span>
             </div>
-            <a id="openDriveFolderDirectLink" href="https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition">
-              <span class="w-1.5 h-1.5 rounded-full bg-secondary mr-1.5 animate-pulse"></span>
-              <span>Open Drive Database Folder</span>
-              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-            </a>
+            <div>
+              <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Warehouses &amp; Database Settings</h1>
+              <p class="text-xs text-on-surface-variant">Bifurcated Google Drive database workbooks, store definitions &amp; system parameters</p>
+            </div>
           </div>
+          <a id="openDriveFolderDirectLink" href="https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-secondary mr-1 animate-pulse"></span>
+            <span>Open Drive Database Folder</span>
+            <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          </a>
+        </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-md text-xs bg-surface-container-high p-md rounded-xl border border-outline-variant/10">
             <div>

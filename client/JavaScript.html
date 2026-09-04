@@ -1049,19 +1049,11 @@ const app = {
       targetPane.classList.remove('hidden');
     }
 
-    // Responsive, Zoom-Proof Header Logic:
-    // Primary dashboards ('dashboard' and 'sellingpoint') feature their own dedicated in-page Top Command Cards.
-    // The top sticky header is hidden on these two primary tabs to prevent duplicate headers and zoom clipping.
-    // On sub-tabs (products, requisition, suppliers, issuance, reports, users, settings), the sticky top header is shown.
+    // Fully replace top header bar with dedicated in-page Top Command Cards across ALL sections:
     const topHeader = document.getElementById('appTopHeader');
     if (topHeader) {
-      if (tabId === 'dashboard' || tabId === 'sellingpoint') {
-        topHeader.classList.add('hidden');
-        topHeader.classList.remove('flex');
-      } else {
-        topHeader.classList.remove('hidden');
-        topHeader.classList.add('flex');
-      }
+      topHeader.classList.add('hidden');
+      topHeader.classList.remove('flex');
     }
 
     // Trigger Chart Resize and Report render if Reports
@@ -1137,7 +1129,7 @@ const app = {
       const isStoreScoped = (curUser.scopeType === 'STORE' || (userLoc.startsWith('S_') || userLoc === 'CENTRAL')) && !userLoc.startsWith('SP_') && userLoc !== 'ALL';
       if (isStoreScoped && propertyCode !== userLoc) {
         this.showToast(`Access Restricted: Your user account is locked to [${userLoc}]. Switch user to view other stores.`, 'error');
-        ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
+        ['headerPropertyFilter', 'dashStoreSelect', 'prodStoreSelect', 'spStoreSelect'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = userLoc;
         });
@@ -1148,7 +1140,7 @@ const app = {
     this.state.propertyFilter = propertyCode;
 
     // Synchronize all Store Dropdowns across header & dashboards
-    ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
+    ['headerPropertyFilter', 'dashStoreSelect', 'prodStoreSelect', 'spStoreSelect'].forEach(id => {
       const el = document.getElementById(id);
       if (el && el.value !== propertyCode) {
         el.value = propertyCode;
