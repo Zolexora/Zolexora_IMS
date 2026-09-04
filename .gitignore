@@ -15,3 +15,6 @@ Thumbs.db
 # Wrangler local state
 .wrangler/
 **/.wrangler/
+
+# Agent local cache
+.gemini/config/.migrated

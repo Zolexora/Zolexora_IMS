@@ -905,6 +905,12 @@
           <span id="sidebarUsersBadge" class="bg-surface-container-highest text-on-surface-variant text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
         </a>
 
+        <a href="#" onclick="app.switchTab('sites'); return false;" id="navBtn-sites" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">hub</span>
+          <span class="font-body-md flex-1">Site Management</span>
+          <span id="sidebarSitesBadge" class="bg-surface-container-highest text-on-surface-variant text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
+        </a>
+
         <div class="my-lg border-t border-outline-variant/10 mx-md"></div>
 
         <a href="#" onclick="app.switchTab('settings'); return false;" id="navBtn-settings" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
@@ -955,8 +961,19 @@
 
     </nav>
 
-    <!-- Bottom Sign Out Action -->
-    <div class="px-md pt-md border-t border-outline-variant/10">
+    <!-- Bottom Profile & Sign Out Actions -->
+    <div class="px-md pt-md border-t border-outline-variant/10 space-y-1">
+      <button onclick="app.openProfileMenu()" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition text-xs font-semibold cursor-pointer text-left">
+        <div class="w-7 h-7 rounded-lg bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs flex-shrink-0 select-none">
+          <span id="sidebarProfileLetter">S</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div id="sidebarProfileName" class="font-bold text-on-surface truncate text-xs">Admin</div>
+          <div id="sidebarProfileRole" class="text-[10px] text-on-surface-variant truncate">Global Access</div>
+        </div>
+        <span class="material-symbols-outlined text-[16px] text-outline">more_vert</span>
+      </button>
+
       <button onclick="app.logoutUser()" class="w-full flex items-center gap-2 px-md py-2.5 rounded-lg text-on-surface-variant hover:text-rose-400 hover:bg-rose-500/10 transition text-xs font-semibold cursor-pointer">
         <span class="material-symbols-outlined text-[18px]">logout</span>
         <span>Sign Out</span>
@@ -975,59 +992,44 @@
       <div class="flex flex-wrap items-center gap-2 lg:gap-3 flex-shrink-0">
 
         <!-- Dropdown 1: Inventory Store Filter (Inventory Mode) -->
-        <div id="headerStoreSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
-          <span class="material-symbols-outlined text-primary text-[16px] mr-1">warehouse</span>
-          <div class="flex flex-col">
-            <span class="text-[8px] uppercase tracking-wider font-bold text-primary leading-tight">Store:</span>
-            <select id="headerPropertyFilter" onchange="app.handlePropertyFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
-              <option value="ALL">All Stores &amp; Outlets</option>
-              <option value="S_000">Central Depot (S_000)</option>
-              <option value="S_001">Store 1 - Main (S_001)</option>
-              <option value="S_002">Store 2 - Outlet (S_002)</option>
-            </select>
-          </div>
+        <div id="headerStoreSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1.5 border border-outline-variant/20 hover:border-primary/40 shadow-sm transition" title="Filter by Inventory Store Location">
+          <span class="material-symbols-outlined text-primary text-[17px] mr-1.5">warehouse</span>
+          <select id="headerPropertyFilter" onchange="app.handlePropertyFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+            <option value="ALL">All Stores &amp; Outlets</option>
+            <option value="S_000">Central Depot (S_000)</option>
+            <option value="S_001">Store 1 - Main (S_001)</option>
+            <option value="S_002">Store 2 - Outlet (S_002)</option>
+          </select>
         </div>
 
         <!-- Dropdown 2: Selling Point Filter (POS Mode) -->
-        <div id="headerSpSelectorWrap" class="hidden items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-emerald-500/40 shadow-sm" title="Filter by Selling Point Counter">
-          <span class="material-symbols-outlined text-emerald-400 text-[16px] mr-1">point_of_sale</span>
-          <div class="flex flex-col">
-            <span class="text-[8px] uppercase tracking-wider font-bold text-emerald-400 leading-tight">Counter Register:</span>
-            <select id="headerSellingPointFilter" onchange="app.handleSellingPointFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
-              <option value="ALL">All Selling Points</option>
-              <option value="SP_001">Front Counter (SP_001)</option>
-              <option value="SP_002">Dispenser Counter (SP_002)</option>
-              <option value="SP_003">Production / Kitchen (SP_003)</option>
-              <option value="SP_004">Dispatch Hub (SP_004)</option>
-            </select>
-          </div>
+        <div id="headerSpSelectorWrap" class="hidden items-center bg-surface-container-high rounded-xl px-2.5 py-1.5 border border-outline-variant/20 hover:border-emerald-500/40 shadow-sm transition" title="Filter by Selling Point Counter">
+          <span class="material-symbols-outlined text-emerald-400 text-[17px] mr-1.5">point_of_sale</span>
+          <select id="headerSellingPointFilter" onchange="app.handleSellingPointFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+            <option value="ALL">All Selling Points</option>
+            <option value="SP_001">Front Counter (SP_001)</option>
+            <option value="SP_002">Dispenser Counter (SP_002)</option>
+            <option value="SP_003">Production / Kitchen (SP_003)</option>
+            <option value="SP_004">Dispatch Hub (SP_004)</option>
+          </select>
         </div>
       </div>
 
       <!-- Header Center & Right Actions -->
       <div class="flex flex-wrap items-center gap-2 lg:gap-3 ml-auto">
-        <!-- Search Input (Dynamic for Inventory or POS) -->
-        <div class="flex items-center bg-surface-container-high px-3 py-1 rounded-full w-52 border border-outline-variant/20 focus-within:border-primary transition-colors">
-          <span class="material-symbols-outlined text-on-surface-variant text-[17px] mr-1.5">search</span>
-          <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search inventory items..." type="text"/>
-        </div>
-
-        <!-- User Scope Switcher (RBAC) -->
-        <div class="hidden sm:flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-xl border border-outline-variant/30 shadow-sm" title="Active User Scope (Role-Based Access Control)">
-          <span class="material-symbols-outlined text-[16px] text-primary">badge</span>
-          <div class="flex flex-col">
-            <div class="flex items-center gap-1">
-              <span class="text-[8px] uppercase tracking-wider font-bold text-outline">User Scope:</span>
-              <span id="activeUserScopeBadge" class="bg-primary/20 text-primary text-[8px] font-bold px-1 rounded uppercase">GLOBAL</span>
-            </div>
-            <select id="headerUserSwitcher" onchange="app.switchDemoUser(this.value)" class="bg-transparent border-none text-xs font-bold text-on-surface focus:outline-none cursor-pointer pr-1">
-              <!-- Dynamically loaded with users -->
-            </select>
+        <!-- Search Input (Dynamic for Inventory or POS) with companion barcode scanner -->
+        <div class="flex items-center gap-1.5">
+          <div class="flex items-center bg-surface-container-highest/40 hover:bg-surface-container-highest/70 focus-within:bg-surface-container-highest/90 px-3 py-1.5 rounded-xl w-52 transition">
+            <span class="material-symbols-outlined text-on-surface-variant text-[17px] mr-1.5">search</span>
+            <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search inventory items..." type="text"/>
           </div>
+          <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition cursor-pointer shadow-sm">
+            <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+          </button>
         </div>
 
         <!-- Organization Selector Button -->
-        <button onclick="app.openOrgModal()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
+        <button onclick="app.openOrgModal('switch')" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
           <span class="material-symbols-outlined text-primary text-[18px]">corporate_fare</span>
           <span id="headerOrgName" class="font-bold truncate max-w-[110px]">Zolexora IMS</span>
           <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
@@ -1042,9 +1044,6 @@
           <button onclick="app.openTransferInvoiceModal()" title="Record Stock Transfer Invoice" class="px-3.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm">
             <span class="material-symbols-outlined text-[16px]">sync_alt</span>
             <span>Transfer Entry</span>
-          </button>
-          <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary transition border border-outline-variant/20 cursor-pointer">
-            <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
           </button>
           <!-- Notification Bell -->
           <button onclick="app.filterCatalogByLowStock()" title="Low Stock Alerts" class="relative p-xs hover:bg-surface-container-highest rounded-full transition-colors text-on-surface-variant hover:text-on-surface">
@@ -1069,11 +1068,11 @@
           </button>
         </div>
 
-        <!-- Top Right Corner: Only First Letter of Active Org -->
+        <!-- Top Right Corner: Profile & Organization Avatar Button -->
         <div class="pl-md border-l border-outline-variant/20 flex items-center">
-          <div class="w-9 h-9 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center shadow-sm select-none">
+          <button onclick="app.openProfileMenu()" title="Profile &amp; Organisation Menu" class="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center shadow-sm cursor-pointer transition select-none">
             <span id="headerOrgAvatarLetter">S</span>
-          </div>
+          </button>
         </div>
       </div>
     </header>
@@ -1105,38 +1104,22 @@
               </div>
 
               <!-- Warehouse Store Location Selector -->
-              <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
-                <span class="material-symbols-outlined text-primary text-[18px] mr-1.5">storefront</span>
-                <div class="flex flex-col">
-                  <span class="text-[9px] uppercase tracking-wider font-bold text-primary leading-tight">Warehouse Store:</span>
-                  <select id="dashStoreSelect" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
-                    <option value="ALL">All Stores &amp; Outlets (Consolidated)</option>
-                    <option value="S_000">Central Depot Warehouse (S_000)</option>
-                    <option value="S_001">Store 1 - Main Branch (S_001)</option>
-                    <option value="S_002">Store 2 - Outlet Branch (S_002)</option>
-                  </select>
-                </div>
+              <!-- Warehouse Store Location Selector -->
+              <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-outline-variant/20 hover:border-primary/40 shadow-sm transition" title="Filter by Inventory Store Location">
+                <span class="material-symbols-outlined text-primary text-[18px] mr-2">storefront</span>
+                <select id="dashStoreSelect" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+                  <option value="ALL">All Stores &amp; Outlets (Consolidated)</option>
+                  <option value="S_000">Central Depot Warehouse (S_000)</option>
+                  <option value="S_001">Store 1 - Main Branch (S_001)</option>
+                  <option value="S_002">Store 2 - Outlet Branch (S_002)</option>
+                </select>
               </div>
             </div>
 
-            <!-- Right: User Scope, Org Switcher & Low Stock Alerts -->
+            <!-- Right: Org Switcher, Alerts & Profile -->
             <div class="flex flex-wrap items-center gap-2">
-              <!-- User Scope Switcher (RBAC) -->
-              <div class="flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1.5 rounded-xl border border-outline-variant/30 shadow-sm" title="Active User Scope (Role-Based Access Control)">
-                <span class="material-symbols-outlined text-[16px] text-primary">badge</span>
-                <div class="flex flex-col">
-                  <div class="flex items-center gap-1">
-                    <span class="text-[8px] uppercase tracking-wider font-bold text-outline">User Scope:</span>
-                    <span id="dashUserScopeBadge" class="bg-primary/20 text-primary text-[8px] font-bold px-1 rounded uppercase">GLOBAL</span>
-                  </div>
-                  <select id="dashUserSwitcher" onchange="app.switchDemoUser(this.value)" class="bg-transparent border-none text-xs font-bold text-on-surface focus:outline-none cursor-pointer pr-1">
-                    <!-- Dynamically loaded with users -->
-                  </select>
-                </div>
-              </div>
-
               <!-- Organization Switcher Button -->
-              <button onclick="app.openOrgModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
+              <button onclick="app.openOrgModal('switch')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
                 <span class="material-symbols-outlined text-primary text-[18px]">corporate_fare</span>
                 <span id="dashOrgName" class="font-bold truncate max-w-[110px]">Zolexora IMS</span>
                 <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
@@ -1148,19 +1131,24 @@
                 <span id="bellAlertDotDash" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface animate-pulse"></span>
               </button>
 
-              <!-- Org Avatar Letter -->
-              <div class="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center shadow-sm select-none">
+              <!-- Profile & Org Avatar Button -->
+              <button onclick="app.openProfileMenu()" title="Profile &amp; Organisation Menu" class="w-9 h-9 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-bold text-sm flex items-center justify-center shadow-sm cursor-pointer transition select-none">
                 <span id="dashOrgAvatarLetter">S</span>
-              </div>
+              </button>
             </div>
           </div>
 
-          <!-- Row 2: Search Box, Quick Actions, and Live Timestamp -->
+          <!-- Row 2: Minimal Search Box with companion scanner, Quick Actions, and Live Timestamp -->
           <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/10">
-            <!-- Search Box -->
-            <div class="flex items-center bg-surface-container-high px-3.5 py-2 rounded-xl flex-1 min-w-[220px] max-w-md border border-outline-variant/20 focus-within:border-primary transition-colors">
-              <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
-              <input id="invCardSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search inventory SKUs, items, categories..." type="text"/>
+            <!-- Search Box with companion barcode scanner -->
+            <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+              <div class="flex items-center flex-1 bg-surface-container-highest/40 hover:bg-surface-container-highest/70 focus-within:bg-surface-container-highest/90 rounded-xl px-3.5 py-2 transition">
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+                <input id="invCardSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search inventory SKUs, items, categories..." type="text"/>
+              </div>
+              <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition cursor-pointer shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+              </button>
             </div>
 
             <!-- Inventory Action Buttons -->
@@ -1176,9 +1164,6 @@
               <button onclick="app.openTransferInvoiceModal()" title="Record Stock Transfer Invoice" class="px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm">
                 <span class="material-symbols-outlined text-[16px]">sync_alt</span>
                 <span>Transfer Entry</span>
-              </button>
-              <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition border border-outline-variant/20 cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
               </button>
               <div class="flex items-center gap-2 pl-2 border-l border-outline-variant/20">
                 <span id="liveTimestamp" class="font-data-tabular text-[11px] text-on-surface-variant hidden sm:inline-block">--</span>
@@ -1256,19 +1241,24 @@
 
         <!-- Middle Row: Charts & Lists -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-[5px]">
-          <!-- Column 1: Stock Levels by Category (Dynamic Bar Chart) -->
+          <!-- Column 1: Stock Levels by Category (Pie / Bar Chart Toggle) -->
           <div class="lg:col-span-4 bg-surface-container-low rounded-xl p-lg flex flex-col border border-outline-variant/10">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-lg">Stock Levels by Category</h3>
-            <div id="categoryBarsContainer" class="flex-1 flex items-end justify-between gap-md relative mt-xl min-h-[200px]">
-              <!-- Grid lines -->
-              <div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
-                <div class="border-b border-outline-variant w-full"></div>
-                <div class="border-b border-outline-variant w-full"></div>
-                <div class="border-b border-outline-variant w-full"></div>
-                <div class="border-b border-outline-variant w-full"></div>
-                <div class="border-b border-outline-variant w-full"></div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-headline-sm text-headline-sm text-on-surface">Stock by Category</h3>
+              <!-- Pie vs Bar Toggle Buttons -->
+              <div class="flex items-center bg-surface-container-high rounded-xl p-0.5 border border-outline-variant/20 shadow-sm">
+                <button type="button" id="btnDashChartPie" onclick="app.setDashboardChartType('pie')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-primary text-on-primary shadow-sm cursor-pointer" title="Display Doughnut / Pie Chart">
+                  <span class="material-symbols-outlined text-[14px]">pie_chart</span>
+                  <span>Pie</span>
+                </button>
+                <button type="button" id="btnDashChartBar" onclick="app.setDashboardChartType('bar')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface transition flex items-center gap-1 cursor-pointer" title="Display Bar Chart">
+                  <span class="material-symbols-outlined text-[14px]">bar_chart</span>
+                  <span>Bar</span>
+                </button>
               </div>
-              <!-- Dynamic Bars Injected by JS -->
+            </div>
+            <div class="relative w-full flex-1 flex items-center justify-center min-h-[220px]">
+              <canvas id="dashCategoryCanvas" class="max-h-[220px] max-w-full"></canvas>
             </div>
           </div>
 
@@ -1418,22 +1408,19 @@
               </div>
 
               <!-- Active Selling Point Register Selector -->
-              <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-emerald-500/40 shadow-sm" title="Filter by Active Selling Point Register">
-                <span class="material-symbols-outlined text-emerald-400 text-[18px] mr-1.5">storefront</span>
-                <div class="flex flex-col">
-                  <span class="text-[9px] uppercase tracking-wider font-bold text-emerald-400 leading-tight">Active Register:</span>
-                  <select id="spActiveSelect" onchange="app.handleSellingPointFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
-                    <option value="ALL">All Selling Points</option>
-                    <option value="SP_001">Front Counter / Retail Sales (SP_001)</option>
-                    <option value="SP_002">Branch Dispenser Counter (SP_002)</option>
-                    <option value="SP_003">Main Production / Operations (SP_003)</option>
-                    <option value="SP_004">Customer Service &amp; Dispatch (SP_004)</option>
-                  </select>
-                </div>
+              <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-outline-variant/20 hover:border-emerald-500/40 shadow-sm transition" title="Filter by Active Selling Point Register">
+                <span class="material-symbols-outlined text-emerald-400 text-[18px] mr-2">point_of_sale</span>
+                <select id="spActiveSelect" onchange="app.handleSellingPointFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+                  <option value="ALL">All Selling Points</option>
+                  <option value="SP_001">Front Counter / Retail Sales (SP_001)</option>
+                  <option value="SP_002">Branch Dispenser Counter (SP_002)</option>
+                  <option value="SP_003">Main Production / Operations (SP_003)</option>
+                  <option value="SP_004">Customer Service &amp; Dispatch (SP_004)</option>
+                </select>
               </div>
             </div>
 
-            <!-- Right: Live Terminal Badge, User Scope, Org Switcher & Refresh -->
+            <!-- Right: Live Terminal Badge, Org Switcher, Profile & Refresh -->
             <div class="flex flex-wrap items-center gap-2">
               <!-- POS Live Edge Sync Pill -->
               <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
@@ -1441,31 +1428,17 @@
                 <span id="spCurrentPointBadge">ALL SELLING POINTS</span>
               </div>
 
-              <!-- User Scope Switcher (RBAC) -->
-              <div class="flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1.5 rounded-xl border border-outline-variant/30 shadow-sm" title="Active User Scope (Role-Based Access Control)">
-                <span class="material-symbols-outlined text-[16px] text-emerald-400">badge</span>
-                <div class="flex flex-col">
-                  <div class="flex items-center gap-1">
-                    <span class="text-[8px] uppercase tracking-wider font-bold text-outline">User Scope:</span>
-                    <span id="posUserScopeBadge" class="bg-emerald-500/20 text-emerald-400 text-[8px] font-bold px-1 rounded uppercase">GLOBAL</span>
-                  </div>
-                  <select id="posUserSwitcher" onchange="app.switchDemoUser(this.value)" class="bg-transparent border-none text-xs font-bold text-on-surface focus:outline-none cursor-pointer pr-1">
-                    <!-- Dynamically loaded with users -->
-                  </select>
-                </div>
-              </div>
-
               <!-- Organization Switcher Button -->
-              <button onclick="app.openOrgModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
+              <button onclick="app.openOrgModal('switch')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
                 <span class="material-symbols-outlined text-emerald-400 text-[18px]">corporate_fare</span>
                 <span id="posOrgName" class="font-bold truncate max-w-[110px]">Zolexora IMS</span>
                 <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
               </button>
 
-              <!-- Org Avatar Letter -->
-              <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-sm flex items-center justify-center shadow-sm select-none">
+              <!-- Profile & Org Avatar Button -->
+              <button onclick="app.openProfileMenu()" title="Profile &amp; Organisation Menu" class="w-9 h-9 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 font-bold text-sm flex items-center justify-center shadow-sm cursor-pointer transition select-none">
                 <span id="posOrgAvatarLetter">S</span>
-              </div>
+              </button>
 
               <!-- Refresh Button -->
               <button onclick="app.refreshSellingPointData()" class="p-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface rounded-xl border border-outline-variant/20 transition cursor-pointer" title="Refresh Selling Point Records">
@@ -1474,12 +1447,17 @@
             </div>
           </div>
 
-          <!-- Row 2: Search Box, Date Filter, and Quick Actions -->
+          <!-- Row 2: Search Box with companion scanner, Date Filter, and Quick Actions -->
           <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/10">
-            <!-- Search Box -->
-            <div class="flex items-center bg-surface-container-high px-3.5 py-2 rounded-xl flex-1 min-w-[220px] max-w-md border border-outline-variant/20 focus-within:border-emerald-500 transition-colors">
-              <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
-              <input id="spTopSearchInput" oninput="app.handleSpTopSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search sales, receipts, expenses, bills..." type="text"/>
+            <!-- Search Box with companion barcode scanner -->
+            <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+              <div class="flex items-center flex-1 bg-surface-container-highest/40 hover:bg-surface-container-highest/70 focus-within:bg-surface-container-highest/90 rounded-xl px-3.5 py-2 transition">
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+                <input id="spTopSearchInput" oninput="app.handleSpTopSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search sales, receipts, expenses, bills..." type="text"/>
+              </div>
+              <button onclick="app.openScannerModal()" title="Scan Item Barcode for POS" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-emerald-400 transition cursor-pointer shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+              </button>
             </div>
 
             <!-- Date Filter & POS Action Buttons -->
@@ -1510,10 +1488,6 @@
               <button onclick="app.openSpExpenseModal()" class="px-3.5 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 font-bold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer" title="Record Petty Cash Operating Expense">
                 <span class="material-symbols-outlined text-[18px]">receipt_long</span>
                 <span>+ Expense</span>
-              </button>
-
-              <button onclick="app.openScannerModal()" title="Scan Item Barcode for POS" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-emerald-400 transition border border-outline-variant/20 cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
               </button>
             </div>
           </div>
@@ -1960,16 +1934,15 @@
 
               <!-- Store Location Selector -->
               <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
-                <span class="material-symbols-outlined text-primary text-[18px] mr-1.5">storefront</span>
-                <div class="flex flex-col">
-                  <span class="text-[9px] uppercase tracking-wider font-bold text-primary leading-tight">Store Location:</span>
-                  <select id="prodStoreSelect" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
-                    <option value="ALL">All Stores &amp; Outlets</option>
-                    <option value="S_000">Central Depot (S_000)</option>
-                    <option value="S_001">Store 1 - Main (S_001)</option>
-                    <option value="S_002">Store 2 - Outlet (S_002)</option>
-                  </select>
-                </div>
+              <!-- Store Location Selector -->
+              <div class="flex items-center bg-surface-container-high rounded-xl px-3 py-1.5 border border-outline-variant/20 hover:border-primary/40 shadow-sm transition" title="Filter by Inventory Store Location">
+                <span class="material-symbols-outlined text-primary text-[18px] mr-2">storefront</span>
+                <select id="prodStoreSelect" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+                  <option value="ALL">All Stores &amp; Outlets</option>
+                  <option value="S_000">Central Depot (S_000)</option>
+                  <option value="S_001">Store 1 - Main (S_001)</option>
+                  <option value="S_002">Store 2 - Outlet (S_002)</option>
+                </select>
               </div>
             </div>
 
@@ -1979,13 +1952,6 @@
                 <span class="material-symbols-outlined text-[18px]">add_circle</span>
                 <span>+ Add SKU</span>
               </button>
-              <button onclick="app.openEditItemModal()" class="px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-xl flex items-center gap-1.5 border border-outline-variant/20 transition cursor-pointer" title="Edit existing product details">
-                <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
-                <span>Edit Item</span>
-              </button>
-              <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition border border-outline-variant/20 cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
-              </button>
               <button onclick="app.exportCatalogCSV()" class="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold rounded-xl flex items-center gap-1 border border-outline-variant/20 transition cursor-pointer" title="Export Catalog to CSV">
                 <span class="material-symbols-outlined text-[18px]">download</span>
                 <span>CSV</span>
@@ -1993,11 +1959,17 @@
             </div>
           </div>
 
-          <!-- Row 2: Search Input, Category Filter, Stock Level Filter, and Count -->
+          <!-- Row 2: Minimal Search Input with companion scanner, Category Filter, Stock Level Filter, and Count -->
           <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/10">
-            <div class="flex items-center bg-surface-container-high px-3.5 py-2 rounded-xl flex-1 min-w-[220px] max-w-md border border-outline-variant/20 focus-within:border-primary transition-colors">
-              <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
-              <input type="text" id="catalogSearchInput" oninput="app.filterCatalog()" placeholder="Filter by Name, SKU, Barcode, or Supplier..." class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline">
+            <!-- Search Box with companion barcode scanner -->
+            <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+              <div class="flex items-center flex-1 bg-surface-container-highest/40 hover:bg-surface-container-highest/70 focus-within:bg-surface-container-highest/90 rounded-xl px-3.5 py-2 transition">
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+                <input type="text" id="catalogSearchInput" oninput="app.filterCatalog()" placeholder="Filter by Name, SKU, Barcode, or Supplier..." class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline">
+              </div>
+              <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition cursor-pointer shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+              </button>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -2134,11 +2106,17 @@
             </button>
           </div>
 
-          <!-- Row 2: Search & Filter Row -->
+          <!-- Row 2: Minimal Search & Filter Row -->
           <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/10">
-            <div class="flex items-center bg-surface-container-high px-3.5 py-2 rounded-xl flex-1 min-w-[220px] max-w-md border border-outline-variant/20 focus-within:border-primary transition-colors">
-              <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
-              <input type="text" id="txnSearchInput" oninput="app.filterTransactions()" placeholder="Search transactions by item, PO, reference, staff..." class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline">
+            <!-- Search Box with companion barcode scanner -->
+            <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+              <div class="flex items-center flex-1 bg-surface-container-highest/40 hover:bg-surface-container-highest/70 focus-within:bg-surface-container-highest/90 rounded-xl px-3.5 py-2 transition">
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+                <input type="text" id="txnSearchInput" oninput="app.filterTransactions()" placeholder="Search transactions by item, PO, reference, staff..." class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline">
+              </div>
+              <button onclick="app.openScannerModal()" title="Scan Item Barcode" class="p-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary transition cursor-pointer shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+              </button>
             </div>
             <select id="txnTypeFilter" onchange="app.filterTransactions()" class="bg-surface-container-high text-xs font-semibold text-on-surface border border-outline-variant/20 rounded-xl px-3 py-2 outline-none cursor-pointer">
               <option value="ALL">All Transaction Types</option>
@@ -2480,6 +2458,106 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- ========================================================== -->
+      <!-- TAB: SITE MANAGEMENT (SELLING POINTS & INVENTORY STORES) -->
+      <!-- ========================================================== -->
+      <div id="tabContent-sites" class="tab-pane hidden flex flex-col w-full gap-4">
+        <!-- Top Command Card -->
+        <div class="bg-surface-container-low rounded-2xl p-4 sm:p-5 border border-outline-variant/20 shadow-sm flex flex-col gap-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary flex-shrink-0">
+                <span class="material-symbols-outlined text-[24px]">hub</span>
+              </div>
+              <div>
+                <h1 class="text-base sm:text-lg font-bold text-on-surface tracking-tight">Site &amp; Location Management</h1>
+                <p class="text-xs text-on-surface-variant">Configure Point-of-Sale Counters, Billing Registers &amp; Warehouse Inventory Stores</p>
+              </div>
+            </div>
+
+            <!-- Site Subtab Toggle Buttons -->
+            <div class="flex items-center bg-surface-container-high rounded-xl p-1 border border-outline-variant/20">
+              <button type="button" id="subtabBtn-sellingPoints" onclick="app.switchSitesSubtab('sellingPoints')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-primary text-on-primary shadow-sm cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">point_of_sale</span>
+                <span>Selling Points (Counters)</span>
+              </button>
+              <button type="button" id="subtabBtn-stores" onclick="app.switchSitesSubtab('stores')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface transition flex items-center gap-1.5 cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">warehouse</span>
+                <span>Inventory Stores (Warehouses)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: Selling Points Management -->
+        <div id="sitesSection-sellingPoints" class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="font-headline-sm text-sm font-bold text-on-surface">Active Selling Point Counters</h3>
+              <p class="text-[11px] text-on-surface-variant">Multi-register POS terminals, checkout desks, and retail billing counters</p>
+            </div>
+            <button onclick="app.openAddSpModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-900/30 transition cursor-pointer">
+              <span class="material-symbols-outlined text-[18px]">add_circle</span>
+              <span>+ Add Selling Point</span>
+            </button>
+          </div>
+
+          <div class="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs divide-y divide-outline-variant/10">
+                <thead class="bg-surface-container font-label-caps text-label-caps text-outline uppercase tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Counter Code</th>
+                    <th class="py-3 px-4">Counter Name</th>
+                    <th class="py-3 px-4">Parent Store</th>
+                    <th class="py-3 px-3">Counter Type</th>
+                    <th class="py-3 px-3 text-center">Status</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sellingPointsTableBody" class="divide-y divide-outline-variant/5">
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Inventory Stores Management -->
+        <div id="sitesSection-stores" class="hidden space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="font-headline-sm text-sm font-bold text-on-surface">Warehouse &amp; Inventory Stores</h3>
+              <p class="text-[11px] text-on-surface-variant">Central depots, warehouses, storage rooms, and outlet stock points</p>
+            </div>
+            <button onclick="app.openAddStoreModal()" class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-primary/30 transition cursor-pointer">
+              <span class="material-symbols-outlined text-[18px]">add_circle</span>
+              <span>+ Add Inventory Store</span>
+            </button>
+          </div>
+
+          <div class="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs divide-y divide-outline-variant/10">
+                <thead class="bg-surface-container font-label-caps text-label-caps text-outline uppercase tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Store Code</th>
+                    <th class="py-3 px-4">Store Name</th>
+                    <th class="py-3 px-3">Type</th>
+                    <th class="py-3 px-4">Description</th>
+                    <th class="py-3 px-3 text-center">Status</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="storesTableBody" class="divide-y divide-outline-variant/5">
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ========================================================== -->
@@ -3271,8 +3349,13 @@
           <input type="email" id="supplierEmail" placeholder="orders@vendor.com" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
         </div>
         <div>
-          <label class="block font-bold text-on-surface mb-1">Categories Supplied:</label>
-          <input type="text" id="supplierCategories" placeholder="e.g. Housekeeping, Linens" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
+          <label class="block font-bold text-on-surface mb-1">Categories Supplied *:</label>
+          <div class="space-y-1.5">
+            <select id="supplierCategorySelect" onchange="document.getElementById('supplierCategories').value = this.value" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/20 rounded-lg text-on-surface">
+              <!-- Dynamically populated from catalog categories -->
+            </select>
+            <input type="text" id="supplierCategories" placeholder="Or enter specific category..." class="w-full px-3 py-1.5 bg-surface-container-high/60 border border-outline-variant/20 rounded-lg text-on-surface text-xs">
+          </div>
         </div>
         <div class="flex items-center justify-end gap-3 pt-3 border-t border-outline-variant/10">
           <button type="button" onclick="app.closeModal('supplierModal')" class="px-4 py-2 border border-outline-variant/20 rounded-lg text-on-surface-variant hover:bg-surface-container-high">Cancel</button>
@@ -3557,7 +3640,9 @@
           </div>
           <div>
             <label class="block font-semibold text-on-surface mb-1">Vendor / Source Store *</label>
-            <input type="text" id="spPurSource" required placeholder="e.g. Local Dairy or Central Store" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-sky-500"/>
+            <select id="spPurSource" required class="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-sky-500">
+              <!-- Dynamically populated with registered suppliers & stores -->
+            </select>
           </div>
         </div>
 
@@ -3864,6 +3949,227 @@
             <span class="material-symbols-outlined text-[18px]">check_circle</span>
             <span id="userModalSubmitBtn">Save User</span>
           </button>
+        </div>
+      </form>
+    </div>
+  <!-- PROFILE & ORGANISATION MANAGEMENT MENU MODAL -->
+  <div id="profileMenuModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-md" onclick="app.closeProfileMenu()"></div>
+    <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-sm w-full z-10 border border-outline-variant/20 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+      <!-- Profile Header Summary -->
+      <div class="p-5 bg-surface-container-high/80 border-b border-outline-variant/15 flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-lg select-none">
+          <span id="profileMenuAvatar">A</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 id="profileMenuName" class="text-sm font-bold text-on-surface truncate">Admin User</h4>
+          <p id="profileMenuEmail" class="text-xs text-on-surface-variant truncate">admin@zolexora.com</p>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span id="profileMenuRole" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary border border-primary/25">Administrator</span>
+            <span id="profileMenuLocation" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container-highest text-on-surface-variant">ALL</span>
+          </div>
+        </div>
+        <button onclick="app.closeProfileMenu()" class="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Action Items List -->
+      <div class="p-3 space-y-1 text-xs font-semibold">
+        <div class="px-3 py-1.5 text-[10px] uppercase font-bold text-outline tracking-wider">Organisation Management</div>
+        
+        <button onclick="app.openOrgModal('switch'); app.closeProfileMenu();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-on-surface hover:bg-surface-container-high transition cursor-pointer text-left">
+          <span class="material-symbols-outlined text-primary text-[18px]">business</span>
+          <div class="flex-1">
+            <div class="font-bold">Manage Organisation</div>
+            <div class="text-[10px] text-on-surface-variant font-normal">Switch active organisation database</div>
+          </div>
+          <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+        </button>
+
+        <button onclick="app.openRenameOrgModal(); app.closeProfileMenu();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-on-surface hover:bg-surface-container-high transition cursor-pointer text-left">
+          <span class="material-symbols-outlined text-amber-400 text-[18px]">edit_note</span>
+          <div class="flex-1">
+            <div class="font-bold">Rename Organisation</div>
+            <div class="text-[10px] text-on-surface-variant font-normal">Update current company name</div>
+          </div>
+          <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+        </button>
+
+        <button onclick="app.openOrgModal('create'); app.closeProfileMenu();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-on-surface hover:bg-surface-container-high transition cursor-pointer text-left">
+          <span class="material-symbols-outlined text-emerald-400 text-[18px]">add_business</span>
+          <div class="flex-1">
+            <div class="font-bold">Create New Organisation</div>
+            <div class="text-[10px] text-on-surface-variant font-normal">Deploy new company database</div>
+          </div>
+          <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+        </button>
+
+        <div class="my-1 border-t border-outline-variant/10"></div>
+        <div class="px-3 py-1.5 text-[10px] uppercase font-bold text-outline tracking-wider">Administration &amp; Sites</div>
+
+        <button onclick="app.switchTab('sites'); app.closeProfileMenu();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-on-surface hover:bg-surface-container-high transition cursor-pointer text-left">
+          <span class="material-symbols-outlined text-sky-400 text-[18px]">hub</span>
+          <div class="flex-1">
+            <div class="font-bold">Site Management</div>
+            <div class="text-[10px] text-on-surface-variant font-normal">Stores, warehouses &amp; POS counters</div>
+          </div>
+          <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+        </button>
+
+        <button onclick="app.switchTab('users'); app.closeProfileMenu();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-on-surface hover:bg-surface-container-high transition cursor-pointer text-left">
+          <span class="material-symbols-outlined text-purple-400 text-[18px]">manage_accounts</span>
+          <div class="flex-1">
+            <div class="font-bold">Users &amp; Roles</div>
+            <div class="text-[10px] text-on-surface-variant font-normal">Role assignments &amp; location isolation</div>
+          </div>
+          <span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+        </button>
+
+        <div class="my-1 border-t border-outline-variant/10"></div>
+
+        <button onclick="app.logoutUser()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-500/10 transition cursor-pointer text-left">
+          <span class="material-symbols-outlined text-rose-400 text-[18px]">logout</span>
+          <div class="font-bold">Sign Out</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RENAME ORGANISATION MODAL -->
+  <div id="renameOrgModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-md" onclick="app.closeRenameOrgModal()"></div>
+    <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-sm w-full z-10 border border-outline-variant/20 p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[20px]">edit_note</span>
+          <span>Rename Organisation</span>
+        </h3>
+        <button onclick="app.closeRenameOrgModal()" class="text-on-surface-variant hover:text-on-surface cursor-pointer text-lg">&times;</button>
+      </div>
+      <div>
+        <label class="block font-semibold text-xs text-on-surface-variant mb-1">New Organisation Name *</label>
+        <input type="text" id="renameOrgInput" required placeholder="e.g. Zolexora Enterprise" class="w-full px-3 py-2 bg-surface-container-high border border-outline-variant/30 rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary">
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-outline-variant/10">
+        <button type="button" onclick="app.closeRenameOrgModal()" class="px-3.5 py-1.5 border border-outline-variant/30 rounded-xl text-xs text-on-surface-variant hover:bg-surface-container-high cursor-pointer">Cancel</button>
+        <button type="button" onclick="app.submitRenameOrg()" class="px-4 py-1.5 bg-primary text-on-primary font-bold text-xs rounded-xl shadow cursor-pointer">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORE MODAL (ADD / EDIT INVENTORY STORE) -->
+  <div id="storeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-md" onclick="app.closeModal('storeModal')"></div>
+    <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-md w-full z-10 border border-outline-variant/20 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-outline-variant/15 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined text-[20px]">warehouse</span>
+          </div>
+          <div>
+            <h3 id="storeModalTitle" class="text-sm font-bold text-on-surface">Add Inventory Store</h3>
+            <p class="text-[11px] text-on-surface-variant">Configure warehouse, depot, or branch storage</p>
+          </div>
+        </div>
+        <button type="button" onclick="app.closeModal('storeModal')" class="text-on-surface-variant hover:text-on-surface cursor-pointer text-lg">&times;</button>
+      </div>
+
+      <form id="storeForm" onsubmit="app.submitStoreForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="storeModalCodeHidden"/>
+        <div>
+          <label class="block font-semibold text-on-surface mb-1">Store Code * (e.g. S_003)</label>
+          <input type="text" id="storeModalCode" required placeholder="e.g. S_003" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 font-mono text-on-surface focus:outline-none focus:border-primary uppercase"/>
+        </div>
+        <div>
+          <label class="block font-semibold text-on-surface mb-1">Store Name *</label>
+          <input type="text" id="storeModalName" required placeholder="e.g. West Wing Reserve Store" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-on-surface mb-1">Store Type</label>
+            <select id="storeModalType" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary cursor-pointer">
+              <option value="Central Depot">Central Depot</option>
+              <option value="Warehouse">Warehouse</option>
+              <option value="Store Branch">Store Branch</option>
+              <option value="Outlet Store">Outlet Store</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-on-surface mb-1">Status</label>
+            <select id="storeModalStatus" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary cursor-pointer">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-on-surface mb-1">Description / Notes</label>
+          <input type="text" id="storeModalDescription" placeholder="Location, building, or rack details..." class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-primary"/>
+        </div>
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-outline-variant/15">
+          <button type="button" onclick="app.closeModal('storeModal')" class="px-4 py-2 border border-outline-variant/30 rounded-xl text-on-surface-variant hover:bg-surface-container-highest transition cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold rounded-xl shadow transition cursor-pointer">Save Store</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SELLING POINT MODAL (ADD / EDIT POS COUNTER) -->
+  <div id="sellingPointModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-md" onclick="app.closeModal('sellingPointModal')"></div>
+    <div class="relative bg-surface-container-low text-on-surface rounded-2xl shadow-2xl max-w-md w-full z-10 border border-outline-variant/20 p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-outline-variant/15 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[20px]">point_of_sale</span>
+          </div>
+          <div>
+            <h3 id="spModalTitle" class="text-sm font-bold text-on-surface">Add Selling Point Counter</h3>
+            <p class="text-[11px] text-on-surface-variant">Configure retail POS terminal or checkout desk</p>
+          </div>
+        </div>
+        <button type="button" onclick="app.closeModal('sellingPointModal')" class="text-on-surface-variant hover:text-on-surface cursor-pointer text-lg">&times;</button>
+      </div>
+
+      <form id="sellingPointForm" onsubmit="app.submitSpModalForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="spModalCodeHidden"/>
+        <div>
+          <label class="block font-semibold text-on-surface mb-1">Counter Code * (e.g. SP_005)</label>
+          <input type="text" id="spModalCode" required placeholder="e.g. SP_005" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 font-mono text-on-surface focus:outline-none focus:border-emerald-500 uppercase"/>
+        </div>
+        <div>
+          <label class="block font-semibold text-on-surface mb-1">Counter Name *</label>
+          <input type="text" id="spModalName" required placeholder="e.g. Poolside Bar &amp; Lounge" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-emerald-500"/>
+        </div>
+        <div>
+          <label class="block font-semibold text-on-surface mb-1">Parent Inventory Store *</label>
+          <select id="spModalStoreCode" required class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-emerald-500 cursor-pointer">
+            <!-- Dynamically populated from stores -->
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-on-surface mb-1">Counter Type</label>
+            <select id="spModalType" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <option value="Sales Counter">Sales Counter</option>
+              <option value="Front Desk">Front Desk</option>
+              <option value="Dispenser">Dispenser</option>
+              <option value="Production / Kitchen">Production / Kitchen</option>
+              <option value="Dispatch Hub">Dispatch Hub</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-on-surface mb-1">Status</label>
+            <select id="spModalStatus" class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg p-2 text-on-surface focus:outline-none focus:border-emerald-500 cursor-pointer">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-outline-variant/15">
+          <button type="button" onclick="app.closeModal('sellingPointModal')" class="px-4 py-2 border border-outline-variant/30 rounded-xl text-on-surface-variant hover:bg-surface-container-highest transition cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition cursor-pointer">Save Selling Point</button>
         </div>
       </form>
     </div>

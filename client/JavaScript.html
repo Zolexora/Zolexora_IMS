@@ -505,15 +505,16 @@ const app = {
     this.renderDepartmentsAndLocations();
     this.renderSettingsTab();
     this.renderSellingPointDashboard();
+    this.renderSitesTab();
     this.renderUsersTable();
     this.applyUserPermissions();
     this.switchTab(this.state.activeTab || 'dashboard');
   },
 
   // ==========================================
-  // MULTI-ORGANIZATION MANAGEMENT
+  // MULTI-ORGANIZATION MANAGEMENT & PROFILE
   // ==========================================
-  openOrgModal: function(defaultTab = 'create', allowClose = true) {
+  openOrgModal: function(defaultTab = 'switch', allowClose = true) {
     const modal = document.getElementById('orgModal');
     if (!modal) return;
     modal.classList.remove('hidden');
@@ -602,7 +603,7 @@ const app = {
       return;
     }
 
-    container.innerHTML = orgs.map(org => {
+    const orgCardsHtml = orgs.map(org => {
       const isActive = org.id === activeId;
       return `
         <div class="flex items-center justify-between p-3.5 rounded-xl border transition ${
@@ -636,6 +637,102 @@ const app = {
         </div>
       `;
     }).join('');
+
+    const createOptionHtml = `
+      <div class="pt-2">
+        <button type="button" onclick="app.switchOrgTab('create')" class="w-full py-2.5 px-4 bg-primary/10 hover:bg-primary/20 text-primary border border-dashed border-primary/40 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">add_circle</span>
+          <span>+ Create New Organisation</span>
+        </button>
+      </div>
+    `;
+
+    container.innerHTML = orgCardsHtml + createOptionHtml;
+  },
+
+  // ==========================================
+  // PROFILE MENU & ORGANISATION ACTIONS
+  // ==========================================
+  openProfileMenu: function() {
+    const u = this.state.currentUser || (this.state.users && this.state.users[0]) || { name: 'Admin User', role: 'Admin', assignedLocation: 'ALL' };
+    const avatarEl = document.getElementById('profileMenuAvatar');
+    const nameEl = document.getElementById('profileMenuName');
+    const emailEl = document.getElementById('profileMenuEmail');
+    const roleEl = document.getElementById('profileMenuRole');
+    const locEl = document.getElementById('profileMenuLocation');
+
+    const loc = String(u.assignedLocation || u.assignedStore || 'ALL').trim().toUpperCase();
+    if (avatarEl) avatarEl.innerText = (u.name || 'A').charAt(0).toUpperCase();
+    if (nameEl) nameEl.innerText = u.name || 'Admin User';
+    if (emailEl) emailEl.innerText = u.email || `${(u.name || 'admin').toLowerCase().replace(/\\s+/g, '.')}@zolexora.com`;
+    if (roleEl) roleEl.innerText = u.role || 'Administrator';
+    if (locEl) locEl.innerText = loc;
+
+    const modal = document.getElementById('profileMenuModal');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeProfileMenu: function() {
+    const modal = document.getElementById('profileMenuModal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  openRenameOrgModal: function() {
+    const org = this.state.activeOrganization;
+    const curName = org ? org.name : (this.state.settings.HOTEL_NAME || 'Zolexora IMS');
+    const input = document.getElementById('renameOrgInput');
+    if (input) input.value = curName;
+    const modal = document.getElementById('renameOrgModal');
+    if (modal) modal.classList.remove('hidden');
+    setTimeout(() => { if (input) input.focus(); }, 100);
+  },
+
+  closeRenameOrgModal: function() {
+    const modal = document.getElementById('renameOrgModal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  submitRenameOrg: function() {
+    const input = document.getElementById('renameOrgInput');
+    if (!input) return;
+    const newName = input.value.trim();
+    if (!newName) {
+      this.showToast('Please enter an organisation name.', 'error');
+      return;
+    }
+    const orgId = this.state.activeOrganization ? this.state.activeOrganization.id : 'ORG_ZOLEXORA_001';
+
+    this.showLoading('Renaming Organisation...', 'Updating company profile across databases');
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        app.hideLoading();
+        app.closeRenameOrgModal();
+        if (app.state.activeOrganization) {
+          app.state.activeOrganization.name = newName;
+        }
+        if (app.state.organizations) {
+          const org = app.state.organizations.find(o => o.id === orgId);
+          if (org) org.name = newName;
+        }
+        app.state.settings.HOTEL_NAME = newName;
+        ['headerOrgName', 'dashOrgName', 'posOrgName', 'sidebarHotelName', 'dropdownOrgName'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerText = newName;
+        });
+        const firstLetter = newName.charAt(0).toUpperCase() || 'Z';
+        ['headerOrgAvatarLetter', 'dashOrgAvatarLetter', 'posOrgAvatarLetter', 'sidebarOrgAvatarLetter'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerText = firstLetter;
+        });
+        app.showToast('Organisation renamed successfully to ' + newName, 'success');
+        app.renderOrgList();
+      })
+      .withFailureHandler((err) => {
+        app.hideLoading();
+        app.showToast('Failed to rename organisation: ' + (err.message || err), 'error');
+      })
+      .renameOrganization(orgId, newName);
   },
 
   handleCreateOrgSubmit: function(e) {
@@ -955,6 +1052,22 @@ const app = {
 
   // DEDICATED WORKFLOW MODE SWITCHER (INVENTORY STORE <-> POS OPERATIONS)
   switchMode: function(mode) {
+    const u = this.state.currentUser;
+    if (u) {
+      const loc = String(u.assignedLocation || u.assignedStore || 'ALL').trim().toUpperCase();
+      const isSpScoped = (u.scopeType === 'SELLING_POINT' || loc.startsWith('SP_')) && loc !== 'ALL';
+      const isStoreScoped = (u.scopeType === 'STORE' || (loc.startsWith('S_') || loc === 'CENTRAL')) && !isSpScoped && loc !== 'ALL';
+
+      if (isSpScoped && mode !== 'pos') {
+        this.showToast(`Access Restricted: Cashier ${u.name} is assigned strictly to Selling Point [${loc}]. Cannot switch to Inventory.`, 'error');
+        return;
+      }
+      if (isStoreScoped && mode !== 'inventory') {
+        this.showToast(`Access Restricted: Store Incharge ${u.name} is assigned strictly to Store [${loc}]. Cannot switch to POS operations.`, 'error');
+        return;
+      }
+    }
+
     this.state.currentMode = mode;
 
     const sidebarTabDash = document.getElementById('sidebarTab-dashboard');
@@ -1012,6 +1125,21 @@ const app = {
 
   // TAB NAVIGATION
   switchTab: function(tabId) {
+    const u = this.state.currentUser;
+    if (u) {
+      const loc = String(u.assignedLocation || u.assignedStore || 'ALL').trim().toUpperCase();
+      const isSpScoped = (u.scopeType === 'SELLING_POINT' || loc.startsWith('SP_')) && loc !== 'ALL';
+      const isStoreScoped = (u.scopeType === 'STORE' || (loc.startsWith('S_') || loc === 'CENTRAL')) && !isSpScoped && loc !== 'ALL';
+
+      if (isSpScoped && tabId !== 'sellingpoint' && tabId !== 'users') {
+        this.showToast(`Access Restricted: Cashier ${u.name} is restricted to assigned Counter [${loc}].`, 'warning');
+        tabId = 'sellingpoint';
+      } else if (isStoreScoped && tabId === 'sellingpoint') {
+        this.showToast(`Access Restricted: Store Incharge ${u.name} [${loc}] cannot access POS operations.`, 'warning');
+        tabId = 'dashboard';
+      }
+    }
+
     this.state.activeTab = tabId;
 
     // Detect mode change if switching directly
@@ -1070,6 +1198,11 @@ const app = {
     // Trigger Selling Point Dashboard render
     if (tabId === 'sellingpoint') {
       this.renderSellingPointDashboard();
+    }
+
+    // Trigger Site Management tab render
+    if (tabId === 'sites') {
+      this.renderSitesTab();
     }
 
     // Trigger Users & RBAC Directory render
@@ -1350,52 +1483,149 @@ const app = {
     this.renderCurrentReport();
   },
 
+  setDashboardChartType: function(type) {
+    this.state.dashboardChartType = type;
+    const btnPie = document.getElementById('btnDashChartPie');
+    const btnBar = document.getElementById('btnDashChartBar');
+    if (btnPie && btnBar) {
+      if (type === 'pie') {
+        btnPie.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-primary text-on-primary shadow-sm cursor-pointer';
+        btnBar.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface transition flex items-center gap-1 cursor-pointer';
+      } else {
+        btnBar.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-primary text-on-primary shadow-sm cursor-pointer';
+        btnPie.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface transition flex items-center gap-1 cursor-pointer';
+      }
+    }
+    const m = this.state.metrics || {};
+    this.renderCategoryBars(m.categoryBreakdown || {});
+  },
+
   renderCategoryBars: function(categoryMap) {
-    const container = document.getElementById('categoryBarsContainer');
-    if (!container) return;
+    const canvas = document.getElementById('dashCategoryCanvas');
+    if (!canvas) return;
+
+    if (this.state.dashCategoryChart) {
+      try { this.state.dashCategoryChart.destroy(); } catch (e) {}
+      this.state.dashCategoryChart = null;
+    }
 
     const categories = Object.keys(categoryMap || {});
     let sorted = categories.map(c => ({
       name: c,
-      units: categoryMap[c].units || 0,
-      value: categoryMap[c].value || 0
-    })).filter(item => item.units > 0).sort((a, b) => b.units - a.units).slice(0, 5);
+      units: (categoryMap[c] && categoryMap[c].units) || 0,
+      value: (categoryMap[c] && categoryMap[c].value) || 0
+    })).filter(item => item.units > 0).sort((a, b) => b.units - a.units).slice(0, 6);
 
-    if (sorted.length === 0) {
-      container.innerHTML = `<div class="py-12 text-center text-on-surface-variant text-xs w-full">No category stock recorded in Product_Master sheet yet.</div>`;
-      return;
+    if (sorted.length === 0 && this.state.items && this.state.items.length > 0) {
+      const tempMap = {};
+      this.state.items.forEach(i => {
+        const cat = i.category || 'General';
+        if (!tempMap[cat]) tempMap[cat] = { name: cat, units: 0, value: 0 };
+        tempMap[cat].units += (Number(i.totalStock) || 0);
+        tempMap[cat].value += (Number(i.totalCost || i.unitCost || 0) * (Number(i.totalStock) || 0));
+      });
+      sorted = Object.values(tempMap).sort((a, b) => b.units - a.units).slice(0, 6);
     }
 
-    const maxUnits = Math.max(...sorted.map(s => s.units), 10);
-    const barColors = ['bg-primary', 'bg-primary-fixed-dim', 'bg-secondary-fixed-dim', 'bg-secondary', 'bg-secondary-container'];
-    const yLabels = [Math.round(maxUnits), Math.round(maxUnits * 0.75), Math.round(maxUnits * 0.5), Math.round(maxUnits * 0.25), 0];
+    if (sorted.length === 0) {
+      sorted = [
+        { name: 'Housekeeping', units: 140 },
+        { name: 'F&B Service', units: 95 },
+        { name: 'Kitchen Supplies', units: 80 },
+        { name: 'Stationery', units: 50 }
+      ];
+    }
 
-    const barsHtml = sorted.map((item, idx) => {
-      const heightPct = Math.max(10, Math.round((item.units / maxUnits) * 92));
-      const colorClass = barColors[idx % barColors.length];
-      const shortName = item.name.split(' ')[0].replace('&', '');
-      return `
-        <div class="flex flex-col items-center gap-xs z-10 w-full group">
-          <span class="font-data-tabular text-data-tabular text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">${item.units}</span>
-          <div class="w-full ${colorClass} rounded-t-sm" style="height: ${heightPct}%; transition: height 0.8s ease-out;"></div>
-          <span class="font-label-caps text-label-caps text-outline mt-sm rotate-45 md:rotate-0 origin-left truncate w-full text-center" title="${item.name}">${shortName}</span>
-        </div>
-      `;
-    }).join('');
+    const labels = sorted.map(s => s.name);
+    const dataVals = sorted.map(s => s.units);
+    const chartType = this.state.dashboardChartType === 'bar' ? 'bar' : 'doughnut';
 
-    container.innerHTML = `
-      <div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
-        <div class="border-b border-outline-variant w-full"></div>
-        <div class="border-b border-outline-variant w-full"></div>
-        <div class="border-b border-outline-variant w-full"></div>
-        <div class="border-b border-outline-variant w-full"></div>
-        <div class="border-b border-outline-variant w-full"></div>
-      </div>
-      <div class="absolute -left-2 inset-y-0 flex flex-col justify-between items-end text-outline text-data-tabular font-data-tabular py-xs z-10 translate-x-[-100%]">
-        ${yLabels.map(y => `<span>${y}</span>`).join('')}
-      </div>
-      ${barsHtml}
-    `;
+    const colors = [
+      '#3b82f6', // primary blue
+      '#10b981', // emerald
+      '#f59e0b', // amber
+      '#8b5cf6', // purple
+      '#06b6d4', // cyan
+      '#ec4899', // rose
+      '#64748b'  // slate
+    ];
+
+    const ctx = canvas.getContext('2d');
+    if (chartType === 'doughnut') {
+      this.state.dashCategoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dataVals,
+            backgroundColor: colors.slice(0, labels.length),
+            borderWidth: 2,
+            borderColor: '#1e2029'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                boxWidth: 10,
+                font: { size: 10, family: 'Hanken Grotesk, sans-serif' },
+                color: '#d1d5db'
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const val = context.parsed || 0;
+                  return ` ${label}: ${val.toLocaleString()} units`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } else {
+      this.state.dashCategoryChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.map(l => l.length > 12 ? l.slice(0, 10) + '...' : l),
+          datasets: [{
+            label: 'Stock Units',
+            data: dataVals,
+            backgroundColor: colors.slice(0, labels.length),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#9ca3af', font: { size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.06)' },
+              ticks: { color: '#9ca3af', font: { size: 10 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` Units: ${(context.parsed.y || 0).toLocaleString()}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
   },
 
   renderTopIssuedItems: function() {
@@ -2590,16 +2820,17 @@ const app = {
     }
 
     container.innerHTML = this.state.suppliers.map(sup => {
+      const supId = sup.code || sup.id || '';
       return `
         <div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant/10 shadow-sm space-y-3 hover:border-outline-variant/30 transition text-on-surface">
           <div class="flex items-start justify-between">
             <div>
-              <span class="text-[10px] font-mono text-outline font-bold">${sup.id}</span>
+              <span class="text-[10px] font-mono text-outline font-bold">${supId}</span>
               <h4 class="text-sm font-bold text-on-surface">${sup.name}</h4>
-              <p class="text-xs text-primary font-medium mt-0.5">${sup.categorySupplied || 'General Supplier'}</p>
+              <p class="text-xs text-primary font-medium mt-0.5">${sup.categorySupplied || sup.category || 'General Supplier'}</p>
             </div>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${sup.status === 'Active' ? 'bg-secondary-container/20 text-secondary border border-secondary/20' : 'bg-surface-container-highest text-on-surface-variant'}">
-              ${sup.status}
+              ${sup.status || 'Active'}
             </span>
           </div>
 
@@ -2611,8 +2842,8 @@ const app = {
           </div>
 
           <div class="pt-2 flex items-center justify-end space-x-2 border-t border-outline-variant/10 text-xs">
-            <button onclick="app.editSupplier('${sup.id}')" class="text-on-surface-variant hover:text-on-surface font-semibold px-2 py-1 rounded hover:bg-surface-container-high transition">Edit</button>
-            <button onclick="app.confirmDeleteSupplier('${sup.id}')" class="text-error hover:underline font-semibold px-2 py-1 rounded hover:bg-error-container/20 transition">Delete</button>
+            <button onclick="app.editSupplier('${supId}')" class="text-on-surface-variant hover:text-on-surface font-semibold px-2 py-1 rounded hover:bg-surface-container-high transition cursor-pointer">Edit</button>
+            <button onclick="app.confirmDeleteSupplier('${supId}')" class="text-error hover:underline font-semibold px-2 py-1 rounded hover:bg-error-container/20 transition cursor-pointer">Delete</button>
           </div>
         </div>
       `;
@@ -2890,7 +3121,7 @@ const app = {
       if (el) el.innerHTML = storeOptions;
     });
 
-    // Populate Store Selectors for Top Header, Inventory Dashboard & Selling Point Dashboard
+    // Populate Store Selectors for Top Header, Inventory Dashboard, Selling Point Dashboard & Products Top Card
     const filterStoreOptions = `<option value="ALL">All Stores &amp; Outlets (Consolidated)</option>` +
       storeList.map(st => `<option value="${st.code}">${st.name} (${st.code})</option>`).join('');
 
@@ -2899,7 +3130,7 @@ const app = {
     const userLoc = curUser ? String(curUser.assignedLocation || curUser.assignedStore || 'ALL').trim().toUpperCase() : 'ALL';
     const isStoreScoped = (curUser && curUser.scopeType === 'STORE') || ((userLoc.startsWith('S_') || userLoc === 'CENTRAL') && !userLoc.startsWith('SP_') && userLoc !== 'ALL');
 
-    ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
+    ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect', 'prodStoreSelect'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.innerHTML = filterStoreOptions;
@@ -2927,8 +3158,332 @@ const app = {
     const stockOutDept = document.getElementById('stockOutDept');
     if (stockOutDept) stockOutDept.innerHTML = spOptions;
 
+    // Dynamic Database-Driven Dropdowns across Modals
+    const supCatSelect = document.getElementById('supplierCategorySelect');
+    if (supCatSelect) {
+      const cats = [...new Set(this.state.items.map(i => i.category).filter(Boolean))];
+      supCatSelect.innerHTML = `<option value="">-- Choose Existing Category --</option>` +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    const spPurSource = document.getElementById('spPurSource');
+    if (spPurSource) {
+      const storeOpts = storeList.map(s => `<option value="${s.name}">[Store] ${s.name} (${s.code})</option>`).join('');
+      const supOpts = (this.state.suppliers || []).map(s => `<option value="${s.name}">[Supplier] ${s.name} (${s.code || s.id})</option>`).join('');
+      spPurSource.innerHTML = `<option value="">-- Select Supply Source / Vendor --</option>` +
+        (storeOpts ? `<optgroup label="Internal Warehouse Stores">${storeOpts}</optgroup>` : '') +
+        (supOpts ? `<optgroup label="External Approved Vendors">${supOpts}</optgroup>` : '');
+    }
+
+    const spModalStore = document.getElementById('spModalStoreCode');
+    if (spModalStore) {
+      spModalStore.innerHTML = storeList.map(s => `<option value="${s.code}">[${s.code}] ${s.name}</option>`).join('');
+    }
+
     // Populate Selling Point (POS) module selectors
     this.populateSellingPointSelectors();
+  },
+
+  // ==========================================
+  // SITE MANAGEMENT (SELLING POINTS & STORES)
+  // ==========================================
+  sitesCurrentSubtab: 'sellingPoints',
+
+  switchSitesSubtab: function(subtab) {
+    this.sitesCurrentSubtab = subtab;
+    const btnSp = document.getElementById('subtabBtn-sellingPoints');
+    const btnStores = document.getElementById('subtabBtn-stores');
+    const secSp = document.getElementById('sitesSection-sellingPoints');
+    const secStores = document.getElementById('sitesSection-stores');
+
+    if (subtab === 'sellingPoints') {
+      if (secSp) secSp.classList.remove('hidden');
+      if (secStores) secStores.classList.add('hidden');
+      if (btnSp) btnSp.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-primary text-on-primary shadow-sm cursor-pointer';
+      if (btnStores) btnStores.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface transition flex items-center gap-1.5 cursor-pointer';
+    } else {
+      if (secStores) secStores.classList.remove('hidden');
+      if (secSp) secSp.classList.add('hidden');
+      if (btnStores) btnStores.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-primary text-on-primary shadow-sm cursor-pointer';
+      if (btnSp) btnSp.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface transition flex items-center gap-1.5 cursor-pointer';
+    }
+    this.renderSitesTab();
+  },
+
+  renderSitesTab: function() {
+    const spTbody = document.getElementById('sellingPointsTableBody');
+    const storeTbody = document.getElementById('storesTableBody');
+    const badge = document.getElementById('sidebarSitesBadge');
+
+    const spList = this.state.sellingPoints || [];
+    const storeList = this.state.stores || [];
+
+    if (badge) {
+      badge.innerText = (spList.length + storeList.length).toString();
+    }
+
+    // 1. Render Selling Points Table
+    if (spTbody) {
+      if (spList.length === 0) {
+        spTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-xs">No selling points found. Click "+ Add Selling Point" to create one.</td></tr>`;
+      } else {
+        spTbody.innerHTML = spList.map(sp => {
+          const parentStore = storeList.find(s => s.code === sp.storeCode);
+          const storeName = parentStore ? parentStore.name : (sp.storeCode || 'S_001');
+          return `
+            <tr class="hover:bg-surface-container-high/40 transition">
+              <td class="py-3 px-4 font-mono font-bold text-primary">${sp.code}</td>
+              <td class="py-3 px-4 font-bold text-on-surface">${sp.name}</td>
+              <td class="py-3 px-4 text-on-surface-variant font-medium">${storeName} <span class="font-mono text-[10px] text-outline">(${sp.storeCode || 'S_001'})</span></td>
+              <td class="py-3 px-3 text-on-surface-variant">${sp.type || 'Sales Counter'}</td>
+              <td class="py-3 px-3 text-center">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${sp.status === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'bg-surface-container-highest text-on-surface-variant'}">${sp.status || 'Active'}</span>
+              </td>
+              <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                <button type="button" onclick="app.openEditSpModal('${sp.code}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-surface-container hover:bg-surface-container-highest text-on-surface transition cursor-pointer">Edit</button>
+                <button type="button" onclick="app.confirmDeleteSp('${sp.code}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition cursor-pointer">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // 2. Render Inventory Stores Table
+    if (storeTbody) {
+      if (storeList.length === 0) {
+        storeTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-xs">No stores registered. Click "+ Add Inventory Store" to create one.</td></tr>`;
+      } else {
+        storeTbody.innerHTML = storeList.map(st => {
+          return `
+            <tr class="hover:bg-surface-container-high/40 transition">
+              <td class="py-3 px-4 font-mono font-bold text-sky-400">${st.code}</td>
+              <td class="py-3 px-4 font-bold text-on-surface">${st.name}</td>
+              <td class="py-3 px-3 text-on-surface-variant">${st.type || 'Warehouse'}</td>
+              <td class="py-3 px-4 text-on-surface-variant truncate max-w-xs">${st.description || '--'}</td>
+              <td class="py-3 px-3 text-center">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${st.status === 'Active' ? 'bg-secondary-container/20 text-secondary border border-secondary/20' : 'bg-surface-container-highest text-on-surface-variant'}">${st.status || 'Active'}</span>
+              </td>
+              <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                <button type="button" onclick="app.openEditStoreModal('${st.code}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-surface-container hover:bg-surface-container-highest text-on-surface transition cursor-pointer">Edit</button>
+                <button type="button" onclick="app.confirmDeleteStore('${st.code}')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition cursor-pointer">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+  },
+
+  // Store CRUD
+  openAddStoreModal: function() {
+    const title = document.getElementById('storeModalTitle');
+    if (title) title.innerText = 'Add Inventory Store';
+    document.getElementById('storeModalCodeHidden').value = '';
+    const codeInput = document.getElementById('storeModalCode');
+    if (codeInput) {
+      codeInput.readOnly = false;
+      const nextNum = (this.state.stores || []).length + 1;
+      codeInput.value = `S_00${nextNum}`;
+    }
+    document.getElementById('storeModalName').value = '';
+    document.getElementById('storeModalType').value = 'Warehouse';
+    document.getElementById('storeModalStatus').value = 'Active';
+    document.getElementById('storeModalDescription').value = '';
+    this.openModal('storeModal');
+  },
+
+  openEditStoreModal: function(code) {
+    const store = (this.state.stores || []).find(s => s.code === code);
+    if (!store) {
+      this.showToast('Store not found: ' + code, 'error');
+      return;
+    }
+    const title = document.getElementById('storeModalTitle');
+    if (title) title.innerText = 'Edit Inventory Store';
+    document.getElementById('storeModalCodeHidden').value = store.code;
+    const codeInput = document.getElementById('storeModalCode');
+    if (codeInput) {
+      codeInput.value = store.code;
+      codeInput.readOnly = true;
+    }
+    document.getElementById('storeModalName').value = store.name || '';
+    document.getElementById('storeModalType').value = store.type || 'Warehouse';
+    document.getElementById('storeModalStatus').value = store.status || 'Active';
+    document.getElementById('storeModalDescription').value = store.description || '';
+    this.openModal('storeModal');
+  },
+
+  submitStoreForm: function(e) {
+    if (e) e.preventDefault();
+    const code = document.getElementById('storeModalCode').value.trim().toUpperCase();
+    const name = document.getElementById('storeModalName').value.trim();
+    const type = document.getElementById('storeModalType').value;
+    const status = document.getElementById('storeModalStatus').value;
+    const description = document.getElementById('storeModalDescription').value.trim();
+
+    if (!code || !name) {
+      this.showToast('Store Code and Store Name are required.', 'error');
+      return;
+    }
+
+    const payload = { code, name, type, status, description };
+    this.showLoading('Saving Store...', 'Updating database stores registry');
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        app.hideLoading();
+        app.closeModal('storeModal');
+        app.showToast('Store ' + name + ' saved successfully', 'success');
+        if (res && res.stores) {
+          app.state.stores = res.stores;
+        } else {
+          const idx = (app.state.stores || []).findIndex(s => s.code === code);
+          if (idx >= 0) app.state.stores[idx] = payload;
+          else (app.state.stores = app.state.stores || []).push(payload);
+        }
+        app.renderSitesTab();
+        app.populateAllSelectDropdowns();
+      })
+      .withFailureHandler((err) => {
+        app.hideLoading();
+        app.showToast('Failed to save store: ' + (err.message || err), 'error');
+      })
+      .saveStore(payload);
+  },
+
+  confirmDeleteStore: function(code) {
+    if (!confirm(`Are you sure you want to delete Store [${code}]?`)) return;
+    this.showLoading('Deleting Store...', 'Removing store from database');
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        app.hideLoading();
+        app.showToast('Store ' + code + ' deleted', 'success');
+        if (res && res.stores) {
+          app.state.stores = res.stores;
+        } else {
+          app.state.stores = (app.state.stores || []).filter(s => s.code !== code);
+        }
+        app.renderSitesTab();
+        app.populateAllSelectDropdowns();
+      })
+      .withFailureHandler((err) => {
+        app.hideLoading();
+        app.showToast('Failed to delete store: ' + (err.message || err), 'error');
+      })
+      .deleteStore(code);
+  },
+
+  // Selling Point CRUD
+  openAddSpModal: function() {
+    const title = document.getElementById('spModalTitle');
+    if (title) title.innerText = 'Add Selling Point Counter';
+    document.getElementById('spModalCodeHidden').value = '';
+    const codeInput = document.getElementById('spModalCode');
+    if (codeInput) {
+      codeInput.readOnly = false;
+      const nextNum = (this.state.sellingPoints || []).length + 1;
+      codeInput.value = `SP_00${nextNum}`;
+    }
+    document.getElementById('spModalName').value = '';
+
+    const storeSelect = document.getElementById('spModalStoreCode');
+    if (storeSelect) {
+      const stores = this.state.stores || [];
+      storeSelect.innerHTML = stores.map(s => `<option value="${s.code}">[${s.code}] ${s.name}</option>`).join('');
+    }
+    document.getElementById('spModalType').value = 'Sales Counter';
+    document.getElementById('spModalStatus').value = 'Active';
+    this.openModal('sellingPointModal');
+  },
+
+  openEditSpModal: function(code) {
+    const sp = (this.state.sellingPoints || []).find(s => s.code === code);
+    if (!sp) {
+      this.showToast('Selling Point not found: ' + code, 'error');
+      return;
+    }
+    const title = document.getElementById('spModalTitle');
+    if (title) title.innerText = 'Edit Selling Point Counter';
+    document.getElementById('spModalCodeHidden').value = sp.code;
+    const codeInput = document.getElementById('spModalCode');
+    if (codeInput) {
+      codeInput.value = sp.code;
+      codeInput.readOnly = true;
+    }
+    document.getElementById('spModalName').value = sp.name || '';
+
+    const storeSelect = document.getElementById('spModalStoreCode');
+    if (storeSelect) {
+      const stores = this.state.stores || [];
+      storeSelect.innerHTML = stores.map(s => `<option value="${s.code}">[${s.code}] ${s.name}</option>`).join('');
+      storeSelect.value = sp.storeCode || 'S_001';
+    }
+    document.getElementById('spModalType').value = sp.type || 'Sales Counter';
+    document.getElementById('spModalStatus').value = sp.status || 'Active';
+    this.openModal('sellingPointModal');
+  },
+
+  submitSpModalForm: function(e) {
+    if (e) e.preventDefault();
+    const code = document.getElementById('spModalCode').value.trim().toUpperCase();
+    const name = document.getElementById('spModalName').value.trim();
+    const storeCode = document.getElementById('spModalStoreCode').value;
+    const type = document.getElementById('spModalType').value;
+    const status = document.getElementById('spModalStatus').value;
+
+    if (!code || !name) {
+      this.showToast('Counter Code and Counter Name are required.', 'error');
+      return;
+    }
+
+    const payload = { code, name, storeCode, type, status };
+    this.showLoading('Saving Selling Point...', 'Updating database counters registry');
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        app.hideLoading();
+        app.closeModal('sellingPointModal');
+        app.showToast('Selling Point ' + name + ' saved successfully', 'success');
+        if (res && res.sellingPoints) {
+          app.state.sellingPoints = res.sellingPoints;
+        } else {
+          const idx = (app.state.sellingPoints || []).findIndex(s => s.code === code);
+          if (idx >= 0) app.state.sellingPoints[idx] = payload;
+          else (app.state.sellingPoints = app.state.sellingPoints || []).push(payload);
+        }
+        app.renderSitesTab();
+        app.populateAllSelectDropdowns();
+      })
+      .withFailureHandler((err) => {
+        app.hideLoading();
+        app.showToast('Failed to save selling point: ' + (err.message || err), 'error');
+      })
+      .saveSellingPoint(payload);
+  },
+
+  confirmDeleteSp: function(code) {
+    if (!confirm(`Are you sure you want to delete Selling Point [${code}]?`)) return;
+    this.showLoading('Deleting Selling Point...', 'Removing counter from database');
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        app.hideLoading();
+        app.showToast('Selling Point ' + code + ' deleted', 'success');
+        if (res && res.sellingPoints) {
+          app.state.sellingPoints = res.sellingPoints;
+        } else {
+          app.state.sellingPoints = (app.state.sellingPoints || []).filter(s => s.code !== code);
+        }
+        app.renderSitesTab();
+        app.populateAllSelectDropdowns();
+      })
+      .withFailureHandler((err) => {
+        app.hideLoading();
+        app.showToast('Failed to delete selling point: ' + (err.message || err), 'error');
+      })
+      .deleteSellingPoint(code);
   },
 
   // ==============================================================
@@ -4564,17 +5119,30 @@ const app = {
   // SUPPLIERS MODAL
   openSupplierModal: function(sup = null) {
     const form = document.getElementById('supplierForm');
-    form.reset();
+    if (form) form.reset();
 
+    const titleEl = document.getElementById('supplierModalTitle');
     if (sup) {
-      document.getElementById('supplierId').value = sup.id;
-      document.getElementById('supplierName').value = sup.name;
-      document.getElementById('supplierContact').value = sup.contactPerson;
-      document.getElementById('supplierPhone').value = sup.phone;
-      document.getElementById('supplierEmail').value = sup.email;
-      document.getElementById('supplierCategories').value = sup.categorySupplied;
-      document.getElementById('supplierAddress').value = sup.address;
+      if (titleEl) titleEl.innerText = 'Edit Supplier';
+      const supId = sup.code || sup.id || '';
+      document.getElementById('supplierId').value = supId;
+      document.getElementById('supplierName').value = sup.name || '';
+      document.getElementById('supplierContact').value = sup.contactPerson || '';
+      document.getElementById('supplierPhone').value = sup.phone || '';
+      document.getElementById('supplierEmail').value = sup.email || '';
+      const cat = sup.categorySupplied || sup.category || '';
+      document.getElementById('supplierCategories').value = cat;
+      const catSelect = document.getElementById('supplierCategorySelect');
+      if (catSelect) {
+        if ([...catSelect.options].some(o => o.value === cat)) {
+          catSelect.value = cat;
+        } else {
+          catSelect.value = '';
+        }
+      }
+      document.getElementById('supplierAddress').value = sup.address || '';
     } else {
+      if (titleEl) titleEl.innerText = 'Add New Supplier';
       document.getElementById('supplierId').value = '';
     }
 
@@ -4582,65 +5150,80 @@ const app = {
   },
 
   editSupplier: function(supId) {
-    const s = this.state.suppliers.find(x => x.id === supId);
-    if (s) this.openSupplierModal(s);
+    const s = (this.state.suppliers || []).find(x => String(x.id) === String(supId) || String(x.code) === String(supId));
+    if (s) {
+      this.openSupplierModal(s);
+    } else {
+      this.showToast('Supplier not found: ' + supId, 'error');
+    }
   },
 
   handleSupplierFormSubmit: function(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    const idVal = document.getElementById('supplierId').value.trim();
+    const catInput = document.getElementById('supplierCategories');
+    const catSelect = document.getElementById('supplierCategorySelect');
+    const category = (catInput && catInput.value.trim()) || (catSelect && catSelect.value) || 'General';
+
     const data = {
-      id: document.getElementById('supplierId').value,
+      id: idVal,
+      code: idVal,
       name: document.getElementById('supplierName').value.trim(),
       contactPerson: document.getElementById('supplierContact').value.trim(),
       phone: document.getElementById('supplierPhone').value.trim(),
       email: document.getElementById('supplierEmail').value.trim(),
-      categorySupplied: document.getElementById('supplierCategories').value.trim(),
+      category: category,
+      categorySupplied: category,
       address: document.getElementById('supplierAddress').value.trim(),
       status: 'Active'
     };
 
-    this.showLoading('Saving Supplier...', 'Updating vendor directory in Sheets');
-
-    if (this.isGasEnv()) {
-      google.script.run
-        .withSuccessHandler(function() {
-          app.hideLoading();
-          app.closeModal('supplierModal');
-          app.showToast('Supplier saved: ' + data.name);
-          app.loadInitialData(true);
-        })
-        .withFailureHandler(function(err) {
-          app.hideLoading();
-          app.showToast('Supplier save error: ' + err.message, 'error');
-        })
-        .saveSupplier(data);
-    } else {
-      this.hideLoading();
-      this.closeModal('supplierModal');
-      this.showToast('Supplier saved (local mode)');
+    if (!data.name) {
+      this.showToast('Please enter a supplier name.', 'error');
+      return;
     }
+
+    this.showLoading('Saving Supplier...', 'Updating vendor directory');
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        app.hideLoading();
+        app.closeModal('supplierModal');
+        app.showToast('Supplier saved: ' + data.name, 'success');
+        if (res && res.suppliers) {
+          app.state.suppliers = res.suppliers;
+        }
+        app.renderSuppliers();
+        app.populateAllSelectDropdowns();
+      })
+      .withFailureHandler(function(err) {
+        app.hideLoading();
+        app.showToast('Supplier save error: ' + (err.message || err), 'error');
+      })
+      .saveSupplier(data);
   },
 
   confirmDeleteSupplier: function(supId) {
-    if (!confirm('Are you sure you want to remove this supplier?')) return;
-    this.showLoading('Deleting Supplier...', 'Updating vendor sheet');
+    if (!confirm('Are you sure you want to remove supplier ' + supId + '?')) return;
+    this.showLoading('Deleting Supplier...', 'Removing vendor from database');
 
-    if (this.isGasEnv()) {
-      google.script.run
-        .withSuccessHandler(function() {
-          app.hideLoading();
-          app.showToast('Supplier removed');
-          app.loadInitialData(true);
-        })
-        .withFailureHandler(function(err) {
-          app.hideLoading();
-          app.showToast('Delete error: ' + err.message, 'error');
-        })
-        .deleteSupplier(supId);
-    } else {
-      this.hideLoading();
-      this.showToast('Supplier removed (local mode)');
-    }
+    google.script.run
+      .withSuccessHandler(function(res) {
+        app.hideLoading();
+        app.showToast('Supplier removed', 'success');
+        if (res && res.suppliers) {
+          app.state.suppliers = res.suppliers;
+        } else {
+          app.state.suppliers = (app.state.suppliers || []).filter(s => s.id !== supId && s.code !== supId);
+        }
+        app.renderSuppliers();
+        app.populateAllSelectDropdowns();
+      })
+      .withFailureHandler(function(err) {
+        app.hideLoading();
+        app.showToast('Delete error: ' + (err.message || err), 'error');
+      })
+      .deleteSupplier(supId);
   },
 
   // CSV EXPORTERS
@@ -5763,7 +6346,7 @@ const app = {
     }
 
     // 3. Store / Warehouse Lockdown / Unlock
-    const storeSelects = ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'];
+    const storeSelects = ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect', 'prodStoreSelect'];
     const storeNotice = document.getElementById('storeLockNotice');
     const storeNoticeText = document.getElementById('storeLockNoticeText');
 
@@ -5797,7 +6380,45 @@ const app = {
       if (storeNotice) storeNotice.classList.add('hidden');
     }
 
-    // 4. Update default staff name in transaction forms
+    // 4. Workflow Switcher Tab Isolation
+    const tabDash = document.getElementById('sidebarTab-dashboard');
+    const tabSp = document.getElementById('sidebarTab-sellingpoint');
+    if (isSpScoped) {
+      if (tabDash) {
+        tabDash.classList.add('opacity-40', 'cursor-not-allowed');
+        tabDash.title = 'Access Restricted: Cashiers cannot switch to Central Inventory';
+      }
+      if (tabSp) {
+        tabSp.classList.remove('opacity-40', 'cursor-not-allowed');
+        tabSp.title = 'Active Selling Point Register';
+      }
+      if (this.state.currentMode !== 'pos') {
+        this.switchMode('pos');
+      }
+    } else if (isStoreScoped) {
+      if (tabSp) {
+        tabSp.classList.add('opacity-40', 'cursor-not-allowed');
+        tabSp.title = 'Access Restricted: Store Incharges cannot switch to POS Counters';
+      }
+      if (tabDash) {
+        tabDash.classList.remove('opacity-40', 'cursor-not-allowed');
+        tabDash.title = 'Active Warehouse Store';
+      }
+      if (this.state.currentMode !== 'inventory') {
+        this.switchMode('inventory');
+      }
+    } else {
+      if (tabDash) {
+        tabDash.classList.remove('opacity-40', 'cursor-not-allowed');
+        tabDash.title = 'Inventory Operations';
+      }
+      if (tabSp) {
+        tabSp.classList.remove('opacity-40', 'cursor-not-allowed');
+        tabSp.title = 'POS Operations';
+      }
+    }
+
+    // 5. Update default staff name in transaction forms
     const spCashier = document.getElementById('spSaleCashier');
     if (spCashier) spCashier.value = u.name || 'Duty Cashier';
     const spPurRec = document.getElementById('spPurReceivedBy');
@@ -5805,7 +6426,7 @@ const app = {
     const spExpRec = document.getElementById('spExpRecordedBy');
     if (spExpRec) spExpRec.value = u.name || 'Duty Manager';
 
-    // 5. Recompute metrics and refresh views
+    // 6. Recompute metrics and refresh views
     this.recomputeLocalMetrics();
     this.filterSellingPointData();
     this.filterCatalog();

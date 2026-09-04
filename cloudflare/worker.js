@@ -12,8 +12,6 @@ const COOKIE_NAME = 'zolexora_session';
 const SALT = '_zolexora_salt_2026';
 
 import { APP_HTML } from './ui.js';
-import { INVENTORY_DASHBOARD_HTML } from './inv-dashboard-ui.js';
-import { POS_DASHBOARD_HTML } from './pos-dashboard-ui.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -34,14 +32,10 @@ export default {
       return handleSessionApi(request, env, url);
     }
 
-    // 4. Standalone Dedicated Dashboard Web Pages
-    if (url.pathname === '/inv-dashboard' || url.pathname === '/inventory-dashboard' || url.pathname === '/inventory') {
-      return htmlResponse(INVENTORY_DASHBOARD_HTML);
-    }
-    if (url.pathname === '/pos-dashboard' || url.pathname === '/pos') {
-      return htmlResponse(POS_DASHBOARD_HTML);
-    }
-    if (url.pathname === '/login' || url.pathname === '/signin') {
+    // 4. Standalone Dedicated Dashboard Web Pages & Application Entry
+    if (url.pathname === '/inv-dashboard' || url.pathname === '/inventory-dashboard' || url.pathname === '/inventory' ||
+        url.pathname === '/pos-dashboard' || url.pathname === '/pos' ||
+        url.pathname === '/login' || url.pathname === '/signin') {
       return htmlResponse(APP_HTML);
     }
 
@@ -203,12 +197,20 @@ async function handleD1Rpc(request, env, functionName) {
         result = await saveStore(db, args[0]);
         break;
 
+      case 'deleteStore':
+        result = await deleteStore(db, args[0]);
+        break;
+
       case 'getSellingPoints':
         result = await getSellingPoints(db);
         break;
 
       case 'saveSellingPoint':
         result = await saveSellingPoint(db, args[0]);
+        break;
+
+      case 'deleteSellingPoint':
+        result = await deleteSellingPoint(db, args[0]);
         break;
 
       case 'getUsers':
@@ -279,6 +281,14 @@ async function handleD1Rpc(request, env, functionName) {
         result = await switchOrganization(db, args[0]);
         break;
 
+      case 'renameOrganization':
+        result = await renameOrganization(db, args[0], args[1]);
+        break;
+
+      case 'createOrganization':
+        result = await createOrganization(db, args[0]);
+        break;
+
       default:
         // If unrecognized RPC call, return error
         return jsonResponse({
@@ -335,14 +345,14 @@ async function handleRestApi(request, env, url) {
 
   if (path === '/api/inv-dashboard' && isGetOrHead) {
     if (prefersHtml(request, url)) {
-      return htmlResponse(INVENTORY_DASHBOARD_HTML);
+      return htmlResponse(APP_HTML);
     }
     return jsonResponse(await getInventoryDashboardData(db), 200, request);
   }
 
   if (path === '/api/pos-dashboard' && isGetOrHead) {
     if (prefersHtml(request, url)) {
-      return htmlResponse(POS_DASHBOARD_HTML);
+      return htmlResponse(APP_HTML);
     }
     return jsonResponse(await getPosDashboardData(db), 200, request);
   }
@@ -958,7 +968,14 @@ async function saveStore(db, store) {
       status = excluded.status,
       description = excluded.description;
   `).bind(code, store.name, store.type || 'Store', store.status || 'Active', store.description || '').run();
-  return { success: true, code: code };
+  const stores = await getStores(db);
+  return { success: true, code: code, stores: stores };
+}
+
+async function deleteStore(db, code) {
+  await db.prepare('DELETE FROM stores WHERE code = ?;').bind(code).run();
+  const stores = await getStores(db);
+  return { success: true, stores: stores };
 }
 
 async function getSellingPoints(db) {
@@ -983,24 +1000,35 @@ async function saveSellingPoint(db, sp) {
       type = excluded.type,
       status = excluded.status;
   `).bind(code, sp.name, sp.storeCode || 'S_001', sp.type || 'Selling Point', sp.status || 'Active').run();
-  return { success: true, code: code };
+  const sellingPoints = await getSellingPoints(db);
+  return { success: true, code: code, sellingPoints: sellingPoints };
+}
+
+async function deleteSellingPoint(db, code) {
+  await db.prepare('DELETE FROM selling_points WHERE code = ?;').bind(code).run();
+  const sellingPoints = await getSellingPoints(db);
+  return { success: true, sellingPoints: sellingPoints };
 }
 
 async function getSuppliers(db) {
   const res = await db.prepare('SELECT * FROM suppliers ORDER BY code ASC;').all();
   return (res.results || []).map(sup => ({
+    id: sup.code,
     code: sup.code,
     name: sup.name,
     category: sup.category || 'General',
+    categorySupplied: sup.category || 'General',
     contactPerson: sup.contact_person || '',
     phone: sup.phone || '',
     email: sup.email || '',
+    address: sup.address || '',
     status: sup.status || 'Active'
   }));
 }
 
 async function saveSupplier(db, sup) {
-  const code = String(sup.code || `SUP_${Date.now().toString().slice(-3)}`).trim();
+  const code = String(sup.code || sup.id || `SUP_${Date.now().toString().slice(-3)}`).trim();
+  const cat = sup.category || sup.categorySupplied || 'General';
   await db.prepare(`
     INSERT INTO suppliers (code, org_id, name, category, contact_person, phone, email, status)
     VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?)
@@ -1011,13 +1039,15 @@ async function saveSupplier(db, sup) {
       phone = excluded.phone,
       email = excluded.email,
       status = excluded.status;
-  `).bind(code, sup.name, sup.category || 'General', sup.contactPerson || '', sup.phone || '', sup.email || '', sup.status || 'Active').run();
-  return { success: true, code: code };
+  `).bind(code, sup.name, cat, sup.contactPerson || '', sup.phone || '', sup.email || '', sup.status || 'Active').run();
+  const suppliers = await getSuppliers(db);
+  return { success: true, code: code, suppliers: suppliers };
 }
 
 async function deleteSupplier(db, code) {
   await db.prepare('DELETE FROM suppliers WHERE code = ?;').bind(code).run();
-  return { success: true };
+  const suppliers = await getSuppliers(db);
+  return { success: true, suppliers: suppliers };
 }
 
 async function getUsers(db) {
@@ -1326,7 +1356,26 @@ async function listOrganizations(db) {
 
 async function switchOrganization(db, orgId) {
   const org = await db.prepare('SELECT * FROM organizations WHERE id = ?;').bind(orgId).first();
-  return { success: true, activeOrganization: org };
+  const allOrgs = await listOrganizations(db);
+  return { success: true, activeOrganization: org, organizations: allOrgs };
+}
+
+async function renameOrganization(db, orgId, newName) {
+  const name = String(newName || '').trim();
+  if (!name) return { success: false, error: 'Organization name cannot be empty' };
+  await db.prepare('UPDATE organizations SET name = ? WHERE id = ?;').bind(name, orgId).run();
+  const org = await db.prepare('SELECT * FROM organizations WHERE id = ?;').bind(orgId).first();
+  const allOrgs = await listOrganizations(db);
+  return { success: true, activeOrganization: org, organizations: allOrgs };
+}
+
+async function createOrganization(db, orgData) {
+  const id = orgData.id || `ORG_${Date.now()}`;
+  const name = String(orgData.name || 'New Organization').trim();
+  await db.prepare('INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?);').bind(id, name, new Date().toISOString()).run();
+  const org = await db.prepare('SELECT * FROM organizations WHERE id = ?;').bind(id).first();
+  const allOrgs = await listOrganizations(db);
+  return { success: true, organization: org, activeOrganization: org, organizations: allOrgs };
 }
 
 // =====================================================================
