@@ -11,6 +11,8 @@ const DEFAULT_SESSION_TTL_SECONDS = 604800; // 7 days
 const COOKIE_NAME = 'zolexora_session';
 const SALT = '_zolexora_salt_2026';
 
+import { APP_HTML } from './ui.js';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -42,7 +44,18 @@ export default {
       if (restResponse) return restResponse;
     }
 
-    // 6. Transparent Reverse Proxy to Apps Script with HTML injection & header enrichment
+    // 6. Direct Edge-Hosted UI (Eliminates Google Login redirect completely)
+    if (url.pathname === '/' || url.pathname === '/index.html' || !url.pathname.startsWith('/api/')) {
+      return new Response(APP_HTML, {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'x-edge-worker': 'zolexora-ims-edge'
+        }
+      });
+    }
+
+    // 7. Fallback to GAS Proxy
     return handleProxyRequest(request, env, url);
   }
 };
