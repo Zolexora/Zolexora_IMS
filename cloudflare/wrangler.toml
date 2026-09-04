@@ -11,8 +11,8 @@ workers_dev = true
 # D1 Relational Database Binding
 [[d1_databases]]
 binding = "DB"
-database_name = "zolexora-db"
-database_id = "dea34530-b97c-4079-aa43-24b8a0790eee"
+database_name = "zolexora-ims-1-db"
+database_id = "63b1b80b-ee96-4948-acce-c96d6ac65f61"
 
 # KV Namespace binding for edge-cached session storage
 [[kv_namespaces]]

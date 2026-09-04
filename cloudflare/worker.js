@@ -2,7 +2,7 @@
  * Zolexora IMS — Cloudflare Worker Reverse Proxy & Native D1 Database Engine
  * 
  * Custom Domain: ims.zolexora.com
- * D1 Database Binding: env.DB (zolexora-db)
+ * D1 Database Binding: env.DB (zolexora-ims-1-db)
  * KV Session Binding: env.SESSION_KV
  */
 
@@ -76,7 +76,7 @@ async function handleD1Health(request, env) {
 
     return jsonResponse({
       status: 'healthy',
-      database: 'zolexora-db',
+      database: 'zolexora-ims-1-db',
       engine: 'Cloudflare D1 (Serverless SQLite)',
       edgeLocation: request.cf?.colo || 'UNKNOWN',
       queryLatencyMs: latency,
@@ -371,7 +371,7 @@ async function getInitialData(db) {
     organizations: [org || { id: 'ORG_ZOLEXORA_001', name: 'Zolexora Enterprise' }],
     workbooksInfo: {
       databaseType: 'Cloudflare D1 (Serverless SQL)',
-      databaseName: 'zolexora-db',
+      databaseName: 'zolexora-ims-1-db',
       workbooks: []
     },
     metrics: metrics,
