@@ -1,16 +1,24 @@
 name = "zolexora-ims-proxy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+workers_dev = true
 
-routes = [
-  { pattern = "ims.zolexora.com/*", zone_name = "zolexora.com" }
-]
+# Uncomment when zolexora.com zone is added to your Cloudflare account
+# routes = [
+#   { pattern = "ims.zolexora.com/*", zone_name = "zolexora.com" }
+# ]
+
+# D1 Relational Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "zolexora-db"
+database_id = "dea34530-b97c-4079-aa43-24b8a0790eee"
 
 # KV Namespace binding for edge-cached session storage
 [[kv_namespaces]]
 binding = "SESSION_KV"
-id = "zolexora_sessions_kv"
-preview_id = "zolexora_sessions_kv_preview"
+id = "96c2aa5eace04fe0aa2bbafd29de9f76"
+preview_id = "07e2d34d75414835ad296d6a0887a89b"
 
 # Environment Variables
 [vars]

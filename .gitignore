@@ -11,3 +11,7 @@ node_modules/
 # OS and temporary files
 .DS_Store
 Thumbs.db
+
+# Wrangler local state
+.wrangler/
+**/.wrangler/

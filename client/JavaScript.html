@@ -3,6 +3,40 @@
  * Zolexora IMS - CLIENT APPLICATION LOGIC
  */
 
+// Native Cloudflare D1 Edge RPC Bridge: seamlessly bridges google.script.run to Cloudflare D1
+(function() {
+  if (typeof window !== 'undefined' && (!window.google || !window.google.script || !window.google.script.run)) {
+    window.google = window.google || {};
+    window.google.script = window.google.script || {};
+    function createD1Bridge(successHandler, failureHandler) {
+      return new Proxy({}, {
+        get(target, prop) {
+          if (prop === 'withSuccessHandler') return function(fn) { return createD1Bridge(fn, failureHandler); };
+          if (prop === 'withFailureHandler') return function(fn) { return createD1Bridge(successHandler, fn); };
+          return async function(...args) {
+            try {
+              var res = await fetch('/api/rpc/' + prop, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ args: args })
+              });
+              var data = await res.json();
+              if (successHandler) successHandler(data);
+              return data;
+            } catch (err) {
+              if (failureHandler) failureHandler(err);
+              else console.error('D1 RPC error on ' + prop, err);
+              throw err;
+            }
+          };
+        }
+      });
+    }
+    window.google.script.run = createD1Bridge();
+    window.ZOLEXORA_DB_ENGINE = 'Cloudflare D1 (Serverless SQL)';
+  }
+})();
+
 const app = {
   state: {
     dbInfo: {},
