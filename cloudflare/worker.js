@@ -367,8 +367,8 @@ async function getInitialData(db) {
   return {
     success: true,
     hasOrganization: Boolean(org),
-    activeOrganization: org || { id: 'ORG_ZOLEXORA_001', name: 'Zolexora Enterprise' },
-    organizations: [org || { id: 'ORG_ZOLEXORA_001', name: 'Zolexora Enterprise' }],
+    activeOrganization: org || { id: 'ORG_ZOLEXORA_001', name: "Zolexora_1's org" },
+    organizations: [org || { id: 'ORG_ZOLEXORA_001', name: "Zolexora_1's org" }],
     workbooksInfo: {
       databaseType: 'Cloudflare D1 (Serverless SQL)',
       databaseName: 'zolexora-ims-1-db',
@@ -1005,7 +1005,7 @@ async function loginUser(db, env, credentials) {
     assignedLocation: user.assigned_location || 'ALL',
     locationName: user.location_name || '',
     orgId: user.org_id || 'ORG_ZOLEXORA_001',
-    orgName: 'Zolexora Enterprise'
+    orgName: "Zolexora_1's org"
   };
 
   // Cache in SESSION_KV if available
@@ -1041,7 +1041,7 @@ async function checkUserSession(db, email, orgId) {
     assignedLocation: user.assigned_location || 'ALL',
     locationName: user.location_name || '',
     orgId: user.org_id || 'ORG_ZOLEXORA_001',
-    orgName: 'Zolexora Enterprise'
+    orgName: "Zolexora_1's org"
   };
 
   const initialData = await getInitialData(db);

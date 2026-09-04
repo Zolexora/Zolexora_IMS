@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- ====================================================================
 
 INSERT OR IGNORE INTO organizations (id, name, industry, owner_email, currency, status, created_at)
-VALUES ('ORG_ZOLEXORA_001', 'Zolexora Enterprise', 'Retail & E-Commerce', 'abhishekofficial4577@gmail.com', '₹', 'Active', '2026-09-04T00:00:00.000Z');
+VALUES ('ORG_ZOLEXORA_001', 'Zolexora_1''s org', 'Retail & E-Commerce', 'abhishekofficial4577@gmail.com', '₹', 'Active', '2026-09-04T00:00:00.000Z');
 
 INSERT OR IGNORE INTO stores (code, org_id, name, type, status, description) VALUES
 ('S_001', 'ORG_ZOLEXORA_001', 'Store 1 - Main Branch', 'Main Outlet Store', 'Active', 'Primary inventory depot'),
@@ -291,6 +291,6 @@ INSERT OR IGNORE INTO products (item_code, org_id, description, category, catego
 ('ITM_012', 'ORG_ZOLEXORA_001', 'Signature Chai Cardboard Cups 150ml (Pack 100)', 'Packaging & Disposables', 'CAT_PAC', 'Pack', 180, 18, 30, 40, 30, 20, 90, 16200, 'SUP_023', 'Active', '2026-09-04T00:00:00.000Z');
 
 INSERT OR IGNORE INTO settings (key, org_id, value, description) VALUES
-('HOTEL_NAME', 'ORG_ZOLEXORA_001', 'Zolexora Enterprise', 'Organization brand title'),
+('HOTEL_NAME', 'ORG_ZOLEXORA_001', 'Zolexora_1''s org', 'Organization brand title'),
 ('CURRENCY_SYMBOL', 'ORG_ZOLEXORA_001', '₹', 'Global currency symbol'),
 ('INDUSTRY_VERTICAL', 'ORG_ZOLEXORA_001', 'Retail & E-Commerce', 'Selected industry vertical');
