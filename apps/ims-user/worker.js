@@ -437,7 +437,11 @@ async function getInitialData(db) {
     status: sup.status || 'Active'
   }));
 
-  const metrics = calculateMetrics(items, supTxns.results || [], issTxns.results || [], storesList);
+  const supFormatted = (supTxns.results || []).map(r => formatSupplierTxn(r));
+  const issFormatted = (issTxns.results || []).map(r => formatIssuanceTxn(r));
+  const allRecent = [...supFormatted, ...issFormatted].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const metrics = calculateMetrics(items, supFormatted, issFormatted, storesList);
 
   return {
     success: true,
@@ -456,9 +460,9 @@ async function getInitialData(db) {
     sellingPoints: spList,
     users: users.results || [],
     settings: settings,
-    supplierTransactions: supTxns.results || [],
-    issuanceTransactions: issTxns.results || [],
-    recentTransactions: [...(supTxns.results || []), ...(issTxns.results || [])].slice(0, 50),
+    supplierTransactions: supFormatted,
+    issuanceTransactions: issFormatted,
+    recentTransactions: allRecent.slice(0, 50),
     sellingPointTransactions: {
       sales: (salesTxns.results || []).map(s => formatSaleFromRow(s)),
       purchases: [],
@@ -517,6 +521,25 @@ function calculateMetrics(items, supTxns, issTxns, storesList) {
     }
   });
 
+  let stockInQty = 0;
+  let stockInVal = 0;
+  let stockOutQty = 0;
+  let stockOutVal = 0;
+
+  supTxns.forEach(t => {
+    const q = Number(t.quantity) || 0;
+    const v = Number(t.totalCost != null ? t.totalCost : (t.total_amount != null ? t.total_amount : t.totalAmount)) || 0;
+    stockInQty += q;
+    stockInVal += v;
+  });
+
+  issTxns.forEach(t => {
+    const q = Number(t.quantity) || 0;
+    const v = Number(t.totalCost != null ? t.totalCost : (t.total_value != null ? t.total_value : t.totalValue)) || 0;
+    stockOutQty += q;
+    stockOutVal += v;
+  });
+
   return {
     totalSkus: items.length,
     totalValuation: Math.round(totalValuation),
@@ -528,10 +551,10 @@ function calculateMetrics(items, supTxns, issTxns, storesList) {
     lowStockItems: lowStockItems.slice(0, 15),
     todaySummary: {
       txnCount: supTxns.length + issTxns.length,
-      stockIn: 0,
-      stockInValue: 0,
-      stockOut: 0,
-      stockOutValue: 0
+      stockIn: stockInQty,
+      stockInValue: stockInVal,
+      stockOut: stockOutQty,
+      stockOutValue: stockOutVal
     }
   };
 }
@@ -878,6 +901,78 @@ function formatSaleFromRow(r) {
     paymentStatus: r.payment_status || 'Completed',
     cashier: r.cashier || 'Staff',
     notes: r.notes || ''
+  };
+}
+
+function formatSupplierTxn(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: row.id,
+    type: 'STOCK_IN',
+    timestamp: row.timestamp,
+    supplierCode: row.supplier_code || row.supplierCode || '',
+    supplierName: row.supplier_name || row.supplierName || '',
+    sku: row.item_code || row.sku || '',
+    itemCode: row.item_code || row.itemCode || '',
+    itemName: row.item_description || row.itemName || '',
+    itemDescription: row.item_description || row.itemDescription || '',
+    category: row.category || '',
+    quantity: Number(row.quantity) || 0,
+    unit: row.uom || row.unit || '',
+    uom: row.uom || row.unit || '',
+    rate: Number(row.rate) || 0,
+    costRate: Number(row.rate) || 0,
+    taxPercent: Number(row.tax_percent != null ? row.tax_percent : row.taxPercent) || 0,
+    totalAmount: Number(row.total_amount != null ? row.total_amount : row.totalAmount) || 0,
+    totalCost: Number(row.total_amount != null ? row.total_amount : row.totalCost) || 0,
+    sourceLocation: row.supplier_name || row.supplierCode || 'Supplier',
+    destLocation: row.receiving_store_name || row.receiving_store_code || 'Store',
+    receivingStoreCode: row.receiving_store_code || row.receivingStoreCode || '',
+    receivingStoreName: row.receiving_store_name || row.receivingStoreName || '',
+    reference: row.po_invoice_ref || row.reference || '',
+    poInvoiceRef: row.po_invoice_ref || row.poInvoiceRef || '',
+    performedBy: row.received_by || row.performedBy || 'Staff',
+    receivedBy: row.received_by || row.receivedBy || 'Staff',
+    notes: row.notes || ''
+  };
+}
+
+function formatIssuanceTxn(row) {
+  if (!row) return null;
+  const rawType = String(row.type || 'STOCK_OUT').toUpperCase();
+  const normalizedType = (rawType === 'DISBURSEMENT' || rawType === 'STOCK_OUT') ? 'STOCK_OUT' : rawType;
+  return {
+    ...row,
+    id: row.id,
+    type: normalizedType,
+    rawType: row.type || 'STOCK_OUT',
+    timestamp: row.timestamp,
+    sku: row.item_code || row.sku || '',
+    itemCode: row.item_code || row.itemCode || '',
+    itemName: row.item_description || row.itemName || '',
+    itemDescription: row.item_description || row.itemDescription || '',
+    category: row.category || '',
+    quantity: Number(row.quantity) || 0,
+    unit: row.uom || row.unit || '',
+    uom: row.uom || row.unit || '',
+    rate: Number(row.unit_rate != null ? row.unit_rate : row.rate) || 0,
+    unitRate: Number(row.unit_rate != null ? row.unit_rate : row.unitRate) || 0,
+    totalCost: Number(row.total_value != null ? row.total_value : row.totalCost) || 0,
+    totalValue: Number(row.total_value != null ? row.total_value : row.totalValue) || 0,
+    totalAmount: Number(row.total_value != null ? row.total_value : row.totalAmount) || 0,
+    sourceLocation: row.from_store_name || row.from_store_code || 'Store',
+    fromStoreCode: row.from_store_code || row.fromStoreCode || '',
+    fromStoreName: row.from_store_name || row.fromStoreName || '',
+    destLocation: row.to_selling_point_name || row.to_selling_point_code || 'Selling Point / Dept',
+    toSellingPointCode: row.to_selling_point_code || row.toSellingPointCode || '',
+    toSellingPointName: row.to_selling_point_name || row.toSellingPointName || '',
+    reference: row.requisition_ref || row.reference || '',
+    requisitionRef: row.requisition_ref || row.requisitionRef || '',
+    performedBy: row.issued_by || row.performedBy || 'Staff',
+    issuedBy: row.issued_by || row.issuedBy || 'Staff',
+    status: row.status || 'Approved',
+    notes: row.notes || ''
   };
 }
 
@@ -1232,7 +1327,7 @@ async function recordSellingPointExpense(db, exp) {
 
 async function getSupplierTransactions(db, limit = 50) {
   const res = await db.prepare('SELECT * FROM supplier_transactions ORDER BY timestamp DESC LIMIT ?;').bind(limit).all();
-  return res.results || [];
+  return (res.results || []).map(r => formatSupplierTxn(r));
 }
 
 async function processSupplierPurchase(db, txn) {
@@ -1279,7 +1374,7 @@ async function processSupplierPurchase(db, txn) {
 
 async function getIssuanceTransactions(db, limit = 50) {
   const res = await db.prepare('SELECT * FROM issuance_transactions ORDER BY timestamp DESC LIMIT ?;').bind(limit).all();
-  return res.results || [];
+  return (res.results || []).map(r => formatIssuanceTxn(r));
 }
 
 async function processStockIssuance(db, txn) {
@@ -1328,7 +1423,7 @@ async function getTransactions(db, limit = 50) {
     getSupplierTransactions(db, limit),
     getIssuanceTransactions(db, limit)
   ]);
-  return [...sup, ...iss].slice(0, limit);
+  return [...sup, ...iss].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, limit);
 }
 
 async function getSettings(db) {

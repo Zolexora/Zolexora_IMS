@@ -48,6 +48,8 @@ const app = {
     users: [],
     currentUser: null,
     settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' },
+    supplierTransactions: [],
+    issuanceTransactions: [],
     recentTransactions: [],
     activeTab: 'dashboard',
     currentMode: 'inventory',
@@ -462,6 +464,32 @@ const app = {
     this.state.users = data.users || [];
     this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
 
+    this.state.supplierTransactions = data.supplierTransactions || [];
+    this.state.issuanceTransactions = data.issuanceTransactions || [];
+    this.state.recentTransactions = (data.recentTransactions && data.recentTransactions.length)
+      ? data.recentTransactions
+      : [...(this.state.supplierTransactions || []), ...(this.state.issuanceTransactions || [])];
+
+    if (!this.state.departments || this.state.departments.length === 0) {
+      this.state.departments = [
+        { name: 'Housekeeping', propertyScope: 'All Properties', headOfDepartment: 'Executive Housekeeper' },
+        { name: 'Food & Beverage / Kitchen', propertyScope: 'All Properties', headOfDepartment: 'Executive Chef' },
+        { name: 'Front Desk & Guest Services', propertyScope: 'All Properties', headOfDepartment: 'Front Office Manager' },
+        { name: 'Engineering & Maintenance', propertyScope: 'All Properties', headOfDepartment: 'Chief Engineer' }
+      ];
+    }
+
+    if (!this.state.locations || this.state.locations.length === 0) {
+      this.state.locations = [
+        { code: 'S_000', name: 'Central Depot Warehouse', type: 'Central Hub' },
+        { code: 'S_001', name: 'Store 1 - Main Branch', type: 'Main Warehouse' },
+        { code: 'S_002', name: 'Store 2 - Outlet Branch', type: 'Secondary Outlet' },
+        { code: 'SP_001', name: 'Front Counter / Retail Sales', type: 'POS Counter' },
+        { code: 'SP_002', name: 'Branch Dispenser Counter', type: 'POS Counter' },
+        { code: 'SP_003', name: 'Main Production / Operations', type: 'Production Unit' }
+      ];
+    }
+
     // Resolve active operational persona (RBAC Scope)
     if (!this.state.currentUser && this.state.users && this.state.users.length > 0) {
       const authEmail = (this.state.authUser && this.state.authUser.email) ? this.state.authUser.email.toLowerCase() : '';
@@ -502,6 +530,7 @@ const app = {
     this.filterCatalog();
     this.filterTransactions();
     this.renderSuppliers();
+    this.renderRecentRequisitions();
     this.renderDepartmentsAndLocations();
     this.renderSettingsTab();
     this.renderSellingPointDashboard();
@@ -1193,6 +1222,27 @@ const app = {
     // Trigger Inventory Dashboard render
     if (tabId === 'dashboard') {
       this.recomputeLocalMetrics();
+      this.renderRecentRequisitions();
+    }
+
+    // Trigger Requisitions render
+    if (tabId === 'requisitions') {
+      this.renderRecentRequisitions();
+    }
+
+    // Trigger Products Catalog render
+    if (tabId === 'products') {
+      this.filterCatalog();
+    }
+
+    // Trigger Suppliers Directory render
+    if (tabId === 'suppliers') {
+      this.renderSuppliers();
+    }
+
+    // Trigger Stock Issuance & Audit Log render
+    if (tabId === 'issuance') {
+      this.filterTransactions();
     }
 
     // Trigger Selling Point Dashboard render
@@ -1208,6 +1258,12 @@ const app = {
     // Trigger Users & RBAC Directory render
     if (tabId === 'users') {
       this.renderUsersTable();
+    }
+
+    // Trigger Warehouses & Database Settings tab render
+    if (tabId === 'settings') {
+      this.renderSettingsTab();
+      this.updateGoogleSheetLinks();
     }
   },
 
@@ -6927,9 +6983,18 @@ const app = {
         { id: 'USR_004', name: 'Vikram Singh (Cashier SP2)', role: 'Selling Point Cashier', email: 'vikram.sp2@zolexora.com', assignedLocation: 'SP_002', assignedStore: 'SP_002', scopeType: 'SELLING_POINT', locationName: 'Branch Dispenser Counter', status: 'Active' },
         { id: 'USR_005', name: 'Pooja Gupta (Store 2)', role: 'Store Incharge', email: 'pooja.store2@zolexora.com', assignedLocation: 'S_002', assignedStore: 'S_002', scopeType: 'STORE', locationName: 'Store 2 - Outlet Branch', status: 'Active' }
       ],
-      supplierTransactions: [],
-      issuanceTransactions: [],
-      recentTransactions: [],
+      supplierTransactions: [
+        { id: 'TXN_SUP_001', type: 'STOCK_IN', timestamp: nowIso, supplierCode: 'SUP_004', supplierName: 'Bankey Behari Dairy & Provisions', sku: 'ITM_002', itemCode: 'ITM_002', itemName: 'Fresh Cow Milk 1L Pack', category: 'Dairy & Fresh', quantity: 80, unit: 'Pack', rate: 60, costRate: 60, taxPercent: 0, totalAmount: 4800, totalCost: 4800, sourceLocation: 'Bankey Behari Dairy & Provisions', destLocation: 'Store 1 - Main Branch', receivingStoreCode: 'S_001', receivingStoreName: 'Store 1 - Main Branch', reference: 'PO-2026-09-01', poInvoiceRef: 'PO-2026-09-01', performedBy: 'Ramesh Kumar', receivedBy: 'Ramesh Kumar', notes: 'Weekly dairy batch' },
+        { id: 'TXN_SUP_002', type: 'STOCK_IN', timestamp: nowIso, supplierCode: 'SUP_021', supplierName: 'Pindi Kirana Store', sku: 'ITM_001', itemCode: 'ITM_001', itemName: 'Special Assam Orthodox Tea Leaves', category: 'Tea & Beverages', quantity: 40, unit: 'Kg', rate: 620, costRate: 620, taxPercent: 5, totalAmount: 26040, totalCost: 26040, sourceLocation: 'Pindi Kirana Store', destLocation: 'Central Depot Warehouse', receivingStoreCode: 'S_000', receivingStoreName: 'Central Depot Warehouse', reference: 'PO-2026-09-02', poInvoiceRef: 'PO-2026-09-02', performedBy: 'Abhishek Sharma', receivedBy: 'Abhishek Sharma', notes: 'Central depot replenishment' }
+      ],
+      issuanceTransactions: [
+        { id: 'ISS_1001', type: 'STOCK_OUT', timestamp: nowIso, sku: 'ITM_002', itemCode: 'ITM_002', itemName: 'Fresh Cow Milk 1L Pack', quantity: 20, unit: 'Pack', rate: 65, unitRate: 65, totalCost: 1300, totalValue: 1300, totalAmount: 1300, sourceLocation: 'Store 1 - Main Branch', fromStoreCode: 'S_001', fromStoreName: 'Store 1 - Main Branch', destLocation: 'Front Counter / Retail Sales', toSellingPointCode: 'SP_001', toSellingPointName: 'Front Counter / Retail Sales', reference: 'REQ-FNB-001', requisitionRef: 'REQ-FNB-001', performedBy: 'Ramesh Kumar', issuedBy: 'Ramesh Kumar', status: 'Approved', notes: 'Morning counter issue' },
+        { id: 'ISS_1002', type: 'STOCK_OUT', timestamp: nowIso, sku: 'ITM_001', itemCode: 'ITM_001', itemName: 'Special Assam Orthodox Tea Leaves', quantity: 5, unit: 'Kg', rate: 650, unitRate: 650, totalCost: 3250, totalValue: 3250, totalAmount: 3250, sourceLocation: 'Central Depot Warehouse', fromStoreCode: 'S_000', fromStoreName: 'Central Depot Warehouse', destLocation: 'Branch Dispenser Counter', toSellingPointCode: 'SP_002', toSellingPointName: 'Branch Dispenser Counter', reference: 'REQ-FNB-002', requisitionRef: 'REQ-FNB-002', performedBy: 'Abhishek Sharma', issuedBy: 'Abhishek Sharma', status: 'Approved', notes: 'Dispenser counter tea refill' }
+      ],
+      recentTransactions: [
+        { id: 'TXN_SUP_001', type: 'STOCK_IN', timestamp: nowIso, sku: 'ITM_002', itemName: 'Fresh Cow Milk 1L Pack', quantity: 80, unit: 'Pack', sourceLocation: 'Bankey Behari Dairy & Provisions', destLocation: 'Store 1 - Main Branch', totalCost: 4800, reference: 'PO-2026-09-01', performedBy: 'Ramesh Kumar', notes: 'Weekly dairy batch' },
+        { id: 'ISS_1001', type: 'STOCK_OUT', timestamp: nowIso, sku: 'ITM_002', itemName: 'Fresh Cow Milk 1L Pack', quantity: 20, unit: 'Pack', sourceLocation: 'Store 1 - Main Branch', destLocation: 'Front Counter / Retail Sales', totalCost: 1300, reference: 'REQ-FNB-001', performedBy: 'Ramesh Kumar', notes: 'Morning counter issue' }
+      ],
       sellingPointTransactions: {
         sales: mockSales,
         purchases: mockPurchases,
