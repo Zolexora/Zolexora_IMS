@@ -1,0 +1,16 @@
+{
+  "name": "zolexora-ims-admin",
+  "version": "1.0.0",
+  "description": "Zolexora IMS Platform SuperAdmin Control Plane",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "build": "node build-ui.js",
+    "deploy": "node build-ui.js && npx wrangler deploy",
+    "dev": "npx wrangler dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^4.129.0"
+  }
+}
