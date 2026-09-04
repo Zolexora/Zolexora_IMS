@@ -67,6 +67,13 @@
     "cloudflare-blog": {
       "serverUrl": "https://blog.mcp.cloudflare.com/mcp",
       "url": "https://blog.mcp.cloudflare.com/mcp"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
     }
   }
 }

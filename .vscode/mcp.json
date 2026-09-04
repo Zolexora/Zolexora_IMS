@@ -67,6 +67,14 @@
     "cloudflare-blog": {
       "type": "http",
       "url": "https://blog.mcp.cloudflare.com/mcp"
+    },
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      }
     }
   },
   "mcpServers": {
@@ -120,6 +128,13 @@
     },
     "cloudflare-blog": {
       "url": "https://blog.mcp.cloudflare.com/mcp"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      }
     }
   }
 }
