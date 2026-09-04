@@ -475,22 +475,17 @@ const app = {
 
     this.state.settings.HOTEL_NAME = currentOrgName;
 
-    // Update active organization headers & sidebar
-    const headerOrgEl = document.getElementById('headerOrgName');
-    if (headerOrgEl) headerOrgEl.innerText = currentOrgName;
-
-    const sidebarHotelEl = document.getElementById('sidebarHotelName');
-    if (sidebarHotelEl) sidebarHotelEl.innerText = currentOrgName;
+    // Update active organization headers, command cards & sidebar
+    ['headerOrgName', 'dashOrgName', 'posOrgName', 'sidebarHotelName', 'dropdownOrgName'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = currentOrgName;
+    });
 
     const firstLetter = currentOrgName.trim().charAt(0).toUpperCase() || 'S';
-    const headerAvatarLetter = document.getElementById('headerOrgAvatarLetter');
-    if (headerAvatarLetter) headerAvatarLetter.innerText = firstLetter;
-
-    const sidebarAvatarLetter = document.getElementById('sidebarOrgAvatarLetter');
-    if (sidebarAvatarLetter) sidebarAvatarLetter.innerText = firstLetter;
-
-    const dropdownOrg = document.getElementById('dropdownOrgName');
-    if (dropdownOrg) dropdownOrg.innerText = currentOrgName;
+    ['headerOrgAvatarLetter', 'dashOrgAvatarLetter', 'posOrgAvatarLetter', 'sidebarOrgAvatarLetter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = firstLetter;
+    });
 
     // Update Nav Count
     const navBadge = document.getElementById('navTotalItemsBadge');
@@ -1054,6 +1049,21 @@ const app = {
       targetPane.classList.remove('hidden');
     }
 
+    // Responsive, Zoom-Proof Header Logic:
+    // Primary dashboards ('dashboard' and 'sellingpoint') feature their own dedicated in-page Top Command Cards.
+    // The top sticky header is hidden on these two primary tabs to prevent duplicate headers and zoom clipping.
+    // On sub-tabs (products, requisition, suppliers, issuance, reports, users, settings), the sticky top header is shown.
+    const topHeader = document.getElementById('appTopHeader');
+    if (topHeader) {
+      if (tabId === 'dashboard' || tabId === 'sellingpoint') {
+        topHeader.classList.add('hidden');
+        topHeader.classList.remove('flex');
+      } else {
+        topHeader.classList.remove('hidden');
+        topHeader.classList.add('flex');
+      }
+    }
+
     // Trigger Chart Resize and Report render if Reports
     if (tabId === 'reports') {
       if (this.state.categoryChart) this.state.categoryChart.resize();
@@ -1074,6 +1084,15 @@ const app = {
     if (tabId === 'users') {
       this.renderUsersTable();
     }
+  },
+
+  handleSpTopSearch: function(query) {
+    const q = (query || '').trim();
+    ['spSaleSearchInput', 'spPurSearchInput', 'spExpSearchInput'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = q;
+    });
+    this.filterSellingPointData();
   },
 
   handleGlobalSearch: function(query) {
@@ -1280,8 +1299,16 @@ const app = {
     const unitsEl = document.getElementById('dashTotalUnits');
     if (unitsEl) unitsEl.innerText = `${this.formatNumber(m.totalUnits || 0)} units total`;
 
+    const lowCount = (m.lowStockCount || 0) + (m.outOfStockCount || 0);
     const lowEl = document.getElementById('dashLowStockCount');
-    if (lowEl) lowEl.innerText = this.formatNumber((m.lowStockCount || 0) + (m.outOfStockCount || 0));
+    if (lowEl) lowEl.innerText = this.formatNumber(lowCount);
+    ['bellAlertDot', 'bellAlertDotDash'].forEach(id => {
+      const dot = document.getElementById(id);
+      if (dot) {
+        if (lowCount > 0) dot.classList.remove('hidden');
+        else dot.classList.add('hidden');
+      }
+    });
 
     const today = m.todaySummary || { txnCount: 0, stockIn: 0, stockOut: 0 };
     const txnsEl = document.getElementById('dashTodayTxns');
@@ -5667,28 +5694,28 @@ const app = {
     const isGlobal = !isSpScoped && !isStoreScoped;
 
     // 1. Update Scope Badges and Switchers
-    const scopeBadge = document.getElementById('activeUserScopeBadge');
-    if (scopeBadge) {
-      if (isSpScoped) {
-        scopeBadge.innerText = loc;
-        scopeBadge.className = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
-      } else if (isStoreScoped) {
-        scopeBadge.innerText = loc;
-        scopeBadge.className = 'bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
-      } else {
-        scopeBadge.innerText = 'GLOBAL';
-        scopeBadge.className = 'bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+    ['activeUserScopeBadge', 'dashUserScopeBadge', 'posUserScopeBadge'].forEach(id => {
+      const scopeBadge = document.getElementById(id);
+      if (scopeBadge) {
+        if (isSpScoped) {
+          scopeBadge.innerText = loc;
+          scopeBadge.className = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+        } else if (isStoreScoped) {
+          scopeBadge.innerText = loc;
+          scopeBadge.className = 'bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+        } else {
+          scopeBadge.innerText = 'GLOBAL';
+          scopeBadge.className = 'bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+        }
       }
-    }
+    });
 
-    const hSwitcher = document.getElementById('headerUserSwitcher');
-    if (hSwitcher && hSwitcher.value !== u.id) {
-      hSwitcher.value = u.id;
-    }
-    const dSwitcher = document.getElementById('usersDirectorySwitcher');
-    if (dSwitcher && dSwitcher.value !== u.id) {
-      dSwitcher.value = u.id;
-    }
+    ['headerUserSwitcher', 'dashUserSwitcher', 'posUserSwitcher', 'usersDirectorySwitcher'].forEach(id => {
+      const switcher = document.getElementById(id);
+      if (switcher && switcher.value !== u.id) {
+        switcher.value = u.id;
+      }
+    });
 
     // Top Header profile labels
     const dUser = document.getElementById('dropdownUserName');
@@ -5846,22 +5873,19 @@ const app = {
     if (document.getElementById('userMetricStoreIncharge')) document.getElementById('userMetricStoreIncharge').innerText = kpiStore;
     if (document.getElementById('userMetricAdmins')) document.getElementById('userMetricAdmins').innerText = kpiAdmins;
 
-    // Populate switchers: headerUserSwitcher and usersDirectorySwitcher
+    // Populate switchers: headerUserSwitcher, dashUserSwitcher, posUserSwitcher, and usersDirectorySwitcher
     const switcherOptions = allUsers.map(u => {
       const loc = u.assignedLocation || u.assignedStore || 'ALL';
       return `<option value="${u.id}">${u.name} (${loc} - ${u.role})</option>`;
     }).join('');
 
-    const hSwitcher = document.getElementById('headerUserSwitcher');
-    if (hSwitcher) {
-      hSwitcher.innerHTML = switcherOptions;
-      if (curUser) hSwitcher.value = curUser.id;
-    }
-    const dSwitcher = document.getElementById('usersDirectorySwitcher');
-    if (dSwitcher) {
-      dSwitcher.innerHTML = switcherOptions;
-      if (curUser) dSwitcher.value = curUser.id;
-    }
+    ['headerUserSwitcher', 'dashUserSwitcher', 'posUserSwitcher', 'usersDirectorySwitcher'].forEach(id => {
+      const switcher = document.getElementById(id);
+      if (switcher) {
+        switcher.innerHTML = switcherOptions;
+        if (curUser) switcher.value = curUser.id;
+      }
+    });
 
     if (!tbody) return;
     if (users.length === 0) {
