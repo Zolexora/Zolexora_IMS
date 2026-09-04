@@ -387,6 +387,7 @@ const app = {
     this.state.suppliers = data.suppliers || [];
     this.state.stores = data.stores || [];
     this.state.sellingPoints = data.sellingPoints || [];
+    this.state.sellingPointTransactions = data.sellingPointTransactions || { sales: [], purchases: [], expenses: [] };
     this.state.departments = data.departments || [];
     this.state.locations = data.locations || [];
     this.state.users = data.users || [];
@@ -432,6 +433,8 @@ const app = {
     this.renderSuppliers();
     this.renderDepartmentsAndLocations();
     this.renderSettingsTab();
+    this.renderSellingPointDashboard();
+    this.switchTab(this.state.activeTab || 'dashboard');
   },
 
   // ==========================================
@@ -901,10 +904,54 @@ const app = {
       targetPane.classList.remove('hidden');
     }
 
+    // Update Top Header Dual Tabs
+    const headerTabDash = document.getElementById('headerTab-dashboard');
+    const headerTabSp = document.getElementById('headerTab-sellingpoint');
+    if (headerTabDash && headerTabSp) {
+      if (tabId === 'dashboard') {
+        headerTabDash.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer';
+        headerTabSp.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer';
+      } else if (tabId === 'sellingpoint') {
+        headerTabDash.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer';
+        headerTabSp.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-sm cursor-pointer';
+      } else {
+        headerTabDash.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer';
+        headerTabSp.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer';
+      }
+    }
+
+    // Update In-Page Dual Switcher Tabs (across both dashboards)
+    const inpageDashTabs = document.querySelectorAll('.dual-tab-inventory');
+    const inpageSpTabs = document.querySelectorAll('.dual-tab-sellingpoint');
+    inpageDashTabs.forEach(btn => {
+      if (tabId === 'dashboard') {
+        btn.className = 'dual-tab-inventory flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-primary text-on-primary shadow-md transition-all cursor-pointer';
+      } else {
+        btn.className = 'dual-tab-inventory flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all cursor-pointer';
+      }
+    });
+    inpageSpTabs.forEach(btn => {
+      if (tabId === 'sellingpoint') {
+        btn.className = 'dual-tab-sellingpoint flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-md transition-all cursor-pointer';
+      } else {
+        btn.className = 'dual-tab-sellingpoint flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all cursor-pointer';
+      }
+    });
+
     // Trigger Chart Resize and Report render if Reports
     if (tabId === 'reports') {
       if (this.state.categoryChart) this.state.categoryChart.resize();
       this.renderCurrentReport();
+    }
+
+    // Trigger Inventory Dashboard render
+    if (tabId === 'dashboard') {
+      this.recomputeLocalMetrics();
+    }
+
+    // Trigger Selling Point Dashboard render
+    if (tabId === 'sellingpoint') {
+      this.renderSellingPointDashboard();
     }
   },
 
@@ -924,26 +971,79 @@ const app = {
   filterByLocation: function(locName) {
     let prop = 'ALL';
     const l = locName.toUpperCase();
-    if (l.includes('CENTRAL')) prop = 'CENTRAL';
+    if (l.includes('CENTRAL') || l.includes('S_000')) prop = 'S_000';
     else if (l.includes('S_001') || l.includes('STORE 1')) prop = 'S_001';
     else if (l.includes('S_002') || l.includes('STORE 2')) prop = 'S_002';
 
-    const filter = document.getElementById('headerPropertyFilter');
-    if (filter) filter.value = prop;
-    this.handlePropertyFilterChange(prop);
+    this.handlePropertyFilterChange(prop, false);
     this.switchTab('products');
   },
 
-  handlePropertyFilterChange: function(propertyCode) {
+  handlePropertyFilterChange: function(propertyCode, autoSwitchTab) {
     this.state.propertyFilter = propertyCode;
+
+    // Synchronize all Store Dropdowns across header & dashboards
+    ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value !== propertyCode) {
+        el.value = propertyCode;
+      }
+    });
+
     this.filterCatalog();
     this.filterTransactions();
-    this.showToast(`View filtered to: ${propertyCode === 'ALL' ? 'All Properties' : propertyCode + ' Store'}`);
+    this.recomputeLocalMetrics();
+
+    if (autoSwitchTab && this.state.activeTab !== 'dashboard') {
+      this.switchTab('dashboard');
+    }
+
+    const storeNames = {
+      'ALL': 'All Stores & Outlets (Consolidated)',
+      'S_000': 'Central Depot Warehouse (S_000)',
+      'CENTRAL': 'Central Depot Warehouse (S_000)',
+      'S_001': 'Store 1 - Main Branch (S_001)',
+      'S_002': 'Store 2 - Outlet Branch (S_002)'
+    };
+    const storeLabel = storeNames[propertyCode] || (propertyCode + ' Store');
+    this.showToast(`Active Store: ${storeLabel}`);
+  },
+
+  handleSellingPointFilterChange: function(spCode, autoSwitchTab) {
+    this.state.spFilter = spCode;
+
+    // Synchronize all Selling Point Dropdowns across header & dashboards
+    ['headerSellingPointFilter', 'dashSellingPointSelect', 'spActiveSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value !== spCode) {
+        el.value = spCode;
+      }
+    });
+
+    if (autoSwitchTab && this.state.activeTab !== 'sellingpoint') {
+      this.switchTab('sellingpoint');
+    }
+
+    this.filterSellingPointData();
+
+    const spNames = {
+      'ALL': 'All Selling Points',
+      'SP_001': 'Front Counter / Retail Sales (SP_001)',
+      'SP_002': 'Branch Dispenser Counter (SP_002)',
+      'SP_003': 'Main Production / Operations (SP_003)',
+      'SP_004': 'Customer Service & Dispatch (SP_004)'
+    };
+    const spLabel = spNames[spCode] || (spCode);
+    const spBadge = document.getElementById('spCurrentPointBadge');
+    if (spBadge) spBadge.innerText = (spCode === 'ALL' ? 'ALL SELLING POINTS' : spLabel.toUpperCase());
+
+    this.showToast(`Active Selling Point: ${spLabel}`);
   },
 
   // Fast in-memory metric recalculation when items change
   recomputeLocalMetrics: function() {
     const items = this.state.items || [];
+    const prop = this.state.propertyFilter || 'ALL';
     let totalValuation = 0;
     let totalUnits = 0;
     let lowStockCount = 0;
@@ -951,10 +1051,18 @@ const app = {
     const catMap = {};
 
     items.forEach(it => {
-      const stock = Number(it.totalStock || it.currentStock) || 0;
+      let stock = Number(it.totalStock || it.currentStock) || 0;
+      if (prop === 'S_000' || prop === 'CENTRAL') {
+        stock = Number(it.centralStock != null ? it.centralStock : (it.stockS000 != null ? it.stockS000 : it.totalStock)) || 0;
+      } else if (prop === 'S_001') {
+        stock = Number(it.stockS001 != null ? it.stockS001 : (it.s001Stock != null ? it.s001Stock : it.totalStock)) || 0;
+      } else if (prop === 'S_002') {
+        stock = Number(it.stockS002 != null ? it.stockS002 : (it.s002Stock != null ? it.s002Stock : it.totalStock)) || 0;
+      }
+
       const rate = Number(it.rate || it.unitCost) || 0;
       const min = Number(it.minStock || 0);
-      const val = Number(it.totalValuation) || (stock * rate);
+      const val = stock * rate;
 
       totalUnits += stock;
       totalValuation += val;
@@ -2590,15 +2698,29 @@ const app = {
     });
 
     // Populate Stores in Stock In, Stock Out & Transfer forms
-    const storeOptions = (this.state.stores && this.state.stores.length > 0 ? this.state.stores : [
+    const storeList = (this.state.stores && this.state.stores.length > 0 ? this.state.stores : [
+      { code: 'S_000', name: 'Central Depot Warehouse' },
       { code: 'S_001', name: 'Store 1 - Main Branch' },
-      { code: 'S_002', name: 'Store 2 - Outlet Branch' },
-      { code: 'S_000', name: 'Central Depot Warehouse' }
-    ]).map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+      { code: 'S_002', name: 'Store 2 - Outlet Branch' }
+    ]);
+    const storeOptions = storeList.map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
 
     ['stockInDest', 'stockOutSource', 'transferSource', 'transferDest'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = storeOptions;
+    });
+
+    // Populate Store Selectors for Top Header, Inventory Dashboard & Selling Point Dashboard
+    const filterStoreOptions = `<option value="ALL">All Stores &amp; Outlets (Consolidated)</option>` +
+      storeList.map(st => `<option value="${st.code}">${st.name} (${st.code})</option>`).join('');
+
+    const curProp = this.state.propertyFilter || 'ALL';
+    ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.innerHTML = filterStoreOptions;
+        el.value = curProp;
+      }
     });
 
     // Populate Selling Points & Departments in Stock Out / Requisitions form
@@ -2611,6 +2733,9 @@ const app = {
 
     const stockOutDept = document.getElementById('stockOutDept');
     if (stockOutDept) stockOutDept.innerHTML = spOptions;
+
+    // Populate Selling Point (POS) module selectors
+    this.populateSellingPointSelectors();
   },
 
   // ==============================================================
@@ -4361,30 +4486,972 @@ const app = {
     this.showToast('Transactions audit log exported to CSV!');
   },
 
-  // Fallback empty data when previewing outside Google Apps Script
+  // ==============================================================
+  // SELLING POINT (POS) DASHBOARD & OPERATIONS ENGINE
+  // ==============================================================
+  spActiveSection: 'overview',
+  activeReceiptSale: null,
+
+  switchSpSection: function(sectionId) {
+    this.spActiveSection = sectionId;
+
+    // Update section tabs styling
+    const sectionBtns = document.querySelectorAll('.sp-section-btn');
+    sectionBtns.forEach(btn => {
+      btn.className = 'sp-section-btn flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition cursor-pointer';
+    });
+
+    const activeBtn = document.getElementById('spTabBtn-' + sectionId);
+    if (activeBtn) {
+      activeBtn.className = 'sp-section-btn flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition bg-primary text-on-primary shadow cursor-pointer';
+    }
+
+    // Toggle Panes
+    const panes = document.querySelectorAll('.sp-section-pane');
+    panes.forEach(p => p.classList.add('hidden'));
+
+    const targetPane = document.getElementById('spSection-' + sectionId);
+    if (targetPane) targetPane.classList.remove('hidden');
+  },
+
+  populateSellingPointSelectors: function() {
+    const sps = (this.state.sellingPoints && this.state.sellingPoints.length > 0) ? this.state.sellingPoints : [
+      { code: 'SP_001', name: 'Front Counter / Retail Sales', type: 'Sales Counter' },
+      { code: 'SP_002', name: 'Branch Dispenser Counter', type: 'Dispense Counter' },
+      { code: 'SP_003', name: 'Main Production / Operations', type: 'Production & Service' },
+      { code: 'SP_004', name: 'Customer Service & Dispatch', type: 'Dispatch Hub' }
+    ];
+
+    // Filter selectors across Header, Inventory Dashboard, and Selling Point Dashboard
+    const curSp = this.state.spFilter || document.getElementById('spActiveSelect')?.value || 'ALL';
+    const spFilterOptions = `<option value="ALL">All Selling Points (${sps.length})</option>` +
+      sps.map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name}</option>`).join('');
+
+    ['headerSellingPointFilter', 'dashSellingPointSelect', 'spActiveSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.innerHTML = spFilterOptions;
+        el.value = curSp;
+      }
+    });
+
+    // Modal selectors
+    const modalSpOptions = sps.map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name}</option>`).join('');
+    ['spSaleSpSelect', 'spPurSpSelect', 'spExpSpSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = modalSpOptions;
+    });
+
+    // Modal Item selectors
+    const items = this.state.items || [];
+    const itemOptions = `<option value="">-- Choose Product Item --</option>` +
+      items.map(i => `<option value="${i.id || i.sku || i.code}">[${i.sku || i.code || i.id}] ${i.name} (₹${i.rate || i.unitCost || 0})</option>`).join('');
+
+    ['spSaleItemSelect', 'spPurItemSelect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = itemOptions;
+    });
+  },
+
+  renderSellingPointDashboard: function() {
+    this.populateSellingPointSelectors();
+    this.filterSellingPointData();
+  },
+
+  filterSellingPointData: function() {
+    const rawData = this.state.sellingPointTransactions || { sales: [], purchases: [], expenses: [] };
+    const spSelect = document.getElementById('spActiveSelect');
+    const spCode = (spSelect ? spSelect.value : (this.state.spFilter || 'ALL')).toUpperCase();
+    this.state.spFilter = spCode;
+
+    const spBadge = document.getElementById('spCurrentPointBadge');
+    if (spBadge) {
+      const spLabel = spCode === 'ALL' ? 'ALL SELLING POINTS' : (spSelect && spSelect.selectedIndex >= 0 ? spSelect.options[spSelect.selectedIndex].text : spCode);
+      spBadge.innerText = spLabel.toUpperCase();
+    }
+
+    const dateFilter = document.getElementById('spDateFilter')?.value || 'ALL';
+
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const yesterdayDate = new Date(now.getTime() - 86400000);
+    const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+    const weekAgoStr = new Date(now.getTime() - 86400000 * 7).toISOString().slice(0, 10);
+    const monthStartStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+
+    const matchesDate = (itemDate, itemIso) => {
+      if (dateFilter === 'ALL') return true;
+      const d = (itemDate || (itemIso ? itemIso.slice(0, 10) : '')).trim();
+      if (!d) return true;
+      if (dateFilter === 'TODAY') return d === todayStr;
+      if (dateFilter === 'YESTERDAY') return d === yesterdayStr;
+      if (dateFilter === 'WEEK') return d >= weekAgoStr;
+      if (dateFilter === 'MONTH') return d >= monthStartStr;
+      return true;
+    };
+
+    const matchesSp = (itemSp) => {
+      if (spCode === 'ALL') return true;
+      return String(itemSp || '').toUpperCase().includes(spCode);
+    };
+
+    // Filter Sales, Purchases, Expenses
+    const sales = (rawData.sales || []).filter(s => matchesDate(s.date, s.timestamp) && matchesSp(s.sellingPointCode));
+    const purchases = (rawData.purchases || []).filter(p => matchesDate(p.date, p.timestamp) && matchesSp(p.sellingPointCode));
+    const expenses = (rawData.expenses || []).filter(e => matchesDate(e.date, e.timestamp) && matchesSp(e.sellingPointCode));
+
+    // Calculate Financial KPIs
+    const totalSales = sales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0);
+    const totalPurchases = purchases.reduce((sum, p) => sum + (Number(p.totalCost) || 0), 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const netCashFlow = totalSales - (totalPurchases + totalExpenses);
+
+    let cashSales = 0, upiSales = 0, cardSales = 0;
+    let cashCount = 0, upiCount = 0, cardCount = 0;
+    sales.forEach(s => {
+      const mode = String(s.paymentMode || '').toUpperCase();
+      const amt = Number(s.totalAmount) || 0;
+      if (mode.includes('CASH')) { cashSales += amt; cashCount++; }
+      else if (mode.includes('UPI') || mode.includes('QR')) { upiSales += amt; upiCount++; }
+      else if (mode.includes('CARD') || mode.includes('DEBIT') || mode.includes('CREDIT CARD')) { cardSales += amt; cardCount++; }
+      else { cashSales += amt; cashCount++; }
+    });
+
+    const curr = (this.state.settings && this.state.settings.CURRENCY_SYMBOL) || '₹';
+    if (document.getElementById('spMetricSales')) document.getElementById('spMetricSales').innerText = `${curr}${totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (document.getElementById('spMetricSalesCount')) document.getElementById('spMetricSalesCount').innerText = `${sales.length} Bills`;
+    if (document.getElementById('spMetricSalesBreakdown')) document.getElementById('spMetricSalesBreakdown').innerText = `Cash: ${curr}${cashSales.toLocaleString()} | Digital: ${curr}${(upiSales + cardSales).toLocaleString()}`;
+
+    if (document.getElementById('spMetricPurchases')) document.getElementById('spMetricPurchases').innerText = `${curr}${totalPurchases.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (document.getElementById('spMetricPurchasesCount')) document.getElementById('spMetricPurchasesCount').innerText = `${purchases.length} Deliveries`;
+    if (document.getElementById('spMetricPurchasesBreakdown')) document.getElementById('spMetricPurchasesBreakdown').innerText = `Direct & Store Transfers`;
+
+    if (document.getElementById('spMetricExpenses')) document.getElementById('spMetricExpenses').innerText = `${curr}${totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (document.getElementById('spMetricExpensesCount')) document.getElementById('spMetricExpensesCount').innerText = `${expenses.length} Vouchers`;
+    if (document.getElementById('spMetricExpensesBreakdown')) document.getElementById('spMetricExpensesBreakdown').innerText = `Petty Cash & Ops`;
+
+    const netEl = document.getElementById('spMetricNet');
+    if (netEl) {
+      netEl.innerText = (netCashFlow >= 0 ? '+' : '') + `${curr}${netCashFlow.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      netEl.className = `font-display-lg text-[28px] font-bold mt-0.5 tracking-tight ${netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+    const marginEl = document.getElementById('spMetricNetMargin');
+    if (marginEl) {
+      const margin = totalSales > 0 ? ((netCashFlow / totalSales) * 100).toFixed(1) : '0';
+      marginEl.innerText = `${margin}% Net Margin`;
+      marginEl.className = `font-semibold ${netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    if (document.getElementById('spSalesBadgeCount')) document.getElementById('spSalesBadgeCount').innerText = sales.length;
+    if (document.getElementById('spPurchasesBadgeCount')) document.getElementById('spPurchasesBadgeCount').innerText = purchases.length;
+    if (document.getElementById('spExpensesBadgeCount')) document.getElementById('spExpensesBadgeCount').innerText = expenses.length;
+
+    this.renderSpOverview(sales, purchases, expenses, totalSales, totalPurchases, totalExpenses, cashSales, upiSales, cardSales, cashCount, upiCount, cardCount, curr);
+    this.renderSpSalesTable(sales, curr);
+    this.renderSpPurchasesTable(purchases, curr);
+    this.renderSpExpensesTable(expenses, curr);
+  },
+
+  renderSpOverview: function(sales, purchases, expenses, totalSales, totalPurchases, totalExpenses, cashSales, upiSales, cardSales, cashCount, upiCount, cardCount, curr) {
+    const grandSum = totalSales + totalPurchases + totalExpenses || 1;
+    const pSales = Math.max(5, Math.round((totalSales / grandSum) * 100));
+    const pPur = Math.max(5, Math.round((totalPurchases / grandSum) * 100));
+    const pExp = Math.max(5, 100 - pSales - pPur);
+
+    const bSales = document.getElementById('spBarSales');
+    if (bSales) bSales.style.width = (totalSales === 0 ? '0%' : pSales + '%');
+    const bPur = document.getElementById('spBarPurchases');
+    if (bPur) bPur.style.width = (totalPurchases === 0 ? '0%' : pPur + '%');
+    const bExp = document.getElementById('spBarExpenses');
+    if (bExp) bExp.style.width = (totalExpenses === 0 ? '0%' : pExp + '%');
+
+    if (document.getElementById('spLegendSales')) document.getElementById('spLegendSales').innerText = `${curr}${totalSales.toLocaleString()}`;
+    if (document.getElementById('spLegendPurchases')) document.getElementById('spLegendPurchases').innerText = `${curr}${totalPurchases.toLocaleString()}`;
+    if (document.getElementById('spLegendExpenses')) document.getElementById('spLegendExpenses').innerText = `${curr}${totalExpenses.toLocaleString()}`;
+
+    if (document.getElementById('spPayCashTotal')) document.getElementById('spPayCashTotal').innerText = `${curr}${cashSales.toLocaleString()}`;
+    if (document.getElementById('spPayCashSub')) document.getElementById('spPayCashSub').innerText = `${cashCount} transactions`;
+    if (document.getElementById('spPayUpiTotal')) document.getElementById('spPayUpiTotal').innerText = `${curr}${upiSales.toLocaleString()}`;
+    if (document.getElementById('spPayUpiSub')) document.getElementById('spPayUpiSub').innerText = `${upiCount} transactions`;
+    if (document.getElementById('spPayCardTotal')) document.getElementById('spPayCardTotal').innerText = `${curr}${cardSales.toLocaleString()}`;
+    if (document.getElementById('spPayCardSub')) document.getElementById('spPayCardSub').innerText = `${cardCount} transactions`;
+
+    const expCats = {};
+    expenses.forEach(e => {
+      const c = e.category || 'Petty Cash';
+      expCats[c] = (expCats[c] || 0) + (Number(e.amount) || 0);
+    });
+    const chipsContainer = document.getElementById('spExpenseChipsContainer');
+    if (chipsContainer) {
+      const catKeys = Object.keys(expCats);
+      if (catKeys.length === 0) {
+        chipsContainer.innerHTML = `<span class="text-xs text-on-surface-variant py-2">No expenses recorded for this period.</span>`;
+      } else {
+        chipsContainer.innerHTML = catKeys.map(k => `
+          <div class="px-3 py-1.5 rounded-xl bg-surface-container-high border border-outline-variant/20 flex items-center gap-2 text-xs">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span class="text-on-surface font-medium">${k}</span>
+            <span class="font-bold text-amber-400">${curr}${expCats[k].toLocaleString()}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    const itemMap = {};
+    sales.forEach(s => {
+      const name = s.itemName || s.itemCode || 'Item';
+      if (!itemMap[name]) itemMap[name] = { qty: 0, revenue: 0, unit: s.unit || 'Pcs' };
+      itemMap[name].qty += (Number(s.quantity) || 0);
+      itemMap[name].revenue += (Number(s.totalAmount) || 0);
+    });
+    const topList = Object.entries(itemMap).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+    const topContainer = document.getElementById('spTopSoldList');
+    if (topContainer) {
+      if (topList.length === 0) {
+        topContainer.innerHTML = `<div class="py-6 text-center text-xs text-on-surface-variant">No sales recorded yet for this selection.</div>`;
+      } else {
+        topContainer.innerHTML = topList.map(([name, data], idx) => `
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-high/50 border border-outline-variant/10 text-xs">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">${idx + 1}</span>
+              <span class="font-semibold text-on-surface truncate">${name}</span>
+            </div>
+            <div class="text-right flex items-center gap-3">
+              <span class="text-[11px] text-on-surface-variant font-data-tabular">${data.qty} ${data.unit}</span>
+              <span class="font-bold text-emerald-400 font-data-tabular">${curr}${data.revenue.toLocaleString()}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    const combined = [
+      ...sales.map(s => ({ type: 'SALE', time: s.timestamp, desc: `${s.itemName || 'Sale'} (${s.quantity} ${s.unit})`, amt: s.totalAmount, ref: s.billNo, sp: s.sellingPointName, by: s.cashier, color: 'text-emerald-400', icon: 'point_of_sale' })),
+      ...purchases.map(p => ({ type: 'PURCHASE', time: p.timestamp, desc: `${p.itemName || 'Purchase'} from ${p.source}`, amt: p.totalCost, ref: p.invoiceRef || p.id, sp: p.sellingPointName, by: p.receivedBy, color: 'text-sky-400', icon: 'shopping_bag' })),
+      ...expenses.map(e => ({ type: 'EXPENSE', time: e.timestamp, desc: `${e.category}: ${e.notes || e.paidTo}`, amt: e.amount, ref: e.voucherRef || e.id, sp: e.sellingPointName, by: e.recordedBy, color: 'text-amber-400', icon: 'receipt_long' }))
+    ].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)).slice(0, 15);
+
+    const actContainer = document.getElementById('spRecentActivityList');
+    if (actContainer) {
+      if (combined.length === 0) {
+        actContainer.innerHTML = `<div class="py-8 text-center text-xs text-on-surface-variant">No recent activity found.</div>`;
+      } else {
+        actContainer.innerHTML = combined.map(act => `
+          <div class="flex items-center justify-between p-2 rounded-xl hover:bg-surface-container-high transition text-xs border border-outline-variant/10">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center ${act.color}">
+                <span class="material-symbols-outlined text-[16px]">${act.icon}</span>
+              </div>
+              <div class="flex flex-col min-w-0">
+                <span class="font-semibold text-on-surface truncate">${act.desc}</span>
+                <span class="text-[10px] text-on-surface-variant">${act.ref} • ${act.sp}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold ${act.color}">${act.type === 'EXPENSE' || act.type === 'PURCHASE' ? '-' : '+'}${curr}${Number(act.amt).toLocaleString()}</div>
+              <div class="text-[10px] text-on-surface-variant">${act.time ? new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+  },
+
+  renderSpSalesTable: function(sales, curr) {
+    const search = (document.getElementById('spSaleSearchInput')?.value || '').trim().toLowerCase();
+    const modeFilter = document.getElementById('spSaleModeFilter')?.value || 'ALL';
+
+    const filtered = sales.filter(s => {
+      if (modeFilter !== 'ALL' && !String(s.paymentMode || '').toUpperCase().includes(modeFilter.toUpperCase())) return false;
+      if (search) {
+        const text = `${s.billNo} ${s.customerName} ${s.itemName} ${s.itemCode} ${s.cashier} ${s.notes}`.toLowerCase();
+        if (!text.includes(search)) return false;
+      }
+      return true;
+    });
+
+    const tbody = document.getElementById('spSalesTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="12" class="py-10 text-center text-on-surface-variant">No sales records found matching your filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(s => {
+      const modeColor = String(s.paymentMode).toUpperCase().includes('UPI') ? 'bg-sky-500/20 text-sky-400' :
+                        String(s.paymentMode).toUpperCase().includes('CARD') ? 'bg-purple-500/20 text-purple-400' :
+                        'bg-emerald-500/20 text-emerald-400';
+      return `
+        <tr class="hover:bg-surface-container-high/40 transition-colors">
+          <td class="py-3 px-4 font-bold text-on-surface">${s.billNo}</td>
+          <td class="py-3 px-3 text-on-surface-variant font-data-tabular">${s.timestamp ? new Date(s.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (s.date || '--')}</td>
+          <td class="py-3 px-3 text-on-surface">${s.sellingPointName || s.sellingPointCode}</td>
+          <td class="py-3 px-3 font-semibold text-on-surface">${s.itemName || s.itemCode}</td>
+          <td class="py-3 px-3 text-right font-data-tabular text-on-surface">${s.quantity} <span class="text-[10px] text-on-surface-variant">${s.unit}</span></td>
+          <td class="py-3 px-3 text-right font-data-tabular text-on-surface-variant">${curr}${Number(s.rate).toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-data-tabular text-on-surface-variant">${s.taxPercent}%</td>
+          <td class="py-3 px-3 text-right font-bold text-emerald-400 font-data-tabular">${curr}${Number(s.totalAmount).toFixed(2)}</td>
+          <td class="py-3 px-3 text-center">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${modeColor}">${s.paymentMode}</span>
+          </td>
+          <td class="py-3 px-3 text-on-surface-variant truncate max-w-[100px]">${s.customerName}</td>
+          <td class="py-3 px-3 text-on-surface-variant">${s.cashier}</td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="app.viewSpReceipt('${s.id}')" class="px-2 py-1 bg-surface-container-high hover:bg-surface-container-highest text-primary rounded text-[11px] font-semibold transition cursor-pointer" title="View & Print Bill Receipt">
+              Receipt
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  renderSpPurchasesTable: function(purchases, curr) {
+    const search = (document.getElementById('spPurSearchInput')?.value || '').trim().toLowerCase();
+    const sourceFilter = document.getElementById('spPurSourceFilter')?.value || 'ALL';
+
+    const filtered = purchases.filter(p => {
+      if (sourceFilter === 'DIRECT' && String(p.source).toUpperCase().includes('STORE')) return false;
+      if (sourceFilter === 'TRANSFER' && !String(p.source).toUpperCase().includes('STORE')) return false;
+      if (search) {
+        const text = `${p.id} ${p.itemName} ${p.itemCode} ${p.source} ${p.invoiceRef} ${p.receivedBy}`.toLowerCase();
+        if (!text.includes(search)) return false;
+      }
+      return true;
+    });
+
+    const tbody = document.getElementById('spPurchasesTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="12" class="py-10 text-center text-on-surface-variant">No purchase records found matching your filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(p => `
+      <tr class="hover:bg-surface-container-high/40 transition-colors">
+        <td class="py-3 px-4 font-bold text-on-surface">${p.id}</td>
+        <td class="py-3 px-3 text-on-surface-variant font-data-tabular">${p.timestamp ? new Date(p.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (p.date || '--')}</td>
+        <td class="py-3 px-3 text-on-surface">${p.sellingPointName || p.sellingPointCode}</td>
+        <td class="py-3 px-3 font-semibold text-sky-400">${p.source}</td>
+        <td class="py-3 px-3 font-semibold text-on-surface">${p.itemName || p.itemCode}</td>
+        <td class="py-3 px-3 text-right font-data-tabular text-on-surface">${p.quantity} <span class="text-[10px] text-on-surface-variant">${p.unit}</span></td>
+        <td class="py-3 px-3 text-right font-data-tabular text-on-surface-variant">${curr}${Number(p.costRate).toFixed(2)}</td>
+        <td class="py-3 px-3 text-right font-data-tabular text-on-surface-variant">${p.taxPercent}%</td>
+        <td class="py-3 px-3 text-right font-bold text-sky-400 font-data-tabular">${curr}${Number(p.totalCost).toFixed(2)}</td>
+        <td class="py-3 px-3 text-on-surface-variant font-data-tabular">${p.invoiceRef || '--'}</td>
+        <td class="py-3 px-3 text-on-surface-variant">${p.receivedBy}</td>
+        <td class="py-3 px-4 text-center">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">${p.paymentStatus || 'Paid'}</span>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  renderSpExpensesTable: function(expenses, curr) {
+    const search = (document.getElementById('spExpSearchInput')?.value || '').trim().toLowerCase();
+    const catFilter = document.getElementById('spExpCategoryFilter')?.value || 'ALL';
+    const modeFilter = document.getElementById('spExpModeFilter')?.value || 'ALL';
+
+    const filtered = expenses.filter(e => {
+      if (catFilter !== 'ALL' && e.category !== catFilter) return false;
+      if (modeFilter !== 'ALL' && !String(e.paymentMode).toUpperCase().includes(modeFilter.toUpperCase())) return false;
+      if (search) {
+        const text = `${e.voucherRef} ${e.category} ${e.paidTo} ${e.recordedBy} ${e.notes}`.toLowerCase();
+        if (!text.includes(search)) return false;
+      }
+      return true;
+    });
+
+    const tbody = document.getElementById('spExpensesTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="py-10 text-center text-on-surface-variant">No expense vouchers found matching your filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(e => `
+      <tr class="hover:bg-surface-container-high/40 transition-colors">
+        <td class="py-3 px-4 font-bold text-on-surface">${e.voucherRef || e.id}</td>
+        <td class="py-3 px-3 text-on-surface-variant font-data-tabular">${e.timestamp ? new Date(e.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (e.date || '--')}</td>
+        <td class="py-3 px-3 text-on-surface">${e.sellingPointName || e.sellingPointCode}</td>
+        <td class="py-3 px-3">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400">${e.category}</span>
+        </td>
+        <td class="py-3 px-3 font-semibold text-on-surface">${e.paidTo}</td>
+        <td class="py-3 px-3 text-center text-on-surface-variant">${e.paymentMode}</td>
+        <td class="py-3 px-3 text-right font-bold text-amber-400 font-data-tabular">${curr}${Number(e.amount).toFixed(2)}</td>
+        <td class="py-3 px-3 text-on-surface-variant">${e.recordedBy}</td>
+        <td class="py-3 px-3 text-on-surface-variant truncate max-w-[150px]">${e.notes || '--'}</td>
+        <td class="py-3 px-4 text-center">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">${e.status || 'Approved'}</span>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  openSpSaleModal: function() {
+    this.populateSellingPointSelectors();
+    const curSp = document.getElementById('spActiveSelect')?.value;
+    if (curSp && curSp !== 'ALL') {
+      const spSelect = document.getElementById('spSaleSpSelect');
+      if (spSelect) spSelect.value = curSp;
+    }
+    const randBill = 'POS-' + new Date().toISOString().slice(5, 10).replace('-', '') + '-' + Math.floor(1000 + Math.random() * 9000);
+    const billInput = document.getElementById('spSaleBillNo');
+    if (billInput) billInput.value = randBill;
+
+    const itemSelect = document.getElementById('spSaleItemSelect');
+    if (itemSelect && itemSelect.options.length > 1) {
+      itemSelect.selectedIndex = 1;
+      this.onSpSaleItemSelect(itemSelect.value);
+    }
+    this.openModal('spSaleModal');
+  },
+
+  onSpSaleItemSelect: function(itemId) {
+    const item = (this.state.items || []).find(i => (i.id === itemId || i.sku === itemId || i.code === itemId));
+    if (item) {
+      const rate = item.rate || item.unitCost || 0;
+      const tax = item.taxPercent || item.tax || 5;
+      const stock = item.totalStock || 0;
+      if (document.getElementById('spSaleRate')) document.getElementById('spSaleRate').value = rate;
+      if (document.getElementById('spSaleTax')) document.getElementById('spSaleTax').value = tax;
+      const notice = document.getElementById('spSaleStockNotice');
+      if (notice) {
+        notice.innerText = `Stock: ${stock} ${item.unit || 'Pcs'}`;
+        notice.className = `text-[11px] font-semibold ${stock <= 5 ? 'text-amber-400' : 'text-emerald-400'}`;
+      }
+    }
+    this.calculateSpSaleTotal();
+  },
+
+  calculateSpSaleTotal: function() {
+    const qty = parseFloat(document.getElementById('spSaleQuantity')?.value) || 0;
+    const rate = parseFloat(document.getElementById('spSaleRate')?.value) || 0;
+    const taxPct = parseFloat(document.getElementById('spSaleTax')?.value) || 0;
+    const subtotal = qty * rate;
+    const taxAmt = (subtotal * taxPct) / 100;
+    const total = subtotal + taxAmt;
+    const curr = (this.state.settings && this.state.settings.CURRENCY_SYMBOL) || '₹';
+
+    if (document.getElementById('spSaleSubtotalDisplay')) document.getElementById('spSaleSubtotalDisplay').innerText = `${curr}${subtotal.toFixed(2)}`;
+    if (document.getElementById('spSaleTaxAmountDisplay')) document.getElementById('spSaleTaxAmountDisplay').innerText = `${curr}${taxAmt.toFixed(2)}`;
+    if (document.getElementById('spSaleTotalDisplay')) document.getElementById('spSaleTotalDisplay').innerText = `${curr}${total.toFixed(2)}`;
+  },
+
+  submitSpSale: function(e) {
+    e.preventDefault();
+    const spSelect = document.getElementById('spSaleSpSelect');
+    const itemSelect = document.getElementById('spSaleItemSelect');
+    const selectedItem = (this.state.items || []).find(i => (i.id === itemSelect.value || i.sku === itemSelect.value));
+
+    const qty = parseFloat(document.getElementById('spSaleQuantity').value) || 1;
+    const rate = parseFloat(document.getElementById('spSaleRate').value) || 0;
+    const taxPct = parseFloat(document.getElementById('spSaleTax').value) || 0;
+    const totalAmt = qty * rate * (1 + taxPct / 100);
+
+    const salePayload = {
+      sellingPointCode: spSelect.value,
+      sellingPointName: spSelect.options[spSelect.selectedIndex]?.text || spSelect.value,
+      billNo: document.getElementById('spSaleBillNo').value || ('POS-' + Date.now().toString().slice(-4)),
+      customerName: document.getElementById('spSaleCustomer').value || 'Walk-in Customer',
+      paymentMode: document.getElementById('spSalePaymentMode').value,
+      itemCode: selectedItem ? (selectedItem.sku || selectedItem.id) : itemSelect.value,
+      itemName: selectedItem ? selectedItem.name : 'Counter Item',
+      category: selectedItem ? selectedItem.category : 'General',
+      quantity: qty,
+      unit: selectedItem ? selectedItem.unit : 'Pcs',
+      rate: rate,
+      taxPercent: taxPct,
+      totalAmount: totalAmt,
+      cashier: document.getElementById('spSaleCashier').value || 'Cashier',
+      notes: document.getElementById('spSaleNotes').value || '',
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      id: 'SALE_' + Date.now()
+    };
+
+    this.showLoading('Recording Sale...', 'Writing POS bill to Google Sheets');
+
+    const onComplete = (res) => {
+      this.hideLoading();
+      this.closeModal('spSaleModal');
+      if (!this.state.sellingPointTransactions) this.state.sellingPointTransactions = { sales: [], purchases: [], expenses: [] };
+      if (!this.state.sellingPointTransactions.sales) this.state.sellingPointTransactions.sales = [];
+      this.state.sellingPointTransactions.sales.unshift(salePayload);
+
+      if (selectedItem) {
+        selectedItem.totalStock = Math.max(0, (selectedItem.totalStock || 0) - qty);
+      }
+
+      this.showToast(`Sale recorded successfully! Bill: ${salePayload.billNo}`, 'success');
+      this.renderSellingPointDashboard();
+      this.viewSpReceipt(salePayload.id);
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(onComplete)
+        .withFailureHandler((err) => {
+          this.hideLoading();
+          this.showToast('Error saving sale: ' + err.message, 'error');
+        })
+        .recordSellingPointSale(salePayload);
+    } else {
+      setTimeout(() => onComplete({ success: true }), 300);
+    }
+  },
+
+  openSpPurchaseModal: function() {
+    this.populateSellingPointSelectors();
+    const curSp = document.getElementById('spActiveSelect')?.value;
+    if (curSp && curSp !== 'ALL') {
+      const spSelect = document.getElementById('spPurSpSelect');
+      if (spSelect) spSelect.value = curSp;
+    }
+    const itemSelect = document.getElementById('spPurItemSelect');
+    if (itemSelect && itemSelect.options.length > 1) {
+      itemSelect.selectedIndex = 1;
+      this.onSpPurItemSelect(itemSelect.value);
+    }
+    this.openModal('spPurchaseModal');
+  },
+
+  onSpPurItemSelect: function(itemId) {
+    const item = (this.state.items || []).find(i => (i.id === itemId || i.sku === itemId || i.code === itemId));
+    if (item) {
+      const rate = item.rate || item.unitCost || 0;
+      const tax = item.taxPercent || item.tax || 5;
+      if (document.getElementById('spPurCostRate')) document.getElementById('spPurCostRate').value = rate;
+      if (document.getElementById('spPurTax')) document.getElementById('spPurTax').value = tax;
+    }
+    this.calculateSpPurTotal();
+  },
+
+  calculateSpPurTotal: function() {
+    const qty = parseFloat(document.getElementById('spPurQuantity')?.value) || 0;
+    const rate = parseFloat(document.getElementById('spPurCostRate')?.value) || 0;
+    const taxPct = parseFloat(document.getElementById('spPurTax')?.value) || 0;
+    const subtotal = qty * rate;
+    const taxAmt = (subtotal * taxPct) / 100;
+    const total = subtotal + taxAmt;
+    const curr = (this.state.settings && this.state.settings.CURRENCY_SYMBOL) || '₹';
+
+    if (document.getElementById('spPurSubtotalDisplay')) document.getElementById('spPurSubtotalDisplay').innerText = `${curr}${subtotal.toFixed(2)}`;
+    if (document.getElementById('spPurTaxAmountDisplay')) document.getElementById('spPurTaxAmountDisplay').innerText = `${curr}${taxAmt.toFixed(2)}`;
+    if (document.getElementById('spPurTotalDisplay')) document.getElementById('spPurTotalDisplay').innerText = `${curr}${total.toFixed(2)}`;
+  },
+
+  submitSpPurchase: function(e) {
+    e.preventDefault();
+    const spSelect = document.getElementById('spPurSpSelect');
+    const itemSelect = document.getElementById('spPurItemSelect');
+    const selectedItem = (this.state.items || []).find(i => (i.id === itemSelect.value || i.sku === itemSelect.value));
+
+    const qty = parseFloat(document.getElementById('spPurQuantity').value) || 1;
+    const costRate = parseFloat(document.getElementById('spPurCostRate').value) || 0;
+    const taxPct = parseFloat(document.getElementById('spPurTax').value) || 0;
+    const totalCost = qty * costRate * (1 + taxPct / 100);
+
+    const purPayload = {
+      sellingPointCode: spSelect.value,
+      sellingPointName: spSelect.options[spSelect.selectedIndex]?.text || spSelect.value,
+      source: document.getElementById('spPurSource').value || 'Direct Supplier',
+      itemCode: selectedItem ? (selectedItem.sku || selectedItem.id) : itemSelect.value,
+      itemName: selectedItem ? selectedItem.name : 'Inward Item',
+      category: selectedItem ? selectedItem.category : 'Supplies',
+      quantity: qty,
+      unit: selectedItem ? selectedItem.unit : 'Pcs',
+      costRate: costRate,
+      taxPercent: taxPct,
+      totalCost: totalCost,
+      invoiceRef: document.getElementById('spPurInvoiceRef').value || '',
+      receivedBy: document.getElementById('spPurReceivedBy').value || 'Staff Incharge',
+      notes: document.getElementById('spPurNotes').value || '',
+      paymentStatus: 'Paid',
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      id: 'PUR_SP_' + Date.now()
+    };
+
+    this.showLoading('Recording Purchase...', 'Writing inward stock receipt to Google Sheets');
+
+    const onComplete = () => {
+      this.hideLoading();
+      this.closeModal('spPurchaseModal');
+      if (!this.state.sellingPointTransactions) this.state.sellingPointTransactions = { sales: [], purchases: [], expenses: [] };
+      if (!this.state.sellingPointTransactions.purchases) this.state.sellingPointTransactions.purchases = [];
+      this.state.sellingPointTransactions.purchases.unshift(purPayload);
+
+      if (selectedItem) {
+        selectedItem.totalStock = (selectedItem.totalStock || 0) + qty;
+      }
+
+      this.showToast(`Inward purchase recorded! Added ${qty} units to stock.`, 'success');
+      this.renderSellingPointDashboard();
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(onComplete)
+        .withFailureHandler((err) => {
+          this.hideLoading();
+          this.showToast('Error saving purchase: ' + err.message, 'error');
+        })
+        .recordSellingPointPurchase(purPayload);
+    } else {
+      setTimeout(() => onComplete({ success: true }), 300);
+    }
+  },
+
+  openSpExpenseModal: function() {
+    this.populateSellingPointSelectors();
+    const curSp = document.getElementById('spActiveSelect')?.value;
+    if (curSp && curSp !== 'ALL') {
+      const spSelect = document.getElementById('spExpSpSelect');
+      if (spSelect) spSelect.value = curSp;
+    }
+    const randVch = 'VCH-' + new Date().toISOString().slice(5, 10).replace('-', '') + '-' + Math.floor(100 + Math.random() * 900);
+    const vchInput = document.getElementById('spExpVoucherRef');
+    if (vchInput) vchInput.value = randVch;
+    this.openModal('spExpenseModal');
+  },
+
+  submitSpExpense: function(e) {
+    e.preventDefault();
+    const spSelect = document.getElementById('spExpSpSelect');
+    const amt = parseFloat(document.getElementById('spExpAmount').value) || 0;
+
+    const expPayload = {
+      sellingPointCode: spSelect.value,
+      sellingPointName: spSelect.options[spSelect.selectedIndex]?.text || spSelect.value,
+      category: document.getElementById('spExpCategorySelect').value,
+      amount: amt,
+      paymentMode: document.getElementById('spExpPaymentMode').value,
+      paidTo: document.getElementById('spExpPaidTo').value,
+      voucherRef: document.getElementById('spExpVoucherRef').value || ('VCH-' + Date.now().toString().slice(-4)),
+      recordedBy: document.getElementById('spExpRecordedBy').value || 'Manager',
+      notes: document.getElementById('spExpNotes').value || '',
+      status: 'Approved',
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      id: 'EXP_' + Date.now()
+    };
+
+    this.showLoading('Recording Expense...', 'Saving petty cash voucher to Google Sheets');
+
+    const onComplete = () => {
+      this.hideLoading();
+      this.closeModal('spExpenseModal');
+      if (!this.state.sellingPointTransactions) this.state.sellingPointTransactions = { sales: [], purchases: [], expenses: [] };
+      if (!this.state.sellingPointTransactions.expenses) this.state.sellingPointTransactions.expenses = [];
+      this.state.sellingPointTransactions.expenses.unshift(expPayload);
+
+      this.showToast(`Expense voucher ${expPayload.voucherRef} for ₹${amt} saved!`, 'success');
+      this.renderSellingPointDashboard();
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(onComplete)
+        .withFailureHandler((err) => {
+          this.hideLoading();
+          this.showToast('Error saving expense: ' + err.message, 'error');
+        })
+        .recordSellingPointExpense(expPayload);
+    } else {
+      setTimeout(() => onComplete({ success: true }), 300);
+    }
+  },
+
+  viewSpReceipt: function(saleId) {
+    const sale = (this.state.sellingPointTransactions?.sales || []).find(s => s.id === saleId) || {
+      billNo: 'POS-0904-1001',
+      date: new Date().toISOString().slice(0, 10),
+      sellingPointName: 'Front Counter Outlet',
+      customerName: 'Walk-in Guest',
+      cashier: 'Cashier',
+      itemName: 'Fresh Cow Milk 1L Pack',
+      quantity: 2,
+      unit: 'Pack',
+      rate: 65,
+      taxPercent: 0,
+      totalAmount: 130,
+      paymentMode: 'Cash'
+    };
+
+    this.activeReceiptSale = sale;
+    const curr = (this.state.settings && this.state.settings.CURRENCY_SYMBOL) || '₹';
+    const orgName = (this.state.settings && this.state.settings.HOTEL_NAME) || 'Zolexora IMS';
+
+    if (document.getElementById('receiptOrgTitle')) document.getElementById('receiptOrgTitle').innerText = orgName;
+    if (document.getElementById('receiptSpTitle')) document.getElementById('receiptSpTitle').innerText = sale.sellingPointName || 'Counter Outlet';
+    if (document.getElementById('receiptBillNo')) document.getElementById('receiptBillNo').innerText = sale.billNo;
+    if (document.getElementById('receiptDate')) document.getElementById('receiptDate').innerText = sale.timestamp ? new Date(sale.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : (sale.date || '');
+    if (document.getElementById('receiptCustomer')) document.getElementById('receiptCustomer').innerText = sale.customerName || 'Walk-in';
+    if (document.getElementById('receiptCashier')) document.getElementById('receiptCashier').innerText = sale.cashier || 'Cashier';
+
+    const qty = Number(sale.quantity) || 1;
+    const rate = Number(sale.rate) || 0;
+    const sub = qty * rate;
+    const tax = (sub * (Number(sale.taxPercent) || 0)) / 100;
+    const grand = Number(sale.totalAmount) || (sub + tax);
+
+    const tbody = document.getElementById('receiptItemsBody');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td class="py-1 font-semibold">${sale.itemName || sale.itemCode}</td>
+          <td class="py-1 text-center">${qty} ${sale.unit || ''}</td>
+          <td class="py-1 text-right">${curr}${rate.toFixed(2)}</td>
+          <td class="py-1 text-right font-bold">${curr}${sub.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+
+    if (document.getElementById('receiptSubtotal')) document.getElementById('receiptSubtotal').innerText = `${curr}${sub.toFixed(2)}`;
+    if (document.getElementById('receiptTax')) document.getElementById('receiptTax').innerText = `${curr}${tax.toFixed(2)}`;
+    if (document.getElementById('receiptGrandTotal')) document.getElementById('receiptGrandTotal').innerText = `${curr}${grand.toFixed(2)}`;
+    if (document.getElementById('receiptPaymentMode')) document.getElementById('receiptPaymentMode').innerText = sale.paymentMode || 'Cash';
+
+    this.openModal('spReceiptModal');
+  },
+
+  printSpReceipt: function() {
+    const printArea = document.getElementById('spReceiptPrintArea');
+    if (!printArea) return;
+    const printWin = window.open('', '_blank', 'width=400,height=600');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+    printWin.document.write(`
+      <html>
+        <head>
+          <title>POS Receipt - ${this.activeReceiptSale?.billNo || 'Receipt'}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; font-size: 12px; color: black; line-height: 1.4; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { padding: 4px 2px; }
+            th { border-bottom: 1px dashed black; text-align: left; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .border-b { border-bottom: 1px dashed black; }
+            .border-t { border-top: 1px dashed black; }
+          </style>
+        </head>
+        <body>
+          ${printArea.innerHTML}
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  },
+
+  exportSpSalesCSV: function() {
+    const sales = this.state.sellingPointTransactions?.sales || [];
+    if (sales.length === 0) {
+      this.showToast('No sales records to export.', 'error');
+      return;
+    }
+    const headers = ['Sale ID', 'Date Time', 'Selling Point', 'Bill No', 'Customer', 'Item Code', 'Item Name', 'Quantity', 'Unit', 'Rate', 'Tax Pct', 'Total Amount', 'Payment Mode', 'Cashier', 'Notes'];
+    const rows = sales.map(s => [
+      `"${s.id}"`,
+      `"${s.timestamp || s.date}"`,
+      `"${(s.sellingPointName || '').replace(/"/g, '""')}"`,
+      `"${s.billNo}"`,
+      `"${(s.customerName || '').replace(/"/g, '""')}"`,
+      `"${s.itemCode}"`,
+      `"${(s.itemName || '').replace(/"/g, '""')}"`,
+      s.quantity,
+      `"${s.unit}"`,
+      s.rate,
+      s.taxPercent,
+      s.totalAmount,
+      `"${s.paymentMode}"`,
+      `"${(s.cashier || '').replace(/"/g, '""')}"`,
+      `"${(s.notes || '').replace(/"/g, '""')}"`
+    ]);
+    this.downloadCsvBlob([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `SellingPoint_Sales_${new Date().toISOString().slice(0, 10)}.csv`);
+    this.showToast('Sales register exported to CSV!');
+  },
+
+  exportSpPurchasesCSV: function() {
+    const purchases = this.state.sellingPointTransactions?.purchases || [];
+    if (purchases.length === 0) {
+      this.showToast('No purchase records to export.', 'error');
+      return;
+    }
+    const headers = ['Purchase ID', 'Date Time', 'Selling Point', 'Source / Supplier', 'Item Code', 'Item Name', 'Quantity', 'Unit', 'Cost Rate', 'Tax Pct', 'Total Cost', 'Invoice Ref', 'Received By', 'Notes'];
+    const rows = purchases.map(p => [
+      `"${p.id}"`,
+      `"${p.timestamp || p.date}"`,
+      `"${(p.sellingPointName || '').replace(/"/g, '""')}"`,
+      `"${(p.source || '').replace(/"/g, '""')}"`,
+      `"${p.itemCode}"`,
+      `"${(p.itemName || '').replace(/"/g, '""')}"`,
+      p.quantity,
+      `"${p.unit}"`,
+      p.costRate,
+      p.taxPercent,
+      p.totalCost,
+      `"${p.invoiceRef || ''}"`,
+      `"${(p.receivedBy || '').replace(/"/g, '""')}"`,
+      `"${(p.notes || '').replace(/"/g, '""')}"`
+    ]);
+    this.downloadCsvBlob([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `SellingPoint_Purchases_${new Date().toISOString().slice(0, 10)}.csv`);
+    this.showToast('Purchases register exported to CSV!');
+  },
+
+  exportSpExpensesCSV: function() {
+    const expenses = this.state.sellingPointTransactions?.expenses || [];
+    if (expenses.length === 0) {
+      this.showToast('No expense records to export.', 'error');
+      return;
+    }
+    const headers = ['Expense ID', 'Date Time', 'Selling Point', 'Category', 'Paid To', 'Payment Mode', 'Amount', 'Voucher Ref', 'Recorded By', 'Purpose'];
+    const rows = expenses.map(e => [
+      `"${e.id}"`,
+      `"${e.timestamp || e.date}"`,
+      `"${(e.sellingPointName || '').replace(/"/g, '""')}"`,
+      `"${(e.category || '').replace(/"/g, '""')}"`,
+      `"${(e.paidTo || '').replace(/"/g, '""')}"`,
+      `"${e.paymentMode}"`,
+      e.amount,
+      `"${e.voucherRef || ''}"`,
+      `"${(e.recordedBy || '').replace(/"/g, '""')}"`,
+      `"${(e.notes || '').replace(/"/g, '""')}"`
+    ]);
+    this.downloadCsvBlob([headers.join(','), ...rows.map(r => r.join(','))].join('\n'), `SellingPoint_Expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+    this.showToast('Expenses register exported to CSV!');
+  },
+
+  downloadCsvBlob: function(csvContent, filename) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
+  refreshSellingPointData: function() {
+    const icon = document.getElementById('spRefreshIcon');
+    if (icon) icon.classList.add('animate-spin');
+    this.showToast('Syncing Selling Point records from Google Sheets...', 'info');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (icon) icon.classList.remove('animate-spin');
+          if (res && res.data) {
+            this.state.sellingPointTransactions = res.data;
+            if (res.sellingPoints) this.state.sellingPoints = res.sellingPoints;
+            this.renderSellingPointDashboard();
+            this.showToast('Selling Point records updated!');
+          }
+        })
+        .withFailureHandler((err) => {
+          if (icon) icon.classList.remove('animate-spin');
+          this.showToast('Sync failed: ' + err.message, 'error');
+        })
+        .fetchSellingPointData();
+    } else {
+      setTimeout(() => {
+        if (icon) icon.classList.remove('animate-spin');
+        this.renderSellingPointDashboard();
+        this.showToast('Selling Point records up to date!');
+      }, 400);
+    }
+  },
+
+  getMockData: function() {
+    return this.getMockInitialData();
+  },
+
+  // Fallback data when previewing outside Google Apps Script
   getMockInitialData: function() {
+    const today = new Date().toISOString().slice(0, 10);
+    const nowIso = new Date().toISOString();
+
+    const mockItems = [
+      { id: 'ITM_001', sku: 'ITM_001', name: 'Special Assam Orthodox Tea Leaves', category: 'Tea & Beverages', unit: 'Kg', rate: 650, unitCost: 650, minStock: 10, totalStock: 80, stockS001: 25, stockS002: 15, centralStock: 40, totalValue: 52000, supplier: 'Pindi Kirana Store' },
+      { id: 'ITM_002', sku: 'ITM_002', name: 'Fresh Cow Milk 1L Pack', category: 'Dairy & Fresh', unit: 'Pack', rate: 65, unitCost: 65, minStock: 30, totalStock: 120, stockS001: 40, stockS002: 30, centralStock: 50, totalValue: 7800, supplier: 'Bankey Behari Dairy' },
+      { id: 'ITM_003', sku: 'ITM_003', name: 'Fresh Malai Paneer Block', category: 'Dairy & Fresh', unit: 'Kg', rate: 380, unitCost: 380, minStock: 15, totalStock: 45, stockS001: 15, stockS002: 10, centralStock: 20, totalValue: 17100, supplier: 'Bankey Behari Dairy' },
+      { id: 'ITM_004', sku: 'ITM_004', name: 'Artisan Multigrain Bread Loaf', category: 'Bakery & Desserts', unit: 'Loaf', rate: 90, unitCost: 90, minStock: 20, totalStock: 50, stockS001: 20, stockS002: 15, centralStock: 15, totalValue: 4500, supplier: 'Pindi Kirana Store' },
+      { id: 'ITM_005', sku: 'ITM_005', name: 'Kesar Pista Kulfi Sticks', category: 'Bakery & Desserts', unit: 'Pcs', rate: 45, unitCost: 45, minStock: 50, totalStock: 150, stockS001: 60, stockS002: 40, centralStock: 50, totalValue: 6750, supplier: 'Kulfi King' },
+      { id: 'ITM_010', sku: 'ITM_010', name: 'Packaged Drinking Water 500ml (Crate 24)', category: 'Beverages', unit: 'Crate', rate: 240, unitCost: 240, minStock: 20, totalStock: 60, stockS001: 25, stockS002: 15, centralStock: 20, totalValue: 14400, supplier: 'Himalayan Waters' }
+    ];
+
+    const mockSellingPoints = [
+      { code: 'SP_001', name: 'Front Counter / Retail Sales', type: 'Sales Counter', status: 'Active' },
+      { code: 'SP_002', name: 'Branch Dispenser Counter', type: 'Dispense Counter', status: 'Active' },
+      { code: 'SP_003', name: 'Main Production / Operations', type: 'Production Unit', status: 'Active' }
+    ];
+
+    const mockStores = [
+      { code: 'S_001', name: 'Store 1 - Main Branch', type: 'Main Outlet' },
+      { code: 'S_002', name: 'Store 2 - Outlet Branch', type: 'Secondary Outlet' },
+      { code: 'S_000', name: 'Central Depot Warehouse', type: 'Central Hub' }
+    ];
+
+    const mockSales = [
+      { id: 'SALE_1001', timestamp: nowIso, date: today, sellingPointCode: 'SP_001', sellingPointName: 'Front Counter / Retail Sales', billNo: 'POS-0904-1001', customerName: 'Walk-in Guest', itemCode: 'ITM_002', itemName: 'Fresh Cow Milk 1L Pack', category: 'Dairy & Fresh', quantity: 3, unit: 'Pack', rate: 65, taxPercent: 0, totalAmount: 195, paymentMode: 'UPI', cashier: 'Duty Cashier', notes: 'Counter retail sale' },
+      { id: 'SALE_1002', timestamp: nowIso, date: today, sellingPointCode: 'SP_001', sellingPointName: 'Front Counter / Retail Sales', billNo: 'POS-0904-1002', customerName: 'Table 4', itemCode: 'ITM_001', itemName: 'Special Assam Orthodox Tea Leaves', category: 'Tea & Beverages', quantity: 1, unit: 'Kg', rate: 650, taxPercent: 5, totalAmount: 682.5, paymentMode: 'Cash', cashier: 'Duty Cashier', notes: 'Retail packaging sale' },
+      { id: 'SALE_1003', timestamp: nowIso, date: today, sellingPointCode: 'SP_002', sellingPointName: 'Branch Dispenser Counter', billNo: 'POS-0904-1003', customerName: 'Walk-in Guest', itemCode: 'ITM_005', itemName: 'Kesar Pista Kulfi Sticks', category: 'Bakery & Desserts', quantity: 4, unit: 'Pcs', rate: 45, taxPercent: 18, totalAmount: 212.4, paymentMode: 'Card', cashier: 'Staff B', notes: 'Dessert counter sale' },
+      { id: 'SALE_1004', timestamp: nowIso, date: today, sellingPointCode: 'SP_001', sellingPointName: 'Front Counter / Retail Sales', billNo: 'POS-0904-1004', customerName: 'Corporate Meeting', itemCode: 'ITM_010', itemName: 'Packaged Drinking Water 500ml', category: 'Beverages', quantity: 2, unit: 'Crate', rate: 240, taxPercent: 18, totalAmount: 566.4, paymentMode: 'UPI', cashier: 'Duty Cashier', notes: 'Conference refresh' }
+    ];
+
+    const mockPurchases = [
+      { id: 'PUR_SP_01', timestamp: nowIso, date: today, sellingPointCode: 'SP_001', sellingPointName: 'Front Counter / Retail Sales', source: 'Bankey Behari Dairy', itemCode: 'ITM_002', itemName: 'Fresh Cow Milk 1L Pack', category: 'Dairy & Fresh', quantity: 25, unit: 'Pack', costRate: 55, taxPercent: 0, totalCost: 1375, invoiceRef: 'INV-BBD-102', paymentStatus: 'Paid', receivedBy: 'Counter Incharge', notes: 'Morning milk delivery' },
+      { id: 'PUR_SP_02', timestamp: nowIso, date: today, sellingPointCode: 'SP_002', sellingPointName: 'Branch Dispenser Counter', source: 'Pindi Kirana Store', itemCode: 'ITM_004', itemName: 'Artisan Multigrain Bread Loaf', category: 'Bakery & Desserts', quantity: 15, unit: 'Loaf', costRate: 75, taxPercent: 5, totalCost: 1181.25, invoiceRef: 'INV-PKS-88', paymentStatus: 'Paid', receivedBy: 'Outlet Supervisor', notes: 'Fresh morning loaves' }
+    ];
+
+    const mockExpenses = [
+      { id: 'EXP_01', timestamp: nowIso, date: today, sellingPointCode: 'SP_001', sellingPointName: 'Front Counter / Retail Sales', category: 'Packaging & Bags', amount: 280, paymentMode: 'Cash', paidTo: 'Supreme PolyPack', voucherRef: 'VCH-0904-101', recordedBy: 'Duty Manager', status: 'Approved', notes: 'Takeout paper bags bundle' },
+      { id: 'EXP_02', timestamp: nowIso, date: today, sellingPointCode: 'SP_001', sellingPointName: 'Front Counter / Retail Sales', category: 'Cleaning & Sanitation', amount: 150, paymentMode: 'Cash', paidTo: 'Local CleanMart', voucherRef: 'VCH-0904-102', recordedBy: 'Counter Staff', status: 'Approved', notes: 'Sanitizer spray and cloths' },
+      { id: 'EXP_03', timestamp: nowIso, date: today, sellingPointCode: 'SP_002', sellingPointName: 'Branch Dispenser Counter', category: 'Utilities & Ice', amount: 120, paymentMode: 'UPI', paidTo: 'City Ice Plant', voucherRef: 'VCH-0904-103', recordedBy: 'Supervisor', status: 'Approved', notes: 'Counter beverage ice blocks' }
+    ];
+
     return {
       dbInfo: { id: '', name: 'Google Sheets Database', url: '#' },
       settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' },
       metrics: {
-        totalSkus: 0,
-        totalValuation: 0,
-        totalUnits: 0,
-        lowStockCount: 0,
+        totalSkus: mockItems.length,
+        totalValuation: mockItems.reduce((s, i) => s + (i.totalValue || 0), 0),
+        totalUnits: mockItems.reduce((s, i) => s + (i.totalStock || 0), 0),
+        lowStockCount: 1,
         outOfStockCount: 0,
-        stores: {},
-        categoryBreakdown: {},
-        lowStockItems: [],
-        todaySummary: { txnCount: 0, stockIn: 0, stockOut: 0 }
+        stores: { S_001: { name: 'Store 1', skus: mockItems.length, valuation: 45000 }, S_002: { name: 'Store 2', skus: mockItems.length, valuation: 32000 } },
+        categoryBreakdown: { 'Dairy & Fresh': 2, 'Bakery & Desserts': 2, 'Tea & Beverages': 1, 'Beverages': 1 },
+        lowStockItems: [mockItems[0]],
+        todaySummary: { txnCount: 4, stockIn: 40, stockOut: 6 }
       },
-      items: [],
-      suppliers: [],
-      stores: [],
-      sellingPoints: [],
-      users: [],
+      items: mockItems,
+      suppliers: [
+        { id: 'SUP_004', code: 'SUP_004', name: 'Bankey Behari Dairy & Provisions', category: 'Dairy & Fresh' },
+        { id: 'SUP_021', code: 'SUP_021', name: 'Pindi Kirana Store', category: 'Grocery & Tea' }
+      ],
+      stores: mockStores,
+      sellingPoints: mockSellingPoints,
+      users: [
+        { id: 'USR_001', name: 'Abhishek Sharma', role: 'System Administrator', email: 'abhishekofficial4577@gmail.com', assignedStore: 'ALL' }
+      ],
       supplierTransactions: [],
       issuanceTransactions: [],
-      recentTransactions: []
+      recentTransactions: [],
+      sellingPointTransactions: {
+        sales: mockSales,
+        purchases: mockPurchases,
+        expenses: mockExpenses
+      }
     };
   }
 };

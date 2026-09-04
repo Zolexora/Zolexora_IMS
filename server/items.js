@@ -364,7 +364,8 @@ function getInitialData() {
       settings: { HOTEL_NAME: 'Zolexora IMS', CURRENCY_SYMBOL: '₹' },
       supplierTransactions: [],
       issuanceTransactions: [],
-      recentTransactions: []
+      recentTransactions: [],
+      sellingPointTransactions: { sales: [], purchases: [], expenses: [] }
     };
   }
 
@@ -382,6 +383,7 @@ function getInitialData() {
   const supplierTxns = getSupplierTransactions(50);
   const issuanceTxns = getIssuanceTransactions(50);
   const metrics = calculateDashboardMetrics(items, supplierTxns, issuanceTxns, stores);
+  const sellingPointTxns = getSellingPointTransactions(100);
 
   return {
     success: true,
@@ -398,7 +400,8 @@ function getInitialData() {
     settings: settings,
     supplierTransactions: supplierTxns,
     issuanceTransactions: issuanceTxns,
-    recentTransactions: issuanceTxns
+    recentTransactions: issuanceTxns,
+    sellingPointTransactions: sellingPointTxns
   };
 }
 

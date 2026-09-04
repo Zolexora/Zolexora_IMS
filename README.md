@@ -12,6 +12,8 @@
 - **Dynamic Multi-Tenant Switcher**: Seamlessly switch between client organizations or spin up new tenant databases with 1 click.
 - **Enterprise Concurrency Locking**: Multi-user real-time transactions with transactional concurrency locks directly on Google Sheets.
 - **Barcode & QR Engine**: Live camera scanning and printable asset barcodes.
+- **Dual-Dashboard Architecture**: Dedicated top-level switching between **Inventory - Store** (central procurements, warehouse stocks, distributions) and **Selling Point** (POS billing, inward purchases, operating expenses).
+- **Synchronized Store & Selling Point Selectors**: Contextual dropdowns in top header and dashboard banners allowing instant switching/filtering across Stores (`S_000`, `S_001`, `S_002`) and Selling Points (`SP_001`, `SP_002`, `SP_003`, `SP_004`).
 - **Live Google Drive & Sheets Integration**: All tenant databases, reports, invoices, and backups are strictly organized in dedicated Google Drive storage.
 
 ---
@@ -33,7 +35,8 @@ All tenant databases and resources reside within the root cloud storage:
     │
     ├── 📁 02_Transactions/
     │   ├── 📊 Supplier_Transactions   (Stock-In & Purchase Orders)
-    │   └── 📊 Issuance_Transactions   (Store-to-Department Disbursements)
+    │   ├── 📊 Issuance_Transactions   (Store-to-Department Disbursements)
+    │   └── 📊 Selling_Point_Transactions (Sheets: SP_Sales, SP_Purchases, SP_Expenses)
     │
     ├── 📁 03_Settings_and_Users/
     │   └── 📊 Users_and_Settings      (Sheets: Users, Settings)

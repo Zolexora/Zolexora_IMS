@@ -11,6 +11,7 @@ const WORKBOOKS = {
   SUPPLIER_MASTER: 'Supplier_Master',
   SUPPLIER_TXNS: 'Supplier_Transactions',
   ISSUANCE_TXNS: 'Issuance_Transactions',
+  SELLING_POINT_TXNS: 'Selling_Point_Transactions',
   USERS_SETTINGS: 'Users_and_Settings'
 };
 
@@ -112,7 +113,8 @@ const DRIVE_DIRECTORY_STRUCTURE = {
   ],
   '02_Transactions': [
     WORKBOOKS.SUPPLIER_TXNS,
-    WORKBOOKS.ISSUANCE_TXNS
+    WORKBOOKS.ISSUANCE_TXNS,
+    WORKBOOKS.SELLING_POINT_TXNS
   ],
   '03_Settings_and_Users': [
     WORKBOOKS.USERS_SETTINGS
@@ -794,6 +796,7 @@ function provisionOrganization(orgData) {
     { name: WORKBOOKS.SUPPLIER_MASTER, folder: subfolders['01_Master_Databases'], init: initSupplierMaster },
     { name: WORKBOOKS.SUPPLIER_TXNS, folder: subfolders['02_Transactions'], init: initSupplierTransactions },
     { name: WORKBOOKS.ISSUANCE_TXNS, folder: subfolders['02_Transactions'], init: initIssuanceTransactions },
+    { name: WORKBOOKS.SELLING_POINT_TXNS, folder: subfolders['02_Transactions'], init: initSellingPointTransactions },
     { name: WORKBOOKS.USERS_SETTINGS, folder: subfolders['03_Settings_and_Users'], init: initUsersAndSettings }
   ];
 
@@ -898,6 +901,8 @@ function createAndInitWorkbook(name, orgData) {
     initSupplierTransactions(ss);
   } else if (name === WORKBOOKS.ISSUANCE_TXNS) {
     initIssuanceTransactions(ss);
+  } else if (name === WORKBOOKS.SELLING_POINT_TXNS) {
+    initSellingPointTransactions(ss);
   } else if (name === WORKBOOKS.USERS_SETTINGS) {
     initUsersAndSettings(ss, orgData);
   }
@@ -1128,7 +1133,87 @@ function initIssuanceTransactions(ss) {
 }
 
 /**
- * 6. Users_and_Settings Workbook (Users & Settings sheets)
+ * 6. Selling_Point_Transactions Workbook (SP_Sales, SP_Purchases, SP_Expenses sheets)
+ */
+function initSellingPointTransactions(ss) {
+  // Sheet 1: SP_Sales
+  let salesSheet = ss.getSheetByName('SP_Sales');
+  if (!salesSheet) {
+    salesSheet = ss.getSheets()[0];
+    salesSheet.setName('SP_Sales');
+  }
+
+  if (salesSheet.getLastRow() === 0) {
+    salesSheet.appendRow([
+      'Sale ID', 'Timestamp', 'Date', 'Selling Point Code', 'Selling Point Name',
+      'Bill No', 'Customer Name', 'Item Code', 'Item Name', 'Category',
+      'Quantity', 'UOM', 'Rate', 'Tax %', 'Total Amount',
+      'Payment Mode', 'Payment Status', 'Cashier', 'Notes'
+    ]);
+    formatHeaderRow(salesSheet, 19);
+
+    const now = new Date();
+    const today = Utilities.formatDate(now, 'Asia/Kolkata', 'yyyy-MM-dd');
+    const demoSales = [
+      ['SALE_20260904_1001', new Date(now.getTime() - 3600000 * 5).toISOString(), today, 'SP_001', 'Front Counter / Retail Sales', 'POS-0904-1001', 'Walk-in Guest', 'ITM_002', 'Fresh Cow Milk 1L Pack', 'Dairy & Fresh', 3, 'Pack', 65, 0, 195, 'UPI', 'Completed', 'Duty Cashier', 'Morning counter retail sale'],
+      ['SALE_20260904_1002', new Date(now.getTime() - 3600000 * 4).toISOString(), today, 'SP_001', 'Front Counter / Retail Sales', 'POS-0904-1002', 'Table 4', 'ITM_001', 'Special Assam Orthodox Tea Leaves', 'Tea & Beverages', 1, 'Kg', 650, 5, 682.5, 'Cash', 'Completed', 'Duty Cashier', 'Front desk retail purchase'],
+      ['SALE_20260904_1003', new Date(now.getTime() - 3600000 * 2).toISOString(), today, 'SP_002', 'Branch Dispenser Counter', 'POS-0904-1003', 'Walk-in Customer', 'ITM_005', 'Kesar Pista Kulfi Sticks', 'Bakery & Desserts', 4, 'Pcs', 45, 18, 212.4, 'Card', 'Completed', 'Staff B', 'Afternoon dessert sale'],
+      ['SALE_20260904_1004', new Date(now.getTime() - 3600000 * 1).toISOString(), today, 'SP_001', 'Front Counter / Retail Sales', 'POS-0904-1004', 'Corporate Account', 'ITM_010', 'Packaged Drinking Water 500ml', 'Beverages', 2, 'Crate', 240, 18, 566.4, 'UPI', 'Completed', 'Duty Cashier', 'Meeting refreshment counter billing']
+    ];
+    salesSheet.getRange(2, 1, demoSales.length, demoSales[0].length).setValues(demoSales);
+  }
+
+  // Sheet 2: SP_Purchases
+  let purSheet = ss.getSheetByName('SP_Purchases');
+  if (!purSheet) {
+    purSheet = ss.insertSheet('SP_Purchases');
+  }
+
+  if (purSheet.getLastRow() === 0) {
+    purSheet.appendRow([
+      'Purchase ID', 'Timestamp', 'Date', 'Selling Point Code', 'Selling Point Name',
+      'Source', 'Item Code', 'Item Name', 'Category', 'Quantity',
+      'UOM', 'Cost Rate', 'Tax %', 'Total Cost', 'Invoice Ref',
+      'Payment Status', 'Received By', 'Notes'
+    ]);
+    formatHeaderRow(purSheet, 18);
+
+    const now = new Date();
+    const today = Utilities.formatDate(now, 'Asia/Kolkata', 'yyyy-MM-dd');
+    const demoPurchases = [
+      ['PUR_SP_20260904_01', new Date(now.getTime() - 86400000 * 1).toISOString(), today, 'SP_001', 'Front Counter / Retail Sales', 'Bankey Behari Dairy', 'ITM_002', 'Fresh Cow Milk 1L Pack', 'Dairy & Fresh', 25, 'Pack', 55, 0, 1375, 'INV-BBD-102', 'Paid', 'Counter Incharge', 'Direct counter milk receipt'],
+      ['PUR_SP_20260904_02', new Date(now.getTime() - 3600000 * 6).toISOString(), today, 'SP_002', 'Branch Dispenser Counter', 'Pindi Kirana Store', 'ITM_004', 'Artisan Multigrain Bread Loaf', 'Bakery & Desserts', 15, 'Loaf', 75, 5, 1181.25, 'INV-PKS-88', 'Paid', 'Outlet Supervisor', 'Fresh breakfast loaves arrival']
+    ];
+    purSheet.getRange(2, 1, demoPurchases.length, demoPurchases[0].length).setValues(demoPurchases);
+  }
+
+  // Sheet 3: SP_Expenses
+  let expSheet = ss.getSheetByName('SP_Expenses');
+  if (!expSheet) {
+    expSheet = ss.insertSheet('SP_Expenses');
+  }
+
+  if (expSheet.getLastRow() === 0) {
+    expSheet.appendRow([
+      'Expense ID', 'Timestamp', 'Date', 'Selling Point Code', 'Selling Point Name',
+      'Category', 'Amount', 'Payment Mode', 'Paid To', 'Voucher Ref',
+      'Recorded By', 'Status', 'Notes'
+    ]);
+    formatHeaderRow(expSheet, 13);
+
+    const now = new Date();
+    const today = Utilities.formatDate(now, 'Asia/Kolkata', 'yyyy-MM-dd');
+    const demoExpenses = [
+      ['EXP_20260904_01', new Date(now.getTime() - 3600000 * 7).toISOString(), today, 'SP_001', 'Front Counter / Retail Sales', 'Packaging & Bags', 280, 'Cash', 'Supreme PolyPack', 'VCH-0904-101', 'Duty Manager', 'Approved', 'Food-grade carry bags and wrapping roll'],
+      ['EXP_20260904_02', new Date(now.getTime() - 3600000 * 3).toISOString(), today, 'SP_001', 'Front Counter / Retail Sales', 'Cleaning & Sanitation', 150, 'Cash', 'Local CleanMart', 'VCH-0904-102', 'Counter Staff', 'Approved', 'Counter cleaning spray and micro-fiber towels'],
+      ['EXP_20260904_03', new Date(now.getTime() - 3600000 * 1).toISOString(), today, 'SP_002', 'Branch Dispenser Counter', 'Utilities & Ice', 120, 'UPI', 'City Ice Plant', 'VCH-0904-103', 'Supervisor', 'Approved', 'Crushed beverage ice cubes bag']
+    ];
+    expSheet.getRange(2, 1, demoExpenses.length, demoExpenses[0].length).setValues(demoExpenses);
+  }
+}
+
+/**
+ * 7. Users_and_Settings Workbook (Users & Settings sheets)
  */
 function initUsersAndSettings(ss, orgData) {
   const orgName = (orgData && orgData.name && orgData.name.trim()) ? orgData.name.trim() : 'Zolexora IMS';
@@ -1148,27 +1233,28 @@ function initUsersAndSettings(ss, orgData) {
     formatHeaderRow(usersSheet, 6);
     usersSheet.appendRow(['USR_001', adminName, 'System Administrator & Manager', adminEmail, 'ALL', 'Active']);
     usersSheet.appendRow(['USR_002', 'Store Incharge', 'Store Keeper', 'store@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'S_001', 'Active']);
-    usersSheet.appendRow(['USR_003', 'Operations Supervisor', 'Outlet Supervisor', 'ops@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'SP_001', 'Active']);
+    usersSheet.appendRow(['USR_003', 'Selling Point Cashier', 'Point of Sale Cashier', 'pos@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'SP_001', 'Active']);
   }
 
   // Sheet 2: Settings
-  let settingsSheet = ss.getSheetByName('Settings');
-  if (!settingsSheet) {
-    settingsSheet = ss.insertSheet('Settings');
+  let setSheet = ss.getSheetByName('Settings');
+  if (!setSheet) {
+    setSheet = ss.insertSheet('Settings');
   }
-  if (settingsSheet.getLastRow() === 0) {
-    settingsSheet.appendRow(['Key', 'Value', 'Description']);
-    formatHeaderRow(settingsSheet, 3);
-    settingsSheet.appendRow(['HOTEL_NAME', orgName, 'Organization Brand Name']);
-    settingsSheet.appendRow(['INDUSTRY', industry, 'SaaS Tenant Industry Sector']);
-    settingsSheet.appendRow(['PLAN_TIER', 'Enterprise Cloud SaaS', 'Active SaaS Subscription Tier']);
-    settingsSheet.appendRow(['CURRENCY_SYMBOL', currency, 'Display Currency Symbol']);
-    settingsSheet.appendRow(['DRIVE_FOLDER_ID', DEFAULT_DRIVE_FOLDER_ID, 'Designated Database Drive Folder']);
+  if (setSheet.getLastRow() === 0) {
+    setSheet.appendRow(['Key', 'Value', 'Description']);
+    formatHeaderRow(setSheet, 3);
+    setSheet.appendRow(['HOTEL_NAME', orgName, 'Organization brand title']);
+    setSheet.appendRow(['CURRENCY_SYMBOL', currency, 'Global currency symbol']);
+    setSheet.appendRow(['INDUSTRY_VERTICAL', industry, 'Selected industry deployment']);
+    setSheet.appendRow(['AUTO_CONCURRENCY_LOCK', 'TRUE', 'Transactional safety flag']);
+    setSheet.appendRow(['BARCODE_FORMAT', 'CODE128', 'Hardware barcode standard']);
+    setSheet.appendRow(['DRIVE_FOLDER_ID', DEFAULT_DRIVE_FOLDER_ID, 'Designated Database Drive Folder']);
   }
 }
 
 /**
- * Validates and provisions all 6 workbooks inside the user's Drive folder
+ * Validates and provisions all workbooks inside the user's Drive folder
  */
 function initAllWorkbooks() {
   const list = [
@@ -1177,6 +1263,7 @@ function initAllWorkbooks() {
     WORKBOOKS.SUPPLIER_MASTER,
     WORKBOOKS.SUPPLIER_TXNS,
     WORKBOOKS.ISSUANCE_TXNS,
+    WORKBOOKS.SELLING_POINT_TXNS,
     WORKBOOKS.USERS_SETTINGS
   ];
 
