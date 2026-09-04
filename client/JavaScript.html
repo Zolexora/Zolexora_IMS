@@ -980,48 +980,30 @@ const app = {
       targetPane.classList.remove('hidden');
     }
 
-    // Update Top Header Dual Tabs & Dropdown highlights
-    const headerTabDash = document.getElementById('headerTab-dashboard');
-    const headerTabSp = document.getElementById('headerTab-sellingpoint');
+    // Update Top Sidebar Switcher Tabs (Inventory <-> POS) & Header Filter highlights
+    const sidebarTabDash = document.getElementById('sidebarTab-dashboard');
+    const sidebarTabSp = document.getElementById('sidebarTab-sellingpoint');
     const storeWrap = document.getElementById('headerStoreSelectorWrap');
     const spWrap = document.getElementById('headerSpSelectorWrap');
 
-    if (headerTabDash && headerTabSp) {
+    if (sidebarTabDash && sidebarTabSp) {
       if (tabId === 'dashboard') {
-        headerTabDash.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-md cursor-pointer';
-        headerTabSp.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest cursor-pointer';
+        sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
+        sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
         if (storeWrap) storeWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border-2 border-primary shadow-sm ring-2 ring-primary/20';
         if (spWrap) spWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm opacity-80';
       } else if (tabId === 'sellingpoint') {
-        headerTabDash.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest cursor-pointer';
-        headerTabSp.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-md cursor-pointer';
+        sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
+        sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
         if (storeWrap) storeWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm opacity-80';
         if (spWrap) spWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border-2 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20';
       } else {
-        headerTabDash.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest cursor-pointer';
-        headerTabSp.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest cursor-pointer';
+        sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
+        sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
         if (storeWrap) storeWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm';
         if (spWrap) spWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm';
       }
     }
-
-    // Update In-Page Dual Switcher Tabs (across both dashboards)
-    const inpageDashTabs = document.querySelectorAll('.dual-tab-inventory');
-    const inpageSpTabs = document.querySelectorAll('.dual-tab-sellingpoint');
-    inpageDashTabs.forEach(btn => {
-      if (tabId === 'dashboard') {
-        btn.className = 'dual-tab-inventory flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-primary text-on-primary shadow-md transition-all cursor-pointer';
-      } else {
-        btn.className = 'dual-tab-inventory flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all cursor-pointer';
-      }
-    });
-    inpageSpTabs.forEach(btn => {
-      if (tabId === 'sellingpoint') {
-        btn.className = 'dual-tab-sellingpoint flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-md transition-all cursor-pointer';
-      } else {
-        btn.className = 'dual-tab-sellingpoint flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all cursor-pointer';
-      }
-    });
 
     // Trigger Chart Resize and Report render if Reports
     if (tabId === 'reports') {

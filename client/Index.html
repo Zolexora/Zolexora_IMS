@@ -849,14 +849,17 @@
   <!-- ============================================================== -->
   <div id="appDashboardContainer" class="hidden min-h-screen bg-black">
     <aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col pt-xl pb-xl border-r border-outline-variant/10 shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
-    <!-- Brand Logo with First Letter of Org -->
-    <div class="px-xl mb-8 flex items-center gap-sm cursor-pointer" onclick="app.switchTab('dashboard')">
-      <div class="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 text-primary font-bold text-base flex items-center justify-center shadow-inner flex-shrink-0">
-        <span id="sidebarOrgAvatarLetter">S</span>
-      </div>
-      <div class="flex-1 min-w-0">
-        <span id="sidebarHotelName" class="font-display-lg text-headline-md tracking-tight text-on-surface block leading-tight truncate">Zolexora IMS</span>
-        <span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider uppercase block mt-0.5">Active Org</span>
+    <!-- TOP SIDEBAR SWITCHER (INVENTORY <-> SELLING POINT / POS) -->
+    <div class="px-3 mb-6 pt-1">
+      <div class="bg-surface-container-highest/90 p-1 rounded-xl flex items-center border border-outline-variant/30 shadow-inner" role="tablist">
+        <button id="sidebarTab-dashboard" onclick="app.switchTab('dashboard')" class="flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer flex items-center justify-center gap-1.5" title="Switch to Inventory Store Dashboard">
+          <span class="material-symbols-outlined text-[16px]">warehouse</span>
+          <span>Inventory</span>
+        </button>
+        <button id="sidebarTab-sellingpoint" onclick="app.switchTab('sellingpoint')" class="flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5" title="Switch to Selling Point Operations Dashboard">
+          <span class="material-symbols-outlined text-[16px] text-emerald-400">point_of_sale</span>
+          <span>POS</span>
+        </button>
       </div>
     </div>
 
@@ -930,20 +933,8 @@
 
     <!-- FIXED TOP HEADER -->
     <header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 px-xl flex items-center justify-between border-b border-outline-variant/10">
-      <!-- TOP LEFT CORNER: DUAL DASHBOARDS (INVENTORY STORE & SELLING POINT HORIZONTALLY LOCATED) -->
+      <!-- TOP LEFT CORNER: LOCATION & SELLING POINT FILTERS -->
       <div class="flex items-center gap-2 lg:gap-3 flex-shrink-0">
-        <!-- Dual Horizontal Buttons -->
-        <div class="flex items-center bg-surface-container-high/90 p-1 rounded-xl border border-outline-variant/30 shadow-sm" role="tablist">
-          <button id="headerTab-dashboard" onclick="app.switchTab('dashboard')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer" title="Switch to Inventory Store Dashboard">
-            <span class="material-symbols-outlined text-[17px]">warehouse</span>
-            <span class="whitespace-nowrap">Inventory Store</span>
-          </button>
-          <button id="headerTab-sellingpoint" onclick="app.switchTab('sellingpoint')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest cursor-pointer" title="Switch to Selling Point Operations Dashboard">
-            <span class="material-symbols-outlined text-[17px]">point_of_sale</span>
-            <span class="whitespace-nowrap">Selling Point</span>
-            <span class="bg-emerald-500/20 text-emerald-400 text-[9px] font-mono px-1 py-0.2 rounded uppercase font-bold">POS</span>
-          </button>
-        </div>
 
         <!-- Dropdown 1: Inventory Store Filter -->
         <div id="headerStoreSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
@@ -1044,20 +1035,15 @@
       <!-- ========================================================== -->
       <div id="tabContent-dashboard" class="tab-pane flex flex-col w-full gap-[10px]">
         
-        <!-- TOP DUAL-DASHBOARD SWITCHER & SCOPE SELECTORS BAR -->
+        <!-- SCOPE SELECTORS BAR -->
         <div class="bg-surface-container-low rounded-2xl p-3 sm:p-4 border border-outline-variant/20 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          <!-- Two Top-Level Tabs -->
-          <div class="flex items-center bg-surface-container-highest p-1 rounded-xl border border-outline-variant/20">
-            <button id="dualTab-inventory-dash" onclick="app.switchTab('dashboard')" class="dual-tab-inventory flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-primary text-on-primary shadow-md transition-all cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">warehouse</span>
-              <span>Inventory - Store</span>
-              <span class="bg-primary-container text-on-primary-container text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">STORE</span>
-            </button>
-            <button id="dualTab-sellingpoint-dash" onclick="app.switchTab('sellingpoint')" class="dual-tab-sellingpoint flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">point_of_sale</span>
-              <span>Selling Point</span>
-              <span class="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">POS</span>
-            </button>
+          <!-- Context Title -->
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[22px]">warehouse</span>
+            <div>
+              <h2 class="text-sm font-bold text-white">Central Inventory Store</h2>
+              <p class="text-[10px] text-on-surface-variant">Procurements, warehouse stock levels &amp; inter-branch distributions</p>
+            </div>
           </div>
 
           <!-- Synchronized Dropdowns: Inventory Store & Selling Point -->
@@ -1332,20 +1318,15 @@
       <!-- ========================================================== -->
       <div id="tabContent-sellingpoint" class="tab-pane hidden flex flex-col w-full gap-[14px]">
 
-        <!-- TOP DUAL-DASHBOARD SWITCHER & SCOPE SELECTORS BAR -->
+        <!-- SCOPE SELECTORS BAR -->
         <div class="bg-surface-container-low rounded-2xl p-3 sm:p-4 border border-outline-variant/20 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          <!-- Two Top-Level Tabs -->
-          <div class="flex items-center bg-surface-container-highest p-1 rounded-xl border border-outline-variant/20">
-            <button id="dualTab-inventory-sp" onclick="app.switchTab('dashboard')" class="dual-tab-inventory flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">warehouse</span>
-              <span>Inventory - Store</span>
-              <span class="bg-primary-container text-on-primary-container text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">STORE</span>
-            </button>
-            <button id="dualTab-sellingpoint-sp" onclick="app.switchTab('sellingpoint')" class="dual-tab-sellingpoint flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-md transition-all cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">point_of_sale</span>
-              <span>Selling Point</span>
-              <span class="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">POS</span>
-            </button>
+          <!-- Context Title -->
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-emerald-400 text-[22px]">point_of_sale</span>
+            <div>
+              <h2 class="text-sm font-bold text-white">Selling Point &amp; POS Operations</h2>
+              <p class="text-[10px] text-on-surface-variant">Real-time counter sales, cash registers &amp; retail billing</p>
+            </div>
           </div>
 
           <!-- Synchronized Dropdowns: Selling Point & Inventory Store -->
@@ -1378,11 +1359,6 @@
                 </select>
               </div>
             </div>
-
-            <button onclick="app.switchTab('dashboard')" class="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 font-bold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer" title="Switch directly to Inventory Store Dashboard">
-              <span class="material-symbols-outlined text-[16px]">arrow_back</span>
-              <span>Go to Inventory Store</span>
-            </button>
           </div>
         </div>
 
