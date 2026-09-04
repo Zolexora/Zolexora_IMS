@@ -50,6 +50,7 @@ const app = {
     settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' },
     recentTransactions: [],
     activeTab: 'dashboard',
+    currentMode: 'inventory',
     propertyFilter: 'ALL',
     spFilter: 'ALL',
     categoryChart: null,
@@ -326,6 +327,7 @@ const app = {
 
   showDashboard: function(data) {
     this.navigateTo('dashboard');
+    this.switchMode(this.state.currentMode || 'inventory');
 
     // Update user profile badges
     if (this.state.authUser) {
@@ -956,9 +958,81 @@ const app = {
     return (Number(amount) || 0).toLocaleString();
   },
 
+  // DEDICATED WORKFLOW MODE SWITCHER (INVENTORY STORE <-> POS OPERATIONS)
+  switchMode: function(mode) {
+    this.state.currentMode = mode;
+
+    const sidebarTabDash = document.getElementById('sidebarTab-dashboard');
+    const sidebarTabSp = document.getElementById('sidebarTab-sellingpoint');
+    const navInventory = document.getElementById('sidebar-nav-inventory');
+    const navPos = document.getElementById('sidebar-nav-pos');
+    const storeWrap = document.getElementById('headerStoreSelectorWrap');
+    const spWrap = document.getElementById('headerSpSelectorWrap');
+    const invActions = document.getElementById('header-inventory-actions');
+    const posActions = document.getElementById('header-pos-actions');
+    const searchInput = document.getElementById('headerSearchInput');
+
+    if (mode === 'inventory') {
+      // 1. Switcher Tabs Styling
+      if (sidebarTabDash) sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
+      if (sidebarTabSp) sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
+
+      // 2. Sidebar Navigation: Show ONLY Inventory items, Hide POS items
+      if (navInventory) navInventory.classList.remove('hidden');
+      if (navPos) navPos.classList.add('hidden');
+
+      // 3. Top Header: Show ONLY Inventory controls, Hide POS controls
+      if (storeWrap) storeWrap.classList.remove('hidden');
+      if (spWrap) spWrap.classList.add('hidden');
+      if (invActions) invActions.classList.remove('hidden');
+      if (posActions) posActions.classList.add('hidden');
+      if (searchInput) searchInput.placeholder = 'Search inventory items, SKUs...';
+
+      // 4. Activate Inventory Dashboard tab
+      this.switchTab('dashboard');
+    } else if (mode === 'pos') {
+      // 1. Switcher Tabs Styling
+      if (sidebarTabDash) sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
+      if (sidebarTabSp) sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
+
+      // 2. Sidebar Navigation: Show ONLY POS items, Hide Inventory items
+      if (navInventory) navInventory.classList.add('hidden');
+      if (navPos) navPos.classList.remove('hidden');
+
+      // 3. Top Header: Show ONLY POS controls, Hide Inventory controls
+      if (storeWrap) storeWrap.classList.add('hidden');
+      if (spWrap) spWrap.classList.remove('hidden');
+      if (invActions) invActions.classList.add('hidden');
+      if (posActions) {
+        posActions.classList.remove('hidden');
+        posActions.classList.add('flex');
+      }
+      if (searchInput) searchInput.placeholder = 'Search bill no, guest, item...';
+
+      // 4. Activate POS Operations tab and Overview section
+      this.switchTab('sellingpoint');
+      this.switchSpSection('overview');
+    }
+  },
+
   // TAB NAVIGATION
   switchTab: function(tabId) {
     this.state.activeTab = tabId;
+
+    // Detect mode change if switching directly
+    if (tabId === 'sellingpoint') {
+      if (this.state.currentMode !== 'pos') {
+        this.switchMode('pos');
+        return;
+      }
+    } else if (this.state.currentMode === 'pos' && tabId !== 'sellingpoint') {
+      // Switched to an inventory tab
+      this.switchMode('inventory');
+      if (tabId !== 'dashboard') {
+        this.switchTab(tabId);
+        return;
+      }
+    }
 
     // Update Sidebar Nav Items
     const navItems = document.querySelectorAll('.nav-item');
@@ -978,31 +1052,6 @@ const app = {
     const targetPane = document.getElementById('tabContent-' + tabId);
     if (targetPane) {
       targetPane.classList.remove('hidden');
-    }
-
-    // Update Top Sidebar Switcher Tabs (Inventory <-> POS) & Header Filter highlights
-    const sidebarTabDash = document.getElementById('sidebarTab-dashboard');
-    const sidebarTabSp = document.getElementById('sidebarTab-sellingpoint');
-    const storeWrap = document.getElementById('headerStoreSelectorWrap');
-    const spWrap = document.getElementById('headerSpSelectorWrap');
-
-    if (sidebarTabDash && sidebarTabSp) {
-      if (tabId === 'dashboard') {
-        sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
-        sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
-        if (storeWrap) storeWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border-2 border-primary shadow-sm ring-2 ring-primary/20';
-        if (spWrap) spWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm opacity-80';
-      } else if (tabId === 'sellingpoint') {
-        sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
-        sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
-        if (storeWrap) storeWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm opacity-80';
-        if (spWrap) spWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border-2 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20';
-      } else {
-        sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
-        sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
-        if (storeWrap) storeWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm';
-        if (spWrap) spWrap.className = 'flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/30 shadow-sm';
-      }
     }
 
     // Trigger Chart Resize and Report render if Reports
@@ -1030,13 +1079,23 @@ const app = {
   handleGlobalSearch: function(query) {
     const q = (query || '').trim();
     if (!q) return;
-    if (this.state.activeTab !== 'products') {
-      this.switchTab('products');
-    }
-    const searchInput = document.getElementById('catalogSearchInput');
-    if (searchInput) {
-      searchInput.value = q;
-      this.filterCatalog();
+
+    if (this.state.currentMode === 'pos') {
+      const spInput = document.getElementById('spSaleSearchInput');
+      if (spInput) {
+        spInput.value = q;
+        this.switchSpSection('sales');
+        this.filterSellingPointData();
+      }
+    } else {
+      if (this.state.activeTab !== 'products') {
+        this.switchTab('products');
+      }
+      const searchInput = document.getElementById('catalogSearchInput');
+      if (searchInput) {
+        searchInput.value = q;
+        this.filterCatalog();
+      }
     }
   },
 
@@ -4643,7 +4702,40 @@ const app = {
   switchSpSection: function(sectionId) {
     this.spActiveSection = sectionId;
 
-    // Update section tabs styling
+    // Ensure POS mode is active
+    if (this.state.currentMode !== 'pos') {
+      this.state.currentMode = 'pos';
+      const navInventory = document.getElementById('sidebar-nav-inventory');
+      const navPos = document.getElementById('sidebar-nav-pos');
+      const storeWrap = document.getElementById('headerStoreSelectorWrap');
+      const spWrap = document.getElementById('headerSpSelectorWrap');
+      const invActions = document.getElementById('header-inventory-actions');
+      const posActions = document.getElementById('header-pos-actions');
+      const searchInput = document.getElementById('headerSearchInput');
+      const sidebarTabDash = document.getElementById('sidebarTab-dashboard');
+      const sidebarTabSp = document.getElementById('sidebarTab-sellingpoint');
+
+      if (sidebarTabDash) sidebarTabDash.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5';
+      if (sidebarTabSp) sidebarTabSp.className = 'flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
+      if (navInventory) navInventory.classList.add('hidden');
+      if (navPos) navPos.classList.remove('hidden');
+      if (storeWrap) storeWrap.classList.add('hidden');
+      if (spWrap) spWrap.classList.remove('hidden');
+      if (invActions) invActions.classList.add('hidden');
+      if (posActions) {
+        posActions.classList.remove('hidden');
+        posActions.classList.add('flex');
+      }
+      if (searchInput) searchInput.placeholder = 'Search bill no, guest, item...';
+    }
+
+    // Ensure tabContent-sellingpoint is visible
+    const panes = document.querySelectorAll('.tab-pane');
+    panes.forEach(p => p.classList.add('hidden'));
+    const spPane = document.getElementById('tabContent-sellingpoint');
+    if (spPane) spPane.classList.remove('hidden');
+
+    // Update in-page section tabs styling
     const sectionBtns = document.querySelectorAll('.sp-section-btn');
     sectionBtns.forEach(btn => {
       btn.className = 'sp-section-btn flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition cursor-pointer';
@@ -4651,12 +4743,23 @@ const app = {
 
     const activeBtn = document.getElementById('spTabBtn-' + sectionId);
     if (activeBtn) {
-      activeBtn.className = 'sp-section-btn flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition bg-primary text-on-primary shadow cursor-pointer';
+      activeBtn.className = 'sp-section-btn flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition bg-emerald-600 text-white shadow cursor-pointer';
     }
 
-    // Toggle Panes
-    const panes = document.querySelectorAll('.sp-section-pane');
-    panes.forEach(p => p.classList.add('hidden'));
+    // Update POS sidebar nav items
+    const posNavItems = document.querySelectorAll('.pos-nav-item');
+    posNavItems.forEach(item => {
+      item.className = 'pos-nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group';
+    });
+
+    const activePosBtn = document.getElementById('posNavBtn-' + sectionId);
+    if (activePosBtn) {
+      activePosBtn.className = 'pos-nav-item flex items-center px-md py-3 rounded-lg transition-all duration-200 group bg-emerald-600/20 text-emerald-400 font-semibold shadow-lg shadow-emerald-900/20 border border-emerald-500/30';
+    }
+
+    // Toggle Sub-Panes
+    const subPanes = document.querySelectorAll('.sp-section-pane');
+    subPanes.forEach(p => p.classList.add('hidden'));
 
     const targetPane = document.getElementById('spSection-' + sectionId);
     if (targetPane) targetPane.classList.remove('hidden');
@@ -4818,6 +4921,9 @@ const app = {
     if (document.getElementById('spSalesBadgeCount')) document.getElementById('spSalesBadgeCount').innerText = sales.length;
     if (document.getElementById('spPurchasesBadgeCount')) document.getElementById('spPurchasesBadgeCount').innerText = purchases.length;
     if (document.getElementById('spExpensesBadgeCount')) document.getElementById('spExpensesBadgeCount').innerText = expenses.length;
+    if (document.getElementById('posSidebarSalesBadge')) document.getElementById('posSidebarSalesBadge').innerText = sales.length;
+    if (document.getElementById('posSidebarPurchasesBadge')) document.getElementById('posSidebarPurchasesBadge').innerText = purchases.length;
+    if (document.getElementById('posSidebarExpensesBadge')) document.getElementById('posSidebarExpensesBadge').innerText = expenses.length;
 
     this.renderSpOverview(sales, purchases, expenses, totalSales, totalPurchases, totalExpenses, cashSales, upiSales, cardSales, cashCount, upiCount, cardCount, curr);
     this.renderSpSalesTable(sales, curr);

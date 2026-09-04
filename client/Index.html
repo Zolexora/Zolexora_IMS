@@ -852,69 +852,107 @@
     <!-- TOP SIDEBAR SWITCHER (INVENTORY <-> SELLING POINT / POS) -->
     <div class="px-3 mb-6 pt-1">
       <div class="bg-surface-container-highest/90 p-1 rounded-xl flex items-center border border-outline-variant/30 shadow-inner" role="tablist">
-        <button id="sidebarTab-dashboard" onclick="app.switchTab('dashboard')" class="flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer flex items-center justify-center gap-1.5" title="Switch to Inventory Store Dashboard">
+        <button id="sidebarTab-dashboard" onclick="app.switchMode('inventory')" class="flex-1 py-2 px-2 text-center rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer flex items-center justify-center gap-1.5" title="Switch to Inventory Store Mode">
           <span class="material-symbols-outlined text-[16px]">warehouse</span>
           <span>Inventory</span>
         </button>
-        <button id="sidebarTab-sellingpoint" onclick="app.switchTab('sellingpoint')" class="flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5" title="Switch to Selling Point Operations Dashboard">
+        <button id="sidebarTab-sellingpoint" onclick="app.switchMode('pos')" class="flex-1 py-2 px-2 text-center rounded-lg text-xs font-semibold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer flex items-center justify-center gap-1.5" title="Switch to Point of Sale (POS) Mode">
           <span class="material-symbols-outlined text-[16px] text-emerald-400">point_of_sale</span>
           <span>POS</span>
         </button>
       </div>
     </div>
 
-    <!-- Nav Items -->
+    <!-- Nav Items: Cleanly Divided into Inventory and POS Groups -->
     <nav class="flex-1 px-md space-y-xs overflow-y-auto">
-      <a href="#" onclick="app.switchTab('dashboard'); return false;" id="navBtn-dashboard" class="nav-item flex items-center px-md py-3 rounded-lg transition-all duration-200 group bg-primary-container text-on-primary-container font-semibold shadow-lg shadow-primary/20">
-        <span class="material-symbols-outlined mr-md text-[20px]">warehouse</span>
-        <span class="font-body-md flex-1">Inventory - Store</span>
-        <span class="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">STORE</span>
-      </a>
+      
+      <!-- INVENTORY NAVIGATION GROUP (Visible in Inventory Mode) -->
+      <div id="sidebar-nav-inventory" class="space-y-xs">
+        <a href="#" onclick="app.switchTab('dashboard'); return false;" id="navBtn-dashboard" class="nav-item flex items-center px-md py-3 rounded-lg transition-all duration-200 group bg-primary-container text-on-primary-container font-semibold shadow-lg shadow-primary/20">
+          <span class="material-symbols-outlined mr-md text-[20px]">warehouse</span>
+          <span class="font-body-md flex-1">Warehouse Dashboard</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('sellingpoint'); return false;" id="navBtn-sellingpoint" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">point_of_sale</span>
-        <span class="font-body-md flex-1">Selling Point</span>
-        <span class="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">POS</span>
-      </a>
+        <a href="#" onclick="app.switchTab('products'); return false;" id="navBtn-products" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">inventory</span>
+          <span class="font-body-md flex-1">Products &amp; SKUs</span>
+          <span id="sidebarSkusBadge" class="bg-surface-container-highest text-on-surface-variant text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('products'); return false;" id="navBtn-products" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">inventory</span>
-        <span class="font-body-md flex-1">Products</span>
-        <span id="sidebarSkusBadge" class="bg-surface-container-highest text-on-surface-variant text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
-      </a>
+        <a href="#" onclick="app.switchTab('requisitions'); return false;" id="navBtn-requisitions" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">request_quote</span>
+          <span class="font-body-md">Requisitions</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('requisitions'); return false;" id="navBtn-requisitions" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">request_quote</span>
-        <span class="font-body-md">Requisitions</span>
-      </a>
+        <a href="#" onclick="app.switchTab('suppliers'); return false;" id="navBtn-suppliers" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">local_shipping</span>
+          <span class="font-body-md">Suppliers</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('suppliers'); return false;" id="navBtn-suppliers" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">local_shipping</span>
-        <span class="font-body-md">Suppliers</span>
-      </a>
+        <a href="#" onclick="app.switchTab('issuance'); return false;" id="navBtn-issuance" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">outbox</span>
+          <span class="font-body-md">Issuance &amp; Transfers</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('issuance'); return false;" id="navBtn-issuance" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">outbox</span>
-        <span class="font-body-md">Issuance &amp; Logs</span>
-      </a>
+        <a href="#" onclick="app.switchTab('reports'); return false;" id="navBtn-reports" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">analytics</span>
+          <span class="font-body-md">Inventory Reports</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('reports'); return false;" id="navBtn-reports" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">analytics</span>
-        <span class="font-body-md">Reports</span>
-      </a>
+        <a href="#" onclick="app.switchTab('users'); return false;" id="navBtn-users" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">manage_accounts</span>
+          <span class="font-body-md flex-1">Users &amp; Roles</span>
+          <span id="sidebarUsersBadge" class="bg-surface-container-highest text-on-surface-variant text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
+        </a>
 
-      <a href="#" onclick="app.switchTab('users'); return false;" id="navBtn-users" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">manage_accounts</span>
-        <span class="font-body-md flex-1">Users &amp; Access</span>
-        <span id="sidebarUsersBadge" class="bg-surface-container-highest text-on-surface-variant text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
-      </a>
+        <div class="my-lg border-t border-outline-variant/10 mx-md"></div>
 
-      <div class="my-lg border-t border-outline-variant/10 mx-md"></div>
+        <a href="#" onclick="app.switchTab('settings'); return false;" id="navBtn-settings" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px]">settings</span>
+          <span class="font-body-md">Warehouses &amp; Settings</span>
+        </a>
+      </div>
 
-      <a href="#" onclick="app.switchTab('settings'); return false;" id="navBtn-settings" class="nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
-        <span class="material-symbols-outlined mr-md text-[20px]">settings</span>
-        <span class="font-body-md">Drive &amp; Settings</span>
-      </a>
+      <!-- POS NAVIGATION GROUP (Visible in POS Mode) -->
+      <div id="sidebar-nav-pos" class="hidden space-y-xs">
+        <a href="#" onclick="app.switchSpSection('overview'); return false;" id="posNavBtn-overview" class="pos-nav-item flex items-center px-md py-3 rounded-lg transition-all duration-200 group bg-emerald-600/20 text-emerald-400 font-semibold shadow-lg shadow-emerald-900/20 border border-emerald-500/30">
+          <span class="material-symbols-outlined mr-md text-[20px]">bar_chart</span>
+          <span class="font-body-md flex-1">POS Overview</span>
+        </a>
+
+        <a href="#" onclick="app.switchSpSection('sales'); return false;" id="posNavBtn-sales" class="pos-nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px] text-emerald-400">point_of_sale</span>
+          <span class="font-body-md flex-1">Billing &amp; Sales</span>
+          <span id="posSidebarSalesBadge" class="bg-emerald-500/20 text-emerald-400 text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
+        </a>
+
+        <a href="#" onclick="app.switchSpSection('purchases'); return false;" id="posNavBtn-purchases" class="pos-nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px] text-sky-400">shopping_bag</span>
+          <span class="font-body-md flex-1">Stock Inward</span>
+          <span id="posSidebarPurchasesBadge" class="bg-sky-500/20 text-sky-400 text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
+        </a>
+
+        <a href="#" onclick="app.switchSpSection('expenses'); return false;" id="posNavBtn-expenses" class="pos-nav-item flex items-center px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-200 group">
+          <span class="material-symbols-outlined mr-md text-[20px] text-amber-400">receipt_long</span>
+          <span class="font-body-md flex-1">Petty Expenses</span>
+          <span id="posSidebarExpensesBadge" class="bg-amber-500/20 text-amber-400 text-[10px] font-data-tabular px-1.5 py-0.5 rounded-full">0</span>
+        </a>
+
+        <div class="my-lg border-t border-outline-variant/10 mx-md"></div>
+
+        <!-- POS Fast Direct Action Buttons in Sidebar -->
+        <div class="px-xs pt-1 space-y-2">
+          <button onclick="app.openSpSaleModal()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+            <span>+ Quick Bill Sale</span>
+          </button>
+          <button onclick="app.openSpExpenseModal()" class="w-full py-2 px-3 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 font-semibold text-xs flex items-center justify-center gap-2 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">receipt</span>
+            <span>+ Petty Cash Voucher</span>
+          </button>
+        </div>
+      </div>
+
     </nav>
 
     <!-- Bottom Sign Out Action -->
@@ -936,7 +974,7 @@
       <!-- TOP LEFT CORNER: LOCATION & SELLING POINT FILTERS -->
       <div class="flex items-center gap-2 lg:gap-3 flex-shrink-0">
 
-        <!-- Dropdown 1: Inventory Store Filter -->
+        <!-- Dropdown 1: Inventory Store Filter (Inventory Mode) -->
         <div id="headerStoreSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
           <span class="material-symbols-outlined text-primary text-[16px] mr-1">warehouse</span>
           <div class="flex flex-col">
@@ -950,11 +988,11 @@
           </div>
         </div>
 
-        <!-- Dropdown 2: Selling Point Filter -->
-        <div id="headerSpSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-emerald-500/40 shadow-sm" title="Filter by Selling Point Counter">
+        <!-- Dropdown 2: Selling Point Filter (POS Mode) -->
+        <div id="headerSpSelectorWrap" class="hidden items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-emerald-500/40 shadow-sm" title="Filter by Selling Point Counter">
           <span class="material-symbols-outlined text-emerald-400 text-[16px] mr-1">point_of_sale</span>
           <div class="flex flex-col">
-            <span class="text-[8px] uppercase tracking-wider font-bold text-emerald-400 leading-tight">Selling Point:</span>
+            <span class="text-[8px] uppercase tracking-wider font-bold text-emerald-400 leading-tight">Counter Register:</span>
             <select id="headerSellingPointFilter" onchange="app.handleSellingPointFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
               <option value="ALL">All Selling Points</option>
               <option value="SP_001">Front Counter (SP_001)</option>
@@ -968,10 +1006,10 @@
 
       <!-- Header Center & Right Actions -->
       <div class="flex items-center gap-2 lg:gap-3 ml-auto">
-        <!-- Search Input -->
-        <div class="hidden 2xl:flex items-center bg-surface-container-high px-3 py-1 rounded-full w-48 border border-outline-variant/20 focus-within:border-primary transition-colors">
+        <!-- Search Input (Dynamic for Inventory or POS) -->
+        <div class="hidden 2xl:flex items-center bg-surface-container-high px-3 py-1 rounded-full w-52 border border-outline-variant/20 focus-within:border-primary transition-colors">
           <span class="material-symbols-outlined text-on-surface-variant text-[17px] mr-1.5">search</span>
-          <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search items..." type="text"/>
+          <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search inventory items..." type="text"/>
         </div>
 
         <!-- User Scope Switcher (RBAC) -->
@@ -995,8 +1033,8 @@
           <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
         </button>
 
-        <!-- Stock Entry (2 Dedicated Modes: Purchase Entry & Transfer Entry) -->
-        <div class="hidden sm:flex items-center gap-2">
+        <!-- INVENTORY ACTIONS (Visible in Inventory Mode) -->
+        <div id="header-inventory-actions" class="hidden sm:flex items-center gap-2">
           <button onclick="app.openPurchaseInvoiceModal()" title="Record Purchase Entry Invoice" class="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm">
             <span class="material-symbols-outlined text-[16px]">receipt_long</span>
             <span>Purchase Entry</span>
@@ -1008,13 +1046,28 @@
           <button onclick="app.openScannerModal()" title="Scan Item Barcode with Camera" class="p-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary transition border border-outline-variant/20 cursor-pointer">
             <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
           </button>
+          <!-- Notification Bell -->
+          <button onclick="app.filterCatalogByLowStock()" title="Low Stock Alerts" class="relative p-xs hover:bg-surface-container-highest rounded-full transition-colors text-on-surface-variant hover:text-on-surface">
+            <span class="material-symbols-outlined text-[24px]">notifications</span>
+            <span id="bellAlertDot" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface animate-pulse"></span>
+          </button>
         </div>
 
-        <!-- Notification Bell -->
-        <button onclick="app.filterCatalogByLowStock()" title="Low Stock Alerts" class="relative p-xs hover:bg-surface-container-highest rounded-full transition-colors text-on-surface-variant hover:text-on-surface">
-          <span class="material-symbols-outlined text-[24px]">notifications</span>
-          <span id="bellAlertDot" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface animate-pulse"></span>
-        </button>
+        <!-- POS ACTIONS (Visible in POS Mode) -->
+        <div id="header-pos-actions" class="hidden items-center gap-2">
+          <div class="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Register Active</span>
+          </div>
+          <button onclick="app.openSpSaleModal()" title="Record New Point-of-Sale Bill" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-900/30 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">add_shopping_cart</span>
+            <span>+ Record Sale</span>
+          </button>
+          <button onclick="app.openSpExpenseModal()" title="Record Petty Cash Expense" class="px-3.5 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">receipt</span>
+            <span>+ Expense</span>
+          </button>
+        </div>
 
         <!-- Top Right Corner: Only First Letter of Active Org -->
         <div class="pl-md border-l border-outline-variant/20 flex items-center">
@@ -1046,13 +1099,13 @@
             </div>
           </div>
 
-          <!-- Synchronized Dropdowns: Inventory Store & Selling Point -->
+          <!-- Inventory Store Filter & Quick Action -->
           <div class="flex flex-wrap items-center gap-2.5">
             <!-- Dropdown 1: Inventory Store -->
             <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-xl border border-primary/40 shadow-sm">
               <span class="material-symbols-outlined text-primary text-[18px]">warehouse</span>
               <div class="flex flex-col">
-                <span class="text-[9px] uppercase tracking-wider font-bold text-primary">Inventory Store:</span>
+                <span class="text-[9px] uppercase tracking-wider font-bold text-primary">Warehouse Store:</span>
                 <select id="dashStoreSelect" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent border-none text-xs font-bold text-on-surface focus:outline-none cursor-pointer">
                   <option value="ALL">All Stores &amp; Outlets (Consolidated)</option>
                   <option value="S_000">Central Depot Warehouse (S_000)</option>
@@ -1062,24 +1115,9 @@
               </div>
             </div>
 
-            <!-- Dropdown 2: Selling Point Quick Jump -->
-            <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-xl border border-outline-variant/30 shadow-sm">
-              <span class="material-symbols-outlined text-emerald-400 text-[18px]">point_of_sale</span>
-              <div class="flex flex-col">
-                <span class="text-[9px] uppercase tracking-wider font-bold text-emerald-400">Selling Point:</span>
-                <select id="dashSellingPointSelect" onchange="app.handleSellingPointFilterChange(this.value, true)" class="bg-transparent border-none text-xs font-semibold text-on-surface focus:outline-none cursor-pointer">
-                  <option value="ALL">All Selling Points</option>
-                  <option value="SP_001">Front Counter / Retail (SP_001)</option>
-                  <option value="SP_002">Branch Dispenser Counter (SP_002)</option>
-                  <option value="SP_003">Main Production / Operations (SP_003)</option>
-                  <option value="SP_004">Customer Service &amp; Dispatch (SP_004)</option>
-                </select>
-              </div>
-            </div>
-
-            <button onclick="app.switchTab('sellingpoint')" class="px-3 py-2 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 border border-emerald-500/30 font-bold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer" title="Go to Selling Point Dashboard">
-              <span>Go to Selling Point</span>
-              <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+            <button onclick="app.openItemModal()" class="px-3.5 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 font-bold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer" title="Add New Product SKU">
+              <span class="material-symbols-outlined text-[16px]">add_box</span>
+              <span>+ Add SKU</span>
             </button>
           </div>
         </div>
@@ -1329,13 +1367,13 @@
             </div>
           </div>
 
-          <!-- Synchronized Dropdowns: Selling Point & Inventory Store -->
+          <!-- Selling Point Register Selector & Live Status -->
           <div class="flex flex-wrap items-center gap-2.5">
-            <!-- Dropdown 1: Active Selling Point Selector -->
+            <!-- Active Selling Point Selector -->
             <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-xl border border-emerald-500/40 shadow-sm">
               <span class="material-symbols-outlined text-emerald-400 text-[18px]">point_of_sale</span>
               <div class="flex flex-col">
-                <span class="text-[9px] uppercase tracking-wider font-bold text-emerald-400">Active Selling Point:</span>
+                <span class="text-[9px] uppercase tracking-wider font-bold text-emerald-400">Active Register / Counter:</span>
                 <select id="spActiveSelect" onchange="app.handleSellingPointFilterChange(this.value, false)" class="bg-transparent border-none text-xs font-bold text-on-surface focus:outline-none cursor-pointer">
                   <option value="ALL">All Selling Points</option>
                   <option value="SP_001">Front Counter / Retail Sales (SP_001)</option>
@@ -1346,18 +1384,10 @@
               </div>
             </div>
 
-            <!-- Dropdown 2: Inventory Store Selector -->
-            <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-xl border border-outline-variant/30 shadow-sm">
-              <span class="material-symbols-outlined text-primary text-[18px]">warehouse</span>
-              <div class="flex flex-col">
-                <span class="text-[9px] uppercase tracking-wider font-bold text-primary">Inventory Store:</span>
-                <select id="spStoreSelect" onchange="app.handlePropertyFilterChange(this.value, true)" class="bg-transparent border-none text-xs font-semibold text-on-surface focus:outline-none cursor-pointer">
-                  <option value="ALL">All Stores &amp; Outlets</option>
-                  <option value="S_000">Central Depot Warehouse (S_000)</option>
-                  <option value="S_001">Store 1 - Main Branch (S_001)</option>
-                  <option value="S_002">Store 2 - Outlet Branch (S_002)</option>
-                </select>
-              </div>
+            <!-- POS Live Edge Sync Pill -->
+            <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Live POS Edge Terminal</span>
             </div>
           </div>
         </div>
