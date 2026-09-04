@@ -863,74 +863,79 @@
 
     <!-- FIXED TOP HEADER -->
     <header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 px-xl flex items-center justify-between border-b border-outline-variant/10">
-      <div class="flex items-center gap-3">
-        <!-- Search Input -->
-        <div class="flex items-center bg-surface-container-high px-md py-xs rounded-full w-72 lg:w-80 border border-outline-variant/20 focus-within:border-primary transition-colors">
-          <span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-sm">search</span>
-          <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-sm text-on-surface w-full placeholder:text-outline" placeholder="Search inventory, orders, or suppliers..." type="text"/>
-        </div>
-
-        <!-- Organization Selector Button -->
-        <button onclick="app.openOrgModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
-          <span class="material-symbols-outlined text-primary text-[18px]">corporate_fare</span>
-          <span id="headerOrgName" class="font-bold truncate max-w-[130px]">Zolexora IMS</span>
-          <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
-        </button>
-      </div>
-
-      <!-- Header Center & Right Actions -->
-      <div class="flex items-center gap-2 lg:gap-3">
-        <!-- TOP DUAL DASHBOARD TABS SWITCHER -->
-        <div class="hidden lg:flex items-center bg-surface-container-high/90 p-1 rounded-xl border border-outline-variant/20 shadow-inner">
-          <button id="headerTab-dashboard" onclick="app.switchTab('dashboard')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer" title="Central Inventory & Store Management">
-            <span class="material-symbols-outlined text-[16px]">warehouse</span>
-            <span>Inventory - Store</span>
+      <!-- TOP LEFT CORNER: DUAL DASHBOARDS (INVENTORY STORE & SELLING POINT HORIZONTALLY LOCATED) -->
+      <div class="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+        <!-- Dual Horizontal Buttons -->
+        <div class="flex items-center bg-surface-container-high/90 p-1 rounded-xl border border-outline-variant/30 shadow-sm" role="tablist">
+          <button id="headerTab-dashboard" onclick="app.switchTab('dashboard')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-primary text-on-primary shadow-sm cursor-pointer" title="Switch to Inventory Store Dashboard">
+            <span class="material-symbols-outlined text-[17px]">warehouse</span>
+            <span class="whitespace-nowrap">Inventory Store</span>
           </button>
-          <button id="headerTab-sellingpoint" onclick="app.switchTab('sellingpoint')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer" title="Selling Point POS Operations & Cash Flow">
-            <span class="material-symbols-outlined text-[16px]">point_of_sale</span>
-            <span>Selling Point</span>
-            <span class="bg-emerald-500/20 text-emerald-400 text-[9px] font-mono px-1 py-0.2 rounded uppercase">POS</span>
+          <button id="headerTab-sellingpoint" onclick="app.switchTab('sellingpoint')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest cursor-pointer" title="Switch to Selling Point Operations Dashboard">
+            <span class="material-symbols-outlined text-[17px]">point_of_sale</span>
+            <span class="whitespace-nowrap">Selling Point</span>
+            <span class="bg-emerald-500/20 text-emerald-400 text-[9px] font-mono px-1 py-0.2 rounded uppercase font-bold">POS</span>
           </button>
         </div>
 
         <!-- Dropdown 1: Inventory Store Filter -->
-        <div class="hidden md:flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/20">
+        <div id="headerStoreSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-primary/40 shadow-sm" title="Filter by Inventory Store Location">
           <span class="material-symbols-outlined text-primary text-[16px] mr-1">warehouse</span>
-          <span class="font-label-caps text-label-caps text-on-surface-variant mr-1">Store:</span>
-          <select id="headerPropertyFilter" onchange="app.handlePropertyFilterChange(this.value, false)" class="bg-transparent text-xs font-semibold text-on-surface outline-none cursor-pointer pr-1">
-            <option value="ALL" class="bg-surface-container-high text-on-surface">All Stores &amp; Outlets</option>
-            <option value="S_000" class="bg-surface-container-high text-on-surface">Central Depot (S_000)</option>
-            <option value="S_001" class="bg-surface-container-high text-on-surface">Store 1 - Main (S_001)</option>
-            <option value="S_002" class="bg-surface-container-high text-on-surface">Store 2 - Outlet (S_002)</option>
-          </select>
+          <div class="flex flex-col">
+            <span class="text-[8px] uppercase tracking-wider font-bold text-primary leading-tight">Store:</span>
+            <select id="headerPropertyFilter" onchange="app.handlePropertyFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+              <option value="ALL">All Stores &amp; Outlets</option>
+              <option value="S_000">Central Depot (S_000)</option>
+              <option value="S_001">Store 1 - Main (S_001)</option>
+              <option value="S_002">Store 2 - Outlet (S_002)</option>
+            </select>
+          </div>
         </div>
 
         <!-- Dropdown 2: Selling Point Filter -->
-        <div class="hidden xl:flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-outline-variant/20">
+        <div id="headerSpSelectorWrap" class="flex items-center bg-surface-container-high rounded-xl px-2.5 py-1 border border-emerald-500/40 shadow-sm" title="Filter by Selling Point Counter">
           <span class="material-symbols-outlined text-emerald-400 text-[16px] mr-1">point_of_sale</span>
-          <span class="font-label-caps text-label-caps text-on-surface-variant mr-1">Selling Point:</span>
-          <select id="headerSellingPointFilter" onchange="app.handleSellingPointFilterChange(this.value, true)" class="bg-transparent text-xs font-semibold text-on-surface outline-none cursor-pointer pr-1">
-            <option value="ALL" class="bg-surface-container-high text-on-surface">All Selling Points</option>
-            <option value="SP_001" class="bg-surface-container-high text-on-surface">Front Counter (SP_001)</option>
-            <option value="SP_002" class="bg-surface-container-high text-on-surface">Dispenser Counter (SP_002)</option>
-            <option value="SP_003" class="bg-surface-container-high text-on-surface">Production / Kitchen (SP_003)</option>
-            <option value="SP_004" class="bg-surface-container-high text-on-surface">Dispatch Hub (SP_004)</option>
-          </select>
+          <div class="flex flex-col">
+            <span class="text-[8px] uppercase tracking-wider font-bold text-emerald-400 leading-tight">Selling Point:</span>
+            <select id="headerSellingPointFilter" onchange="app.handleSellingPointFilterChange(this.value, true)" class="bg-transparent text-xs font-bold text-on-surface outline-none cursor-pointer pr-1">
+              <option value="ALL">All Selling Points</option>
+              <option value="SP_001">Front Counter (SP_001)</option>
+              <option value="SP_002">Dispenser Counter (SP_002)</option>
+              <option value="SP_003">Production / Kitchen (SP_003)</option>
+              <option value="SP_004">Dispatch Hub (SP_004)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Header Center & Right Actions -->
+      <div class="flex items-center gap-2 lg:gap-3 ml-auto">
+        <!-- Search Input -->
+        <div class="hidden 2xl:flex items-center bg-surface-container-high px-3 py-1 rounded-full w-48 border border-outline-variant/20 focus-within:border-primary transition-colors">
+          <span class="material-symbols-outlined text-on-surface-variant text-[17px] mr-1.5">search</span>
+          <input id="headerSearchInput" oninput="app.handleGlobalSearch(this.value)" class="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-on-surface w-full placeholder:text-outline" placeholder="Search items..." type="text"/>
         </div>
 
         <!-- User Scope Switcher (RBAC) -->
-        <div class="hidden 2xl:flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-xl border border-outline-variant/30 shadow-sm" title="Active User Scope (Role-Based Access Control)">
+        <div class="hidden sm:flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-xl border border-outline-variant/30 shadow-sm" title="Active User Scope (Role-Based Access Control)">
           <span class="material-symbols-outlined text-[16px] text-primary">badge</span>
           <div class="flex flex-col">
             <div class="flex items-center gap-1">
-              <span class="text-[9px] uppercase tracking-wider font-bold text-outline">User Scope:</span>
-              <span id="activeUserScopeBadge" class="bg-primary/20 text-primary text-[9px] font-bold px-1 rounded uppercase">GLOBAL</span>
+              <span class="text-[8px] uppercase tracking-wider font-bold text-outline">User Scope:</span>
+              <span id="activeUserScopeBadge" class="bg-primary/20 text-primary text-[8px] font-bold px-1 rounded uppercase">GLOBAL</span>
             </div>
             <select id="headerUserSwitcher" onchange="app.switchDemoUser(this.value)" class="bg-transparent border-none text-xs font-bold text-on-surface focus:outline-none cursor-pointer pr-1">
               <!-- Dynamically loaded with users -->
             </select>
           </div>
         </div>
+
+        <!-- Organization Selector Button -->
+        <button onclick="app.openOrgModal()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 text-xs font-semibold text-on-surface transition shadow-sm cursor-pointer" title="Switch or Manage Organization">
+          <span class="material-symbols-outlined text-primary text-[18px]">corporate_fare</span>
+          <span id="headerOrgName" class="font-bold truncate max-w-[110px]">Zolexora IMS</span>
+          <span class="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
+        </button>
 
         <!-- Stock Entry (2 Dedicated Modes: Purchase Entry & Transfer Entry) -->
         <div class="hidden sm:flex items-center gap-2">
