@@ -264,7 +264,10 @@ function getUsers() {
   const nameIdx = headers.findIndex(h => h.includes('name'));
   const roleIdx = headers.findIndex(h => h.includes('role'));
   const emailIdx = headers.findIndex(h => h.includes('email'));
+  const assignedIdx = headers.findIndex(h => h.includes('assigned') || h.includes('store') || h.includes('selling') || h.includes('point') || h.includes('location'));
   const statusIdx = headers.findIndex(h => h.includes('status'));
+  const scopeTypeIdx = headers.findIndex(h => h.includes('scope'));
+  const locNameIdx = headers.findIndex(h => h.includes('location name'));
 
   const users = [];
   for (let i = 1; i < data.length; i++) {
@@ -272,13 +275,128 @@ function getUsers() {
     const name = nameIdx !== -1 ? String(row[nameIdx] || '').trim() : String(row[1] || '').trim();
     if (!name) continue;
 
+    const assigned = assignedIdx !== -1 ? String(row[assignedIdx] || 'ALL').trim() : 'ALL';
+    let scopeType = scopeTypeIdx !== -1 && row[scopeTypeIdx] ? String(row[scopeTypeIdx]).trim() : '';
+    if (!scopeType) {
+      if (assigned.toUpperCase().startsWith('SP_')) scopeType = 'SELLING_POINT';
+      else if (assigned.toUpperCase().startsWith('S_')) scopeType = 'STORE';
+      else scopeType = 'ALL';
+    }
+
     users.push({
       id: idIdx !== -1 ? String(row[idIdx] || '') : ('USR_' + String(i).padStart(3, '0')),
       name: name,
       role: roleIdx !== -1 ? String(row[roleIdx] || 'Staff') : 'Staff',
       email: emailIdx !== -1 ? String(row[emailIdx] || '') : '',
+      assignedLocation: assigned,
+      scopeType: scopeType,
+      locationName: locNameIdx !== -1 && row[locNameIdx] ? String(row[locNameIdx]) : '',
       status: statusIdx !== -1 ? String(row[statusIdx] || 'Active') : 'Active'
     });
   }
   return users;
+}
+
+function saveUser(userData) {
+  if (!userData || !userData.name) {
+    throw new Error('User name is required.');
+  }
+
+  const ss = getWorkbook(WORKBOOKS.USERS_SETTINGS);
+  let sheet = ss.getSheetByName('Users');
+  if (!sheet) {
+    sheet = ss.insertSheet('Users');
+    sheet.appendRow(['User ID', 'Name', 'Role', 'Email', 'Assigned Store / Selling Point', 'Status', 'Scope Type', 'Location Name']);
+    formatHeaderRow(sheet, 8);
+  }
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (e) {
+    throw new Error('Database busy. Please retry saving user.');
+  }
+
+  try {
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => String(h).trim().toLowerCase());
+    const idIdx = headers.findIndex(h => h.includes('id') || h.includes('code'));
+    
+    let existingRow = -1;
+    if (userData.id) {
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIdx !== -1 ? idIdx : 0]).trim() === String(userData.id).trim()) {
+          existingRow = i + 1;
+          break;
+        }
+      }
+    }
+
+    const assigned = String(userData.assignedLocation || 'ALL').trim();
+    let scopeType = userData.scopeType || '';
+    if (!scopeType) {
+      if (assigned.toUpperCase().startsWith('SP_')) scopeType = 'SELLING_POINT';
+      else if (assigned.toUpperCase().startsWith('S_')) scopeType = 'STORE';
+      else scopeType = 'ALL';
+    }
+
+    const userId = userData.id || ('USR_' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyyMMdd_HHmmss'));
+    const rowValues = [
+      userId,
+      userData.name,
+      userData.role || 'Selling Point Cashier',
+      userData.email || '',
+      assigned,
+      userData.status || 'Active',
+      scopeType,
+      userData.locationName || ''
+    ];
+
+    if (existingRow > 0) {
+      sheet.getRange(existingRow, 1, 1, rowValues.length).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+
+    return {
+      success: true,
+      message: existingRow > 0 ? 'User updated successfully.' : 'New user created successfully.',
+      user: {
+        id: userId,
+        name: userData.name,
+        role: userData.role || 'Staff',
+        email: userData.email || '',
+        assignedLocation: assigned,
+        scopeType: scopeType,
+        locationName: userData.locationName || '',
+        status: userData.status || 'Active'
+      },
+      users: getUsers()
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteUser(userId) {
+  if (!userId) throw new Error('User ID is required to delete.');
+  const ss = getWorkbook(WORKBOOKS.USERS_SETTINGS);
+  const sheet = ss.getSheetByName('Users');
+  if (!sheet) return { success: false, message: 'Users sheet not found.' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { throw new Error('Database busy.'); }
+
+  try {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(userId).trim()) {
+        sheet.deleteRow(i + 1);
+        return { success: true, message: 'User deleted successfully.', users: getUsers() };
+      }
+    }
+    return { success: false, message: 'User not found.', users: getUsers() };
+  } finally {
+    lock.releaseLock();
+  }
 }

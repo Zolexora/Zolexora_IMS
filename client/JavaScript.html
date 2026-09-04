@@ -11,10 +11,13 @@ const app = {
     suppliers: [],
     departments: [],
     locations: [],
+    users: [],
+    currentUser: null,
     settings: { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' },
     recentTransactions: [],
     activeTab: 'dashboard',
     propertyFilter: 'ALL',
+    spFilter: 'ALL',
     categoryChart: null,
     html5QrScanner: null
   },
@@ -393,6 +396,13 @@ const app = {
     this.state.users = data.users || [];
     this.state.settings = data.settings || { CURRENCY_SYMBOL: '₹', HOTEL_NAME: 'Zolexora IMS' };
 
+    // Resolve active operational persona (RBAC Scope)
+    if (!this.state.currentUser && this.state.users && this.state.users.length > 0) {
+      const authEmail = (this.state.authUser && this.state.authUser.email) ? this.state.authUser.email.toLowerCase() : '';
+      const matchedUser = this.state.users.find(u => u.email && u.email.toLowerCase() === authEmail);
+      this.state.currentUser = matchedUser || this.state.users[0];
+    }
+
     const currentOrgName = (this.state.activeOrganization && this.state.activeOrganization.name) 
       ? this.state.activeOrganization.name 
       : (this.state.settings.HOTEL_NAME || 'Zolexora IMS');
@@ -434,6 +444,8 @@ const app = {
     this.renderDepartmentsAndLocations();
     this.renderSettingsTab();
     this.renderSellingPointDashboard();
+    this.renderUsersTable();
+    this.applyUserPermissions();
     this.switchTab(this.state.activeTab || 'dashboard');
   },
 
@@ -953,6 +965,11 @@ const app = {
     if (tabId === 'sellingpoint') {
       this.renderSellingPointDashboard();
     }
+
+    // Trigger Users & RBAC Directory render
+    if (tabId === 'users') {
+      this.renderUsersTable();
+    }
   },
 
   handleGlobalSearch: function(query) {
@@ -980,6 +997,21 @@ const app = {
   },
 
   handlePropertyFilterChange: function(propertyCode, autoSwitchTab) {
+    // RBAC Isolation Guard: If active user is locked to a specific store
+    const curUser = this.state.currentUser;
+    if (curUser) {
+      const userLoc = String(curUser.assignedLocation || curUser.assignedStore || 'ALL').trim().toUpperCase();
+      const isStoreScoped = (curUser.scopeType === 'STORE' || (userLoc.startsWith('S_') || userLoc === 'CENTRAL')) && !userLoc.startsWith('SP_') && userLoc !== 'ALL';
+      if (isStoreScoped && propertyCode !== userLoc) {
+        this.showToast(`Access Restricted: Your user account is locked to [${userLoc}]. Switch user to view other stores.`, 'error');
+        ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = userLoc;
+        });
+        return;
+      }
+    }
+
     this.state.propertyFilter = propertyCode;
 
     // Synchronize all Store Dropdowns across header & dashboards
@@ -1010,6 +1042,21 @@ const app = {
   },
 
   handleSellingPointFilterChange: function(spCode, autoSwitchTab) {
+    // RBAC Isolation Guard: If active user is locked to a specific selling point
+    const curUser = this.state.currentUser;
+    if (curUser) {
+      const userLoc = String(curUser.assignedLocation || curUser.assignedStore || 'ALL').trim().toUpperCase();
+      const isSpScoped = (curUser.scopeType === 'SELLING_POINT' || userLoc.startsWith('SP_')) && userLoc !== 'ALL';
+      if (isSpScoped && spCode !== userLoc) {
+        this.showToast(`Access Restricted: Your user account is locked to [${userLoc}]. Switch user to view other counters.`, 'error');
+        ['headerSellingPointFilter', 'dashSellingPointSelect', 'spActiveSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = userLoc;
+        });
+        return;
+      }
+    }
+
     this.state.spFilter = spCode;
 
     // Synchronize all Selling Point Dropdowns across header & dashboards
@@ -2715,11 +2762,24 @@ const app = {
       storeList.map(st => `<option value="${st.code}">${st.name} (${st.code})</option>`).join('');
 
     const curProp = this.state.propertyFilter || 'ALL';
+    const curUser = this.state.currentUser;
+    const userLoc = curUser ? String(curUser.assignedLocation || curUser.assignedStore || 'ALL').trim().toUpperCase() : 'ALL';
+    const isStoreScoped = (curUser && curUser.scopeType === 'STORE') || ((userLoc.startsWith('S_') || userLoc === 'CENTRAL') && !userLoc.startsWith('SP_') && userLoc !== 'ALL');
+
     ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.innerHTML = filterStoreOptions;
-        el.value = curProp;
+        if (isStoreScoped) {
+          el.value = userLoc;
+          el.disabled = true;
+          el.title = `Locked to assigned inventory store ${userLoc} by policy`;
+          el.classList.add('opacity-75', 'cursor-not-allowed');
+        } else {
+          el.value = curProp;
+          el.disabled = false;
+          el.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
       }
     });
 
@@ -3415,6 +3475,19 @@ const app = {
         { code: 'S_002', name: 'Store 2 - Outlet Branch' }
       ];
       storeSelect.innerHTML = stores.map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+
+      const curUser = this.state.currentUser;
+      const userLoc = curUser ? String(curUser.assignedLocation || curUser.assignedStore || 'ALL').toUpperCase() : 'ALL';
+      const isStoreScoped = (userLoc.startsWith('S_') || userLoc === 'CENTRAL') && !userLoc.startsWith('SP_');
+      if (isStoreScoped) {
+        storeSelect.value = userLoc;
+        storeSelect.disabled = true;
+      } else {
+        storeSelect.disabled = false;
+        if (this.state.propertyFilter && this.state.propertyFilter !== 'ALL') {
+          storeSelect.value = this.state.propertyFilter;
+        }
+      }
     }
 
     // 5. Reset line items & add initial row
@@ -3807,6 +3880,19 @@ const app = {
         { code: 'S_002', name: 'Store 2 - Outlet Branch' }
       ];
       fromStoreSelect.innerHTML = stores.map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+
+      const curUser = this.state.currentUser;
+      const userLoc = curUser ? String(curUser.assignedLocation || curUser.assignedStore || 'ALL').toUpperCase() : 'ALL';
+      const isStoreScoped = (userLoc.startsWith('S_') || userLoc === 'CENTRAL') && !userLoc.startsWith('SP_');
+      if (isStoreScoped) {
+        fromStoreSelect.value = userLoc;
+        fromStoreSelect.disabled = true;
+      } else {
+        fromStoreSelect.disabled = false;
+        if (this.state.propertyFilter && this.state.propertyFilter !== 'ALL') {
+          fromStoreSelect.value = this.state.propertyFilter;
+        }
+      }
     }
 
     const spSelect = document.getElementById('tiSellingPoint');
@@ -3820,6 +3906,13 @@ const app = {
       spSelect.innerHTML = sps.map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name} (${sp.type || 'Selling Point'})</option>`).join('') +
         `<option value="S_001">[S_001] Store 1 - Main Branch (Store Branch)</option>` +
         `<option value="S_002">[S_002] Store 2 - Outlet Branch (Store Branch)</option>`;
+
+      const curUser = this.state.currentUser;
+      const userLoc = curUser ? String(curUser.assignedLocation || curUser.assignedStore || 'ALL').toUpperCase() : 'ALL';
+      const isSpScoped = userLoc.startsWith('SP_');
+      if (isSpScoped) {
+        spSelect.value = userLoc;
+      }
     }
 
     this.transferInvoiceCounter = 0;
@@ -4551,6 +4644,31 @@ const app = {
       const el = document.getElementById(id);
       if (el) el.innerHTML = itemOptions;
     });
+
+    // RBAC: If current user is locked to an SP, enforce lock state
+    const curUser = this.state.currentUser;
+    if (curUser) {
+      const userLoc = String(curUser.assignedLocation || curUser.assignedStore || 'ALL').trim().toUpperCase();
+      const isSpScoped = (curUser.scopeType === 'SELLING_POINT' || userLoc.startsWith('SP_')) && userLoc !== 'ALL';
+      if (isSpScoped) {
+        ['headerSellingPointFilter', 'dashSellingPointSelect', 'spActiveSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.value = userLoc;
+            el.disabled = true;
+            el.title = `Locked to assigned selling point ${userLoc} by policy`;
+            el.classList.add('opacity-75', 'cursor-not-allowed');
+          }
+        });
+        ['spSaleSpSelect', 'spPurSpSelect', 'spExpSpSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.value = userLoc;
+            el.disabled = true;
+          }
+        });
+      }
+    }
   },
 
   renderSellingPointDashboard: function() {
@@ -5372,6 +5490,569 @@ const app = {
     }
   },
 
+  // ==============================================================
+  // 6. USER MANAGEMENT & ROLE-BASED ACCESS CONTROL (RBAC) ENGINE
+  // ==============================================================
+
+  applyUserPermissions: function() {
+    if (!this.state.users || this.state.users.length === 0) return;
+    if (!this.state.currentUser) {
+      this.state.currentUser = this.state.users[0];
+    }
+    const u = this.state.currentUser;
+    const loc = String(u.assignedLocation || u.assignedStore || 'ALL').trim().toUpperCase();
+    const isSpScoped = (u.scopeType === 'SELLING_POINT' || loc.startsWith('SP_')) && loc !== 'ALL';
+    const isStoreScoped = (u.scopeType === 'STORE' || (loc.startsWith('S_') || loc === 'CENTRAL')) && !isSpScoped && loc !== 'ALL';
+    const isGlobal = !isSpScoped && !isStoreScoped;
+
+    // 1. Update Scope Badges and Switchers
+    const scopeBadge = document.getElementById('activeUserScopeBadge');
+    if (scopeBadge) {
+      if (isSpScoped) {
+        scopeBadge.innerText = loc;
+        scopeBadge.className = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+      } else if (isStoreScoped) {
+        scopeBadge.innerText = loc;
+        scopeBadge.className = 'bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+      } else {
+        scopeBadge.innerText = 'GLOBAL';
+        scopeBadge.className = 'bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase';
+      }
+    }
+
+    const hSwitcher = document.getElementById('headerUserSwitcher');
+    if (hSwitcher && hSwitcher.value !== u.id) {
+      hSwitcher.value = u.id;
+    }
+    const dSwitcher = document.getElementById('usersDirectorySwitcher');
+    if (dSwitcher && dSwitcher.value !== u.id) {
+      dSwitcher.value = u.id;
+    }
+
+    // Top Header profile labels
+    const dUser = document.getElementById('dropdownUserName');
+    if (dUser) dUser.innerText = u.name || u.email;
+    const dRole = document.getElementById('dropdownUserRole');
+    if (dRole) dRole.innerText = `${u.role || 'Staff'} [${loc}]`;
+
+    // 2. Selling Point Lockdown / Unlock
+    const spSelects = ['headerSellingPointFilter', 'dashSellingPointSelect', 'spActiveSelect'];
+    const spModalSelects = ['spSaleSpSelect', 'spPurSpSelect', 'spExpSpSelect'];
+    const spNotice = document.getElementById('spLockNotice');
+    const spNoticeText = document.getElementById('spLockNoticeText');
+
+    if (isSpScoped) {
+      this.state.spFilter = loc;
+      spSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = loc;
+          el.disabled = true;
+          el.title = `Locked strictly to counter [${loc}] by policy`;
+          el.classList.add('opacity-75', 'cursor-not-allowed');
+        }
+      });
+      spModalSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = loc;
+          el.disabled = true;
+        }
+      });
+      if (spNotice) {
+        spNotice.classList.remove('hidden');
+        if (spNoticeText) {
+          spNoticeText.innerHTML = `<b>Counter Isolation Active:</b> You are signed in as <b>${u.name}</b> (${u.role}). Sales billing, inward deliveries, and petty expenses are locked strictly to <b>[${loc}] ${u.locationName || ''}</b>.`;
+        }
+      }
+    } else {
+      // Global or Store User: Unlock Selling Point dropdowns
+      spSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.disabled = false;
+          el.title = 'Select Selling Point';
+          el.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+      });
+      spModalSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+      });
+      if (spNotice) spNotice.classList.add('hidden');
+    }
+
+    // 3. Store / Warehouse Lockdown / Unlock
+    const storeSelects = ['headerPropertyFilter', 'dashStoreSelect', 'spStoreSelect'];
+    const storeNotice = document.getElementById('storeLockNotice');
+    const storeNoticeText = document.getElementById('storeLockNoticeText');
+
+    if (isStoreScoped) {
+      this.state.propertyFilter = loc;
+      storeSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = loc;
+          el.disabled = true;
+          el.title = `Locked strictly to store [${loc}] by policy`;
+          el.classList.add('opacity-75', 'cursor-not-allowed');
+        }
+      });
+      if (storeNotice) {
+        storeNotice.classList.remove('hidden');
+        if (storeNoticeText) {
+          storeNoticeText.innerHTML = `<b>Store Isolation Active:</b> You are signed in as <b>${u.name}</b> (${u.role}). Inventory valuation, stock alerts, and inward/transfer movements are isolated exclusively to <b>[${loc}] ${u.locationName || ''}</b>.`;
+        }
+      }
+    } else {
+      // Global or SP User: Unlock Store dropdowns
+      storeSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.disabled = false;
+          el.title = 'Filter by Store Location';
+          el.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+      });
+      if (storeNotice) storeNotice.classList.add('hidden');
+    }
+
+    // 4. Update default staff name in transaction forms
+    const spCashier = document.getElementById('spSaleCashier');
+    if (spCashier) spCashier.value = u.name || 'Duty Cashier';
+    const spPurRec = document.getElementById('spPurReceivedBy');
+    if (spPurRec) spPurRec.value = u.name || 'Counter Incharge';
+    const spExpRec = document.getElementById('spExpRecordedBy');
+    if (spExpRec) spExpRec.value = u.name || 'Duty Manager';
+
+    // 5. Recompute metrics and refresh views
+    this.recomputeLocalMetrics();
+    this.filterSellingPointData();
+    this.filterCatalog();
+  },
+
+  switchDemoUser: function(userId) {
+    const user = (this.state.users || []).find(u => u.id === userId);
+    if (!user) return;
+
+    this.state.currentUser = user;
+    this.applyUserPermissions();
+    this.renderUsersTable();
+
+    const loc = String(user.assignedLocation || user.assignedStore || 'ALL').trim().toUpperCase();
+    const isSp = (user.scopeType === 'SELLING_POINT' || loc.startsWith('SP_')) && loc !== 'ALL';
+    const isStore = (user.scopeType === 'STORE' || (loc.startsWith('S_') || loc === 'CENTRAL')) && !isSp && loc !== 'ALL';
+
+    if (isSp) {
+      this.showToast(`Switched active persona to ${user.name} (${user.role}). Scoped exclusively to Selling Point: [${loc}]!`, 'info');
+      if (this.state.activeTab !== 'sellingpoint' && this.state.activeTab !== 'users') {
+        this.switchTab('sellingpoint');
+      }
+    } else if (isStore) {
+      this.showToast(`Switched active persona to ${user.name} (${user.role}). Scoped exclusively to Store: [${loc}]!`, 'info');
+      if (this.state.activeTab !== 'dashboard' && this.state.activeTab !== 'users') {
+        this.switchTab('dashboard');
+      }
+    } else {
+      this.showToast(`Switched active persona to ${user.name} (Global Administrator). Full unrestricted access across all locations!`, 'success');
+    }
+  },
+
+  renderUsersTable: function(customList) {
+    const users = customList || this.state.users || [];
+    const tbody = document.getElementById('usersTableBody');
+    const curUser = this.state.currentUser || (users.length > 0 ? users[0] : null);
+
+    // Update 4 Summary KPI counters
+    const allUsers = this.state.users || [];
+    const kpiTotal = allUsers.length;
+    const kpiCashiers = allUsers.filter(u => {
+      const loc = String(u.assignedLocation || u.assignedStore || '').toUpperCase();
+      return (u.scopeType === 'SELLING_POINT' || loc.startsWith('SP_')) && loc !== 'ALL';
+    }).length;
+    const kpiStore = allUsers.filter(u => {
+      const loc = String(u.assignedLocation || u.assignedStore || '').toUpperCase();
+      return (u.scopeType === 'STORE' || (loc.startsWith('S_') && !loc.startsWith('SP_'))) && loc !== 'ALL';
+    }).length;
+    const kpiAdmins = allUsers.filter(u => {
+      const loc = String(u.assignedLocation || u.assignedStore || '').toUpperCase();
+      const role = (u.role || '').toLowerCase();
+      return (u.scopeType === 'ALL' || loc === 'ALL' || role.includes('admin') || role.includes('owner'));
+    }).length;
+
+    if (document.getElementById('userMetricTotal')) document.getElementById('userMetricTotal').innerText = kpiTotal;
+    if (document.getElementById('userMetricCashiers')) document.getElementById('userMetricCashiers').innerText = kpiCashiers;
+    if (document.getElementById('userMetricStoreIncharge')) document.getElementById('userMetricStoreIncharge').innerText = kpiStore;
+    if (document.getElementById('userMetricAdmins')) document.getElementById('userMetricAdmins').innerText = kpiAdmins;
+
+    // Populate switchers: headerUserSwitcher and usersDirectorySwitcher
+    const switcherOptions = allUsers.map(u => {
+      const loc = u.assignedLocation || u.assignedStore || 'ALL';
+      return `<option value="${u.id}">${u.name} (${loc} - ${u.role})</option>`;
+    }).join('');
+
+    const hSwitcher = document.getElementById('headerUserSwitcher');
+    if (hSwitcher) {
+      hSwitcher.innerHTML = switcherOptions;
+      if (curUser) hSwitcher.value = curUser.id;
+    }
+    const dSwitcher = document.getElementById('usersDirectorySwitcher');
+    if (dSwitcher) {
+      dSwitcher.innerHTML = switcherOptions;
+      if (curUser) dSwitcher.value = curUser.id;
+    }
+
+    if (!tbody) return;
+    if (users.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-on-surface-variant font-medium">No users found matching search or filter criteria.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const isCurrent = curUser && curUser.id === u.id;
+      const loc = String(u.assignedLocation || u.assignedStore || 'ALL').trim().toUpperCase();
+      const isSp = (u.scopeType === 'SELLING_POINT' || loc.startsWith('SP_')) && loc !== 'ALL';
+      const isStore = (u.scopeType === 'STORE' || (loc.startsWith('S_') || loc === 'CENTRAL')) && !isSp && loc !== 'ALL';
+      const isGlobal = !isSp && !isStore;
+
+      const scopeBadge = isSp 
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"><span class="material-symbols-outlined text-[12px]">point_of_sale</span>SELLING POINT</span>`
+        : isStore
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30"><span class="material-symbols-outlined text-[12px]">warehouse</span>INVENTORY STORE</span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30"><span class="material-symbols-outlined text-[12px]">public</span>GLOBAL (ALL)</span>`;
+
+      const locColor = isSp ? 'text-emerald-400' : isStore ? 'text-sky-400' : 'text-purple-400';
+      const locIcon = isSp ? 'storefront' : isStore ? 'inventory_2' : 'domain';
+      const initial = (u.name || 'U').charAt(0).toUpperCase();
+
+      return `
+        <tr class="hover:bg-surface-container-high transition border-b border-outline-variant/10 ${isCurrent ? 'bg-primary/5' : ''}">
+          <td class="p-3 pl-5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full ${isSp ? 'bg-emerald-500/20 text-emerald-300' : isStore ? 'bg-sky-500/20 text-sky-300' : 'bg-primary/20 text-primary'} flex items-center justify-center font-bold text-xs">
+                ${initial}
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5 font-bold text-on-surface">
+                  <span>${u.name}</span>
+                  ${isCurrent ? `<span class="bg-primary/20 text-primary text-[9px] font-bold px-1.5 py-0.2 rounded uppercase border border-primary/30">Active Session</span>` : ''}
+                </div>
+                <div class="text-[11px] text-on-surface-variant font-mono">${u.email || '--'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="p-3">
+            <span class="font-semibold text-xs text-on-surface">${u.role || 'Staff'}</span>
+            <div class="text-[10px] font-mono text-outline">${u.id}</div>
+          </td>
+          <td class="p-3">${scopeBadge}</td>
+          <td class="p-3">
+            <div class="flex items-center gap-1.5 font-semibold text-xs ${locColor}">
+              <span class="material-symbols-outlined text-[16px]">${locIcon}</span>
+              <span>[${loc}]</span>
+            </div>
+            <div class="text-[11px] text-on-surface-variant truncate max-w-[200px]">${u.locationName || (isGlobal ? 'All Outlets & Counters' : loc)}</div>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.status === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-surface-container-highest text-on-surface-variant'}">
+              ${u.status || 'Active'}
+            </span>
+          </td>
+          <td class="p-3 text-right pr-5">
+            <div class="flex items-center justify-end gap-1.5">
+              ${!isCurrent ? `
+                <button onclick="app.switchDemoUser('${u.id}')" title="Test session as this user" class="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-xs font-bold transition text-on-surface-variant border border-outline-variant/20 flex items-center gap-1 cursor-pointer">
+                  <span class="material-symbols-outlined text-[14px]">login</span>
+                  <span>Test Role</span>
+                </button>
+              ` : `
+                <span class="px-2.5 py-1 rounded-lg bg-primary/20 text-primary text-xs font-bold border border-primary/30 flex items-center gap-1 cursor-default">
+                  <span class="material-symbols-outlined text-[14px]">verified_user</span>
+                  <span>Active</span>
+                </span>
+              `}
+              <button onclick="app.openUserModal('${u.id}')" title="Edit user role & scope" class="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">edit</span>
+              </button>
+              <button onclick="app.confirmDeleteUser('${u.id}')" title="Delete user" class="p-1 rounded-lg text-error hover:text-error hover:bg-error/10 transition cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  filterUsersTable: function() {
+    const q = (document.getElementById('userSearchInput')?.value || '').toLowerCase().trim();
+    const roleVal = document.getElementById('userRoleFilter')?.value || 'ALL';
+
+    const filtered = (this.state.users || []).filter(u => {
+      const matchQ = !q ||
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.id && u.id.toLowerCase().includes(q)) ||
+        (u.assignedLocation && u.assignedLocation.toLowerCase().includes(q));
+
+      if (!matchQ) return false;
+
+      if (roleVal !== 'ALL') {
+        const role = (u.role || '').toLowerCase();
+        const scope = (u.scopeType || '').toUpperCase();
+        const loc = String(u.assignedLocation || '').toUpperCase();
+        if (roleVal === 'Admin' && !role.includes('admin') && !role.includes('owner') && scope !== 'ALL' && loc !== 'ALL') return false;
+        if (roleVal === 'Store' && scope !== 'STORE' && !loc.startsWith('S_')) return false;
+        if (roleVal === 'Selling' && scope !== 'SELLING_POINT' && !loc.startsWith('SP_')) return false;
+      }
+      return true;
+    });
+
+    this.renderUsersTable(filtered);
+  },
+
+  openUserModal: function(userId) {
+    const titleEl = document.getElementById('userModalTitle');
+    const submitBtnEl = document.getElementById('userModalSubmitBtn');
+
+    if (userId) {
+      const user = (this.state.users || []).find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('userFormId').value = user.id;
+      document.getElementById('userFormName').value = user.name || '';
+      document.getElementById('userFormEmail').value = user.email || '';
+      document.getElementById('userFormRole').value = user.role || 'Selling Point Cashier';
+      
+      const loc = String(user.assignedLocation || user.assignedStore || 'ALL').toUpperCase();
+      const scopeType = user.scopeType ? user.scopeType.toUpperCase() : (loc.startsWith('SP_') ? 'SELLING_POINT' : (loc.startsWith('S_') ? 'STORE' : 'ALL'));
+      document.getElementById('userFormScopeType').value = scopeType;
+      document.getElementById('userFormStatus').value = user.status || 'Active';
+
+      this.populateUserModalLocations(scopeType, user.assignedLocation || user.assignedStore);
+
+      if (titleEl) titleEl.innerText = `Edit User: ${user.name}`;
+      if (submitBtnEl) submitBtnEl.innerText = 'Update User';
+    } else {
+      document.getElementById('userFormId').value = '';
+      document.getElementById('userFormName').value = '';
+      document.getElementById('userFormEmail').value = '';
+      document.getElementById('userFormRole').value = 'Selling Point Cashier';
+      document.getElementById('userFormScopeType').value = 'SELLING_POINT';
+      document.getElementById('userFormStatus').value = 'Active';
+
+      this.populateUserModalLocations('SELLING_POINT', 'SP_001');
+
+      if (titleEl) titleEl.innerText = 'Add User & Assign Role Scope';
+      if (submitBtnEl) submitBtnEl.innerText = 'Save User';
+    }
+
+    this.openModal('userModal');
+  },
+
+  populateUserModalLocations: function(scopeType, selectedVal) {
+    const sel = document.getElementById('userFormAssignedLocation');
+    const lbl = document.getElementById('userFormLocationLabel');
+    const hint = document.getElementById('userFormLocationHint');
+    if (!sel) return;
+
+    if (scopeType === 'SELLING_POINT') {
+      if (lbl) lbl.innerText = 'Assigned Selling Point Counter *';
+      if (hint) hint.innerText = 'This user will ONLY be able to access and execute transactions for this counter.';
+      const sps = (this.state.sellingPoints && this.state.sellingPoints.length > 0) ? this.state.sellingPoints : [
+        { code: 'SP_001', name: 'Front Counter / Retail Sales' },
+        { code: 'SP_002', name: 'Branch Dispenser Counter' },
+        { code: 'SP_003', name: 'Main Production / Operations' },
+        { code: 'SP_004', name: 'Customer Service & Dispatch' }
+      ];
+      sel.innerHTML = sps.map(sp => `<option value="${sp.code}">[${sp.code}] ${sp.name}</option>`).join('');
+      sel.value = selectedVal || sps[0].code;
+    } else if (scopeType === 'STORE') {
+      if (lbl) lbl.innerText = 'Assigned Inventory Store *';
+      if (hint) hint.innerText = 'This user will ONLY be able to view stock and transactions for this warehouse/store.';
+      const stores = (this.state.stores && this.state.stores.length > 0) ? this.state.stores : [
+        { code: 'S_001', name: 'Store 1 - Main Branch' },
+        { code: 'S_002', name: 'Store 2 - Outlet Branch' },
+        { code: 'S_000', name: 'Central Depot Warehouse' }
+      ];
+      sel.innerHTML = stores.map(st => `<option value="${st.code}">[${st.code}] ${st.name}</option>`).join('');
+      sel.value = selectedVal || stores[0].code;
+    } else {
+      // GLOBAL
+      if (lbl) lbl.innerText = 'Assigned Location Scope';
+      if (hint) hint.innerText = 'Global Administrators have unrestricted operational access across all stores and selling points.';
+      sel.innerHTML = `<option value="ALL">All Stores &amp; Selling Points (Global Unrestricted)</option>`;
+      sel.value = 'ALL';
+    }
+  },
+
+  handleUserRoleChange: function(role) {
+    const scopeSel = document.getElementById('userFormScopeType');
+    if (!scopeSel) return;
+    if (role.toLowerCase().includes('cashier')) {
+      scopeSel.value = 'SELLING_POINT';
+    } else if (role.toLowerCase().includes('store')) {
+      scopeSel.value = 'STORE';
+    } else if (role.toLowerCase().includes('admin') || role.toLowerCase().includes('owner')) {
+      scopeSel.value = 'ALL';
+    }
+    this.populateUserModalLocations(scopeSel.value);
+  },
+
+  handleUserScopeTypeChange: function(scopeType) {
+    this.populateUserModalLocations(scopeType);
+  },
+
+  submitUserForm: function(e) {
+    e.preventDefault();
+    const id = document.getElementById('userFormId').value.trim();
+    const name = document.getElementById('userFormName').value.trim();
+    const email = document.getElementById('userFormEmail').value.trim();
+    const role = document.getElementById('userFormRole').value;
+    const scopeType = document.getElementById('userFormScopeType').value;
+    const locSelect = document.getElementById('userFormAssignedLocation');
+    const assignedLocation = locSelect ? locSelect.value : 'ALL';
+    const locationName = (locSelect && locSelect.selectedIndex >= 0) ? locSelect.options[locSelect.selectedIndex].text : assignedLocation;
+    const status = document.getElementById('userFormStatus').value || 'Active';
+
+    if (!name || !email) {
+      this.showToast('Please enter both name and email.', 'error');
+      return;
+    }
+
+    const userPayload = {
+      id: id || '',
+      name: name,
+      email: email,
+      role: role,
+      scopeType: scopeType,
+      assignedLocation: assignedLocation,
+      assignedStore: assignedLocation,
+      locationName: locationName,
+      status: status
+    };
+
+    this.showLoading(id ? 'Updating user...' : 'Creating user...', 'Saving role scope permissions to Google Sheets');
+
+    const onComplete = (res) => {
+      this.hideLoading();
+      this.closeModal('userModal');
+
+      if (!this.state.users) this.state.users = [];
+      const updatedUser = (res && res.user) ? res.user : {
+        id: id || ('USR_' + Date.now().toString().slice(-4)),
+        name: name,
+        email: email,
+        role: role,
+        scopeType: scopeType,
+        assignedLocation: assignedLocation,
+        assignedStore: assignedLocation,
+        locationName: locationName,
+        status: status
+      };
+
+      if (id) {
+        const idx = this.state.users.findIndex(u => u.id === id);
+        if (idx >= 0) this.state.users[idx] = updatedUser;
+        else this.state.users.push(updatedUser);
+        this.showToast(`User ${name} updated successfully!`, 'success');
+      } else {
+        this.state.users.push(updatedUser);
+        this.showToast(`User ${name} created and scoped to ${assignedLocation}!`, 'success');
+      }
+
+      if (this.state.currentUser && this.state.currentUser.id === updatedUser.id) {
+        this.state.currentUser = updatedUser;
+        this.applyUserPermissions();
+      }
+
+      this.renderUsersTable();
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res && res.users) this.state.users = res.users;
+          onComplete(res);
+        })
+        .withFailureHandler((err) => {
+          this.hideLoading();
+          this.showToast('Error saving user: ' + err.message, 'error');
+        })
+        .saveUser(userPayload);
+    } else {
+      setTimeout(() => onComplete({ success: true }), 300);
+    }
+  },
+
+  confirmDeleteUser: function(userId) {
+    const user = (this.state.users || []).find(u => u.id === userId);
+    if (!user) return;
+
+    if (this.state.currentUser && this.state.currentUser.id === userId) {
+      this.showToast('Cannot delete the currently active user session. Switch users first.', 'error');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete user "${user.name}" (${user.role})?`)) {
+      return;
+    }
+
+    this.showLoading('Deleting user...', 'Removing account from Google Sheets');
+
+    const onComplete = () => {
+      this.hideLoading();
+      this.state.users = (this.state.users || []).filter(u => u.id !== userId);
+      this.renderUsersTable();
+      this.showToast(`User ${user.name} removed.`, 'info');
+    };
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res && res.users) this.state.users = res.users;
+          onComplete();
+        })
+        .withFailureHandler((err) => {
+          this.hideLoading();
+          this.showToast('Error deleting user: ' + err.message, 'error');
+        })
+        .deleteUser(userId);
+    } else {
+      setTimeout(() => onComplete(), 300);
+    }
+  },
+
+  refreshUsersList: function() {
+    const icon = document.getElementById('usersRefreshIcon');
+    if (icon) icon.classList.add('animate-spin');
+    this.showToast('Syncing user accounts from Google Sheets...', 'info');
+
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler((users) => {
+          if (icon) icon.classList.remove('animate-spin');
+          if (Array.isArray(users)) {
+            this.state.users = users;
+            this.renderUsersTable();
+            this.applyUserPermissions();
+            this.showToast('Users directory updated!');
+          }
+        })
+        .withFailureHandler((err) => {
+          if (icon) icon.classList.remove('animate-spin');
+          this.showToast('Failed to sync users: ' + err.message, 'error');
+        })
+        .getUsers();
+    } else {
+      setTimeout(() => {
+        if (icon) icon.classList.remove('animate-spin');
+        this.renderUsersTable();
+        this.showToast('Users directory up to date!');
+      }, 300);
+    }
+  },
+
   getMockData: function() {
     return this.getMockInitialData();
   },
@@ -5442,7 +6123,11 @@ const app = {
       stores: mockStores,
       sellingPoints: mockSellingPoints,
       users: [
-        { id: 'USR_001', name: 'Abhishek Sharma', role: 'System Administrator', email: 'abhishekofficial4577@gmail.com', assignedStore: 'ALL' }
+        { id: 'USR_001', name: 'Abhishek Sharma (Admin)', role: 'System Administrator & Owner', email: 'abhishekofficial4577@gmail.com', assignedLocation: 'ALL', assignedStore: 'ALL', scopeType: 'ALL', locationName: 'All Stores & Selling Points', status: 'Active' },
+        { id: 'USR_002', name: 'Ramesh Kumar (Store 1)', role: 'Store Incharge', email: 'ramesh.store1@zolexora.com', assignedLocation: 'S_001', assignedStore: 'S_001', scopeType: 'STORE', locationName: 'Store 1 - Main Branch', status: 'Active' },
+        { id: 'USR_003', name: 'Sunita Verma (Cashier SP1)', role: 'Selling Point Cashier', email: 'sunita.sp1@zolexora.com', assignedLocation: 'SP_001', assignedStore: 'SP_001', scopeType: 'SELLING_POINT', locationName: 'Front Counter / Retail Sales', status: 'Active' },
+        { id: 'USR_004', name: 'Vikram Singh (Cashier SP2)', role: 'Selling Point Cashier', email: 'vikram.sp2@zolexora.com', assignedLocation: 'SP_002', assignedStore: 'SP_002', scopeType: 'SELLING_POINT', locationName: 'Branch Dispenser Counter', status: 'Active' },
+        { id: 'USR_005', name: 'Pooja Gupta (Store 2)', role: 'Store Incharge', email: 'pooja.store2@zolexora.com', assignedLocation: 'S_002', assignedStore: 'S_002', scopeType: 'STORE', locationName: 'Store 2 - Outlet Branch', status: 'Active' }
       ],
       supplierTransactions: [],
       issuanceTransactions: [],

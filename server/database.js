@@ -1229,11 +1229,12 @@ function initUsersAndSettings(ss, orgData) {
     usersSheet.setName('Users');
   }
   if (usersSheet.getLastRow() === 0) {
-    usersSheet.appendRow(['User ID', 'Name', 'Role', 'Email', 'Assigned Store / Selling Point', 'Status']);
-    formatHeaderRow(usersSheet, 6);
-    usersSheet.appendRow(['USR_001', adminName, 'System Administrator & Manager', adminEmail, 'ALL', 'Active']);
-    usersSheet.appendRow(['USR_002', 'Store Incharge', 'Store Keeper', 'store@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'S_001', 'Active']);
-    usersSheet.appendRow(['USR_003', 'Selling Point Cashier', 'Point of Sale Cashier', 'pos@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'SP_001', 'Active']);
+    usersSheet.appendRow(['User ID', 'Name', 'Role', 'Email', 'Assigned Store / Selling Point', 'Status', 'Scope Type', 'Location Name']);
+    formatHeaderRow(usersSheet, 8);
+    usersSheet.appendRow(['USR_001', adminName, 'System Administrator & Owner', adminEmail, 'ALL', 'Active', 'ALL', 'Global Access (All Stores & SPs)']);
+    usersSheet.appendRow(['USR_002', 'Ramesh Sharma', 'Store Incharge', 'store1@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'S_001', 'Active', 'STORE', 'Store 1 - Main Branch']);
+    usersSheet.appendRow(['USR_003', 'Pooja Verma', 'Selling Point Cashier', 'pos1@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'SP_001', 'Active', 'SELLING_POINT', 'Front Counter / Retail Sales']);
+    usersSheet.appendRow(['USR_004', 'Sunil Kumar', 'Selling Point Cashier', 'pos2@' + orgName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com', 'SP_002', 'Active', 'SELLING_POINT', 'Branch Dispenser Counter']);
   }
 
   // Sheet 2: Settings
