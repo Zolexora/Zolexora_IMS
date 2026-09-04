@@ -74,6 +74,10 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       }
+    },
+    "supabase": {
+      "serverUrl": "https://mcp.supabase.com/mcp",
+      "url": "https://mcp.supabase.com/mcp"
     }
   }
 }
