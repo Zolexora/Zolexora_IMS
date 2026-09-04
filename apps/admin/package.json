@@ -1,5 +1,5 @@
 {
-  "name": "zolexora-ims-admin",
+  "name": "@zolexora/admin",
   "version": "1.0.0",
   "description": "Zolexora IMS Platform SuperAdmin Control Plane",
   "main": "worker.js",

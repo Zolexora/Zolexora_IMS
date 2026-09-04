@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const clientDir = path.join(__dirname, '..', 'client');
+const clientDir = path.join(__dirname, 'client');
 const indexHtml = fs.readFileSync(path.join(clientDir, 'Index.html'), 'utf8');
 const stylesHtml = fs.readFileSync(path.join(clientDir, 'Styles.html'), 'utf8');
 const jsHtml = fs.readFileSync(path.join(clientDir, 'JavaScript.html'), 'utf8');

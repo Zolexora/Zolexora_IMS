@@ -1,83 +1,79 @@
-# Zolexora IMS — Cloud Inventory SaaS
+# Zolexora IMS — Monorepo
 
-**Zolexora IMS** is a modern, pure Google Sheets and Google Drive-powered multi-tenant **Software-as-a-Service (SaaS)** Inventory Management Web Application built on Google Apps Script and modern responsive web technologies.
-
----
-
-## 🌟 SaaS Platform Capabilities
-
-- **Multi-Tenant Architecture**: Each client organization or business tenant enjoys an isolated, dedicated database workspace inside Google Drive.
-- **Automated Tenant Database Provisioning**: In seconds, a new tenant database is provisioned with 6 structured subdirectories and clean Google Sheets workbooks.
-- **Cross-Industry Support**: Built for Hospitality & Hotels, Restaurants & F&B, Retail & E-Commerce, Warehousing & Logistics, Corporate Offices, and Healthcare.
-- **Dynamic Multi-Tenant Switcher**: Seamlessly switch between client organizations or spin up new tenant databases with 1 click.
-- **Enterprise Concurrency Locking**: Multi-user real-time transactions with transactional concurrency locks directly on Google Sheets.
-- **Barcode & QR Engine**: Live camera scanning and printable asset barcodes.
-- **Dual-Dashboard Architecture**: Dedicated top-level switching between **Inventory - Store** (central procurements, warehouse stocks, distributions) and **Selling Point** (POS billing, inward purchases, operating expenses).
-- **Synchronized Store & Selling Point Selectors**: Contextual dropdowns in top header and dashboard banners allowing instant switching/filtering across Stores (`S_000`, `S_001`, `S_002`) and Selling Points (`SP_001`, `SP_002`, `SP_003`, `SP_004`).
-- **Live Google Drive & Sheets Integration**: All tenant databases, reports, invoices, and backups are strictly organized in dedicated Google Drive storage.
+Enterprise Multi-Tenant Cloud Inventory Management System (IMS) running on Cloudflare Workers edge network with Cloudflare D1 (SQLite) and KV distributed session caching.
 
 ---
 
-## 🌳 Multi-Tenant Google Drive Directory Architecture
+## 🏛️ Monorepo Structure
 
-All tenant databases and resources reside within the root cloud storage:  
-👉 [Root Drive Database: `1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx`](https://drive.google.com/drive/folders/1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx)
-
-```text
-📁 1lkSx36mqaqnF8gfqNswdSPb0zqY4lvOx/  (Root Cloud Database)
+```
+Zolexora_IMS/
+├── apps/
+│   ├── admin/                    # Platform SuperAdmin Control Plane
+│   │   ├── client/               # Control plane UI (Index.html, CSS.html, JavaScript.html)
+│   │   ├── build-ui.js           # Admin UI single-file bundler
+│   │   ├── worker.js             # Platform Admin Worker & API router
+│   │   ├── wrangler.toml         # Cloudflare Worker configuration (service: admin-ims)
+│   │   └── README.md             # Admin plane documentation
+│   │
+│   └── ims/                      # Multi-Tenant Business IMS Application
+│       ├── client/               # Business application UI (Index.html, JavaScript.html, Styles.html)
+│       ├── migrations/           # Cloudflare D1 relational database schemas
+│       ├── build-ui.js           # Business application UI bundler
+│       ├── worker.js             # Multi-tenant edge worker & D1 relational engine
+│       ├── wrangler.toml         # Cloudflare Worker configuration (service: ims)
+│       └── README.md             # Business application documentation
 │
-└── 📁 [Tenant Organization Name]/      (e.g., Acme Retail, Zolexora Resorts)
-    │
-    ├── 📁 01_Master_Databases/
-    │   ├── 📊 Location_Master         (Sheets: Store, Selling_Point)
-    │   ├── 📊 Product_Master          (Sheet: Product_Master)
-    │   └── 📊 Supplier_Master         (Sheet: Supplier_Master - 28 Vendors)
-    │
-    ├── 📁 02_Transactions/
-    │   ├── 📊 Supplier_Transactions   (Stock-In & Purchase Orders)
-    │   ├── 📊 Issuance_Transactions   (Store-to-Department Disbursements)
-    │   └── 📊 Selling_Point_Transactions (Sheets: SP_Sales, SP_Purchases, SP_Expenses)
-    │
-    ├── 📁 03_Settings_and_Users/
-    │   └── 📊 Users_and_Settings      (Sheets: Users, Settings)
-    │
-    ├── 📁 04_Invoices_and_Attachments/
-    │   ├── 📁 Purchase_Orders/        (Uploaded PO PDFs / Challans)
-    │   └── 📁 Delivery_Challans/      (Goods Receipt documentation)
-    │
-    ├── 📁 05_Reports_and_Exports/
-    │   ├── 📁 Daily_Summaries/        (Daily consumption snapshots)
-    │   ├── 📁 Monthly_Valuation/      (Inventory valuation reports)
-    │   └── 📁 Supplier_Audits/        (Vendor performance audits)
-    │
-    └── 📁 06_System_Backups/          (Automated periodic sheet archives)
+├── legacy/
+│   ├── google-apps-script/       # Original Google Apps Script backend, sheets & clasp configs
+│   └── vercel/                   # Legacy Vercel static iframe wrapper
+│
+├── package.json                  # Root Monorepo orchestrator with npm workspaces
+└── README.md                     # Central Monorepo documentation
 ```
 
 ---
 
-## 🛠 Tech Stack
+## 🚀 Live Production Applications
 
-- **Backend**: Google Apps Script (V8 runtime), Google DriveApp, Google SpreadsheetApp
-- **Frontend**: HTML5, Tailwind CSS, Material Symbols, FontAwesome, Chart.js, HTML5-QRCode
-- **Deployment & Tooling**: `@google/clasp`, Git / GitHub
+| Application | Service Name | Production Edge URL | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Tenant IMS Application** | `ims` | [https://ims.zolexora.workers.dev](https://ims.zolexora.workers.dev) | Multi-tenant inventory, stores, POS billing, purchases, expenses |
+| **Platform Admin Control Plane** | `admin-ims` | [https://admin-ims.zolexora.workers.dev](https://admin-ims.zolexora.workers.dev) | SuperAdmin tenant lifecycle, user directory, D1 diagnostics, SQL console |
 
 ---
 
-## 💻 Development & Deployment
+## 🛠️ Monorepo Commands
 
-### Push changes to Google Apps Script:
+From the root directory:
+
 ```bash
-clasp push -f
+# Build all apps (bundles HTML/CSS/JS into edge worker artifacts)
+npm run build
+
+# Build individual apps
+npm run build:ims
+npm run build:admin
+
+# Deploy both applications to Cloudflare Workers
+npm run deploy:all
+
+# Deploy individual applications
+npm run deploy:ims
+npm run deploy:admin
+
+# Local edge development
+npm run dev:ims
+npm run dev:admin
 ```
 
-### Pull latest remote changes:
-```bash
-clasp pull
-```
+---
 
-### Push code to GitHub:
-```bash
-git add .
-git commit -m "Your commit message"
-git push origin main
-```
+## 🗄️ Database & Storage Architecture
+
+Both applications connect to shared, high-performance Cloudflare serverless resources:
+
+- **Cloudflare D1 Database**: `zolexora-ims-1-db` (`63b1b80b-ee96-4948-acce-c96d6ac65f61`)
+  - 13 relational tables: `organizations`, `stores`, `selling_points`, `users`, `products`, `suppliers`, `supplier_transactions`, `issuance_transactions`, `selling_point_sales`, `selling_point_purchases`, `selling_point_expenses`, `settings`, `platform_audit_logs`.
+- **Cloudflare KV Namespace**: `SESSION_KV` (`96c2aa5eace04fe0aa2bbafd29de9f76`)
+  - Sub-millisecond distributed session tokens (`session:*` for tenants, `admin_session:*` for SuperAdmins).

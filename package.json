@@ -1,0 +1,22 @@
+{
+  "name": "zolexora-ims-monorepo",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Zolexora IMS — Enterprise Multi-Tenant Inventory Management Monorepo",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:ims": "npm run build --workspace=@zolexora/ims",
+    "build:admin": "npm run build --workspace=@zolexora/admin",
+    "deploy:all": "npm run deploy --workspace=@zolexora/ims && npm run deploy --workspace=@zolexora/admin",
+    "deploy:ims": "npm run deploy --workspace=@zolexora/ims",
+    "deploy:admin": "npm run deploy --workspace=@zolexora/admin",
+    "dev:ims": "npm run dev --workspace=@zolexora/ims",
+    "dev:admin": "npm run dev --workspace=@zolexora/admin"
+  },
+  "devDependencies": {
+    "wrangler": "^4.129.0"
+  }
+}
