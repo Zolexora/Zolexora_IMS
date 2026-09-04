@@ -24,10 +24,6 @@ Zolexora_IMS/
 │       ├── wrangler.toml         # Cloudflare Worker configuration (service: ims)
 │       └── README.md             # Business application documentation
 │
-├── legacy/
-│   ├── google-apps-script/       # Original Google Apps Script backend, sheets & clasp configs
-│   └── vercel/                   # Legacy Vercel static iframe wrapper
-│
 ├── package.json                  # Root Monorepo orchestrator with npm workspaces
 └── README.md                     # Central Monorepo documentation
 ```
