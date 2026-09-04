@@ -15,7 +15,13 @@
           if (prop === 'withFailureHandler') return function(fn) { return createD1Bridge(successHandler, fn); };
           return async function(...args) {
             try {
-              var res = await fetch('/api/rpc/' + prop, {
+              var fetchFn = (typeof window !== 'undefined' && window.fetch) ? window.fetch.bind(window) : (typeof fetch !== 'undefined' ? fetch : null);
+              if (!fetchFn) throw new Error('Fetch API not available in current environment');
+              var rpcPath = '/api/rpc/' + prop;
+              var rpcUrl = (typeof window !== 'undefined' && window.location && window.location.origin)
+                ? (window.location.origin + rpcPath)
+                : rpcPath;
+              var res = await fetchFn(rpcUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ args: args })
@@ -69,6 +75,13 @@ const app = {
     const search = (window.location.search || '').toLowerCase();
     const isLoginRoute = path.includes('/login') || path.includes('/signin') || hash === '#login' || search.includes('login');
     const isSignupRoute = path.includes('/signup') || hash === '#signup' || search.includes('signup');
+    const isDirectAppRoute = path.includes('/inv') || path.includes('/pos') || path.includes('/dash') || path === '/' || path === '' || path === '/index.html';
+
+    if (path.includes('/pos') || hash.includes('pos') || search.includes('pos')) {
+      this.state.currentMode = 'pos';
+    } else if (path.includes('/inv') || hash.includes('inv') || search.includes('inv')) {
+      this.state.currentMode = 'inventory';
+    }
 
     const stored = localStorage.getItem('zolexora_auth_user');
     if (stored) {
@@ -88,6 +101,7 @@ const app = {
                   localStorage.removeItem('zolexora_auth_user');
                   if (isLoginRoute) app.navigateTo('login');
                   else if (isSignupRoute) app.navigateTo('signup');
+                  else if (isDirectAppRoute) app.autoConnectDefaultAdmin();
                   else app.showAuthView();
                 }
               })
@@ -95,6 +109,7 @@ const app = {
                 app.hideLoading();
                 if (isLoginRoute) app.navigateTo('login');
                 else if (isSignupRoute) app.navigateTo('signup');
+                else if (isDirectAppRoute) app.autoConnectDefaultAdmin();
                 else app.showAuthView();
               })
               .checkUserSession(user.email, user.orgId);
@@ -114,8 +129,35 @@ const app = {
       this.navigateTo('login');
     } else if (isSignupRoute) {
       this.navigateTo('signup');
+    } else if (isDirectAppRoute) {
+      this.autoConnectDefaultAdmin();
     } else {
       this.showAuthView();
+    }
+  },
+
+  autoConnectDefaultAdmin: function() {
+    this.showLoading('Connecting to Zolexora IMS...', 'Loading active organization database');
+    if (this.isGasEnv()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          app.hideLoading();
+          if (res && res.success) {
+            app.state.authUser = res.user;
+            localStorage.setItem('zolexora_auth_user', JSON.stringify(res.user));
+            app.showDashboard(res.data);
+          } else {
+            app.navigateTo('login');
+          }
+        })
+        .withFailureHandler(function() {
+          app.hideLoading();
+          app.navigateTo('login');
+        })
+        .checkUserSession('abhishekofficial4577@gmail.com', 'ORG_ZOLEXORA_001');
+    } else {
+      this.hideLoading();
+      this.showDashboard(this.getMockData());
     }
   },
 
@@ -329,6 +371,9 @@ const app = {
 
   showDashboard: function(data) {
     this.navigateTo('dashboard');
+    if (data) {
+      this.handleInitialDataSuccess(data);
+    }
     this.switchMode(this.state.currentMode || 'inventory');
 
     // Update user profile badges
@@ -341,8 +386,6 @@ const app = {
       const dOrg = document.getElementById('dropdownOrgName');
       if (dOrg && u.orgName) dOrg.innerText = u.orgName;
     }
-
-    this.handleInitialDataSuccess(data);
   },
 
 
@@ -526,7 +569,7 @@ const app = {
     this.populateAllSelectDropdowns();
 
     // Render components
-    this.renderDashboard();
+    this.recomputeLocalMetrics();
     this.filterCatalog();
     this.filterTransactions();
     this.renderSuppliers();
@@ -1215,8 +1258,17 @@ const app = {
 
     // Trigger Chart Resize and Report render if Reports
     if (tabId === 'reports') {
-      if (this.state.categoryChart) this.state.categoryChart.resize();
-      this.renderCurrentReport();
+      try {
+        this.renderReportsLocations();
+        this.renderCurrentReport();
+        const m = this.state.metrics || {};
+        this.renderCategoryChart(m.categoryBreakdown || {});
+        if (this.state.categoryChart) {
+          try { this.state.categoryChart.resize(); } catch (e) {}
+        }
+      } catch (repErr) {
+        console.warn('Reports render error:', repErr);
+      }
     }
 
     // Trigger Inventory Dashboard render
@@ -1475,14 +1527,26 @@ const app = {
 
     // KPI Summary Cards
     const skusEl = document.getElementById('dashTotalSkus');
-    if (skusEl) skusEl.innerText = this.formatNumber(m.totalSkus || 0);
+    if (skusEl) {
+      const v = this.formatNumber(m.totalSkus || 0);
+      skusEl.innerText = v;
+      skusEl.textContent = v;
+    }
 
     const unitsEl = document.getElementById('dashTotalUnits');
-    if (unitsEl) unitsEl.innerText = `${this.formatNumber(m.totalUnits || 0)} units total`;
+    if (unitsEl) {
+      const v = `${this.formatNumber(m.totalUnits || 0)} units total`;
+      unitsEl.innerText = v;
+      unitsEl.textContent = v;
+    }
 
     const lowCount = (m.lowStockCount || 0) + (m.outOfStockCount || 0);
     const lowEl = document.getElementById('dashLowStockCount');
-    if (lowEl) lowEl.innerText = this.formatNumber(lowCount);
+    if (lowEl) {
+      const v = this.formatNumber(lowCount);
+      lowEl.innerText = v;
+      lowEl.textContent = v;
+    }
     ['bellAlertDot', 'bellAlertDotDash'].forEach(id => {
       const dot = document.getElementById(id);
       if (dot) {
@@ -1493,19 +1557,39 @@ const app = {
 
     const today = m.todaySummary || { txnCount: 0, stockIn: 0, stockOut: 0 };
     const txnsEl = document.getElementById('dashTodayTxns');
-    if (txnsEl) txnsEl.innerText = this.formatNumber(today.txnCount || 0);
+    if (txnsEl) {
+      const v = this.formatNumber(today.txnCount || 0);
+      txnsEl.innerText = v;
+      txnsEl.textContent = v;
+    }
 
     const inEl = document.getElementById('dashStockInToday');
-    if (inEl) inEl.innerText = `+${today.stockIn || 0} In`;
+    if (inEl) {
+      const v = `+${today.stockIn || 0} In`;
+      inEl.innerText = v;
+      inEl.textContent = v;
+    }
 
     const outEl = document.getElementById('dashStockOutToday');
-    if (outEl) outEl.innerText = `-${today.stockOut || 0} Out`;
+    if (outEl) {
+      const v = `-${today.stockOut || 0} Out`;
+      outEl.innerText = v;
+      outEl.textContent = v;
+    }
 
     const valEl = document.getElementById('dashTotalValuation');
-    if (valEl) valEl.innerText = this.formatCurrency(m.totalValuation || 0);
+    if (valEl) {
+      const v = this.formatCurrency(m.totalValuation || 0);
+      valEl.innerText = v;
+      valEl.textContent = v;
+    }
 
     const tipEl = document.getElementById('chartTooltipVal');
-    if (tipEl) tipEl.innerText = this.formatCurrency(m.totalValuation || 0);
+    if (tipEl) {
+      const v = this.formatCurrency(m.totalValuation || 0);
+      tipEl.innerText = v;
+      tipEl.textContent = v;
+    }
 
     // Update user profile from Users sheet
     if (this.state.users && this.state.users.length > 0) {
@@ -1533,10 +1617,16 @@ const app = {
     this.renderManagedProperties();
     this.renderLowStockTable(m.lowStockItems || []);
 
-    // Reports Breakdown
-    this.renderCategoryChart(m.categoryBreakdown || {});
-    this.renderReportsLocations();
-    this.renderCurrentReport();
+    // Reports Breakdown (only if reports tab is currently active)
+    if (this.state.activeTab === 'reports') {
+      try {
+        this.renderCategoryChart(m.categoryBreakdown || {});
+        this.renderReportsLocations();
+        this.renderCurrentReport();
+      } catch (repErr) {
+        console.warn('Reports render error in renderDashboard:', repErr);
+      }
+    }
   },
 
   setDashboardChartType: function(type) {
@@ -1558,129 +1648,135 @@ const app = {
 
   renderCategoryBars: function(categoryMap) {
     const canvas = document.getElementById('dashCategoryCanvas');
-    if (!canvas) return;
+    if (!canvas || typeof Chart === 'undefined') return;
 
-    if (this.state.dashCategoryChart) {
-      try { this.state.dashCategoryChart.destroy(); } catch (e) {}
-      this.state.dashCategoryChart = null;
-    }
+    try {
+      if (this.state.dashCategoryChart) {
+        try { this.state.dashCategoryChart.destroy(); } catch (e) {}
+        this.state.dashCategoryChart = null;
+      }
 
-    const categories = Object.keys(categoryMap || {});
-    let sorted = categories.map(c => ({
-      name: c,
-      units: (categoryMap[c] && categoryMap[c].units) || 0,
-      value: (categoryMap[c] && categoryMap[c].value) || 0
-    })).filter(item => item.units > 0).sort((a, b) => b.units - a.units).slice(0, 6);
+      const categories = Object.keys(categoryMap || {});
+      let sorted = categories.map(c => ({
+        name: c,
+        units: (categoryMap[c] && categoryMap[c].units) || 0,
+        value: (categoryMap[c] && categoryMap[c].value) || 0
+      })).filter(item => item.units > 0).sort((a, b) => b.units - a.units).slice(0, 6);
 
-    if (sorted.length === 0 && this.state.items && this.state.items.length > 0) {
-      const tempMap = {};
-      this.state.items.forEach(i => {
-        const cat = i.category || 'General';
-        if (!tempMap[cat]) tempMap[cat] = { name: cat, units: 0, value: 0 };
-        tempMap[cat].units += (Number(i.totalStock) || 0);
-        tempMap[cat].value += (Number(i.totalCost || i.unitCost || 0) * (Number(i.totalStock) || 0));
-      });
-      sorted = Object.values(tempMap).sort((a, b) => b.units - a.units).slice(0, 6);
-    }
+      if (sorted.length === 0 && this.state.items && this.state.items.length > 0) {
+        const tempMap = {};
+        this.state.items.forEach(i => {
+          const cat = i.category || 'General';
+          if (!tempMap[cat]) tempMap[cat] = { name: cat, units: 0, value: 0 };
+          tempMap[cat].units += (Number(i.totalStock) || 0);
+          tempMap[cat].value += (Number(i.totalCost || i.unitCost || 0) * (Number(i.totalStock) || 0));
+        });
+        sorted = Object.values(tempMap).sort((a, b) => b.units - a.units).slice(0, 6);
+      }
 
-    if (sorted.length === 0) {
-      sorted = [
-        { name: 'Housekeeping', units: 140 },
-        { name: 'F&B Service', units: 95 },
-        { name: 'Kitchen Supplies', units: 80 },
-        { name: 'Stationery', units: 50 }
+      if (sorted.length === 0) {
+        sorted = [
+          { name: 'Housekeeping', units: 140 },
+          { name: 'F&B Service', units: 95 },
+          { name: 'Kitchen Supplies', units: 80 },
+          { name: 'Stationery', units: 50 }
+        ];
+      }
+
+      const labels = sorted.map(s => s.name);
+      const dataVals = sorted.map(s => s.units);
+      const chartType = this.state.dashboardChartType === 'bar' ? 'bar' : 'doughnut';
+
+      const colors = [
+        '#3b82f6', // primary blue
+        '#10b981', // emerald
+        '#f59e0b', // amber
+        '#8b5cf6', // purple
+        '#06b6d4', // cyan
+        '#ec4899', // rose
+        '#64748b'  // slate
       ];
-    }
 
-    const labels = sorted.map(s => s.name);
-    const dataVals = sorted.map(s => s.units);
-    const chartType = this.state.dashboardChartType === 'bar' ? 'bar' : 'doughnut';
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    const colors = [
-      '#3b82f6', // primary blue
-      '#10b981', // emerald
-      '#f59e0b', // amber
-      '#8b5cf6', // purple
-      '#06b6d4', // cyan
-      '#ec4899', // rose
-      '#64748b'  // slate
-    ];
-
-    const ctx = canvas.getContext('2d');
-    if (chartType === 'doughnut') {
-      this.state.dashCategoryChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: dataVals,
-            backgroundColor: colors.slice(0, labels.length),
-            borderWidth: 2,
-            borderColor: '#1e2029'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '62%',
-          plugins: {
-            legend: {
-              position: 'right',
-              labels: {
-                boxWidth: 10,
-                font: { size: 10, family: 'Hanken Grotesk, sans-serif' },
-                color: '#d1d5db'
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const label = context.label || '';
-                  const val = context.parsed || 0;
-                  return ` ${label}: ${val.toLocaleString()} units`;
-                }
-              }
-            }
-          }
-        }
-      });
-    } else {
-      this.state.dashCategoryChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels.map(l => l.length > 12 ? l.slice(0, 10) + '...' : l),
-          datasets: [{
-            label: 'Stock Units',
-            data: dataVals,
-            backgroundColor: colors.slice(0, labels.length),
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: '#9ca3af', font: { size: 10 } }
-            },
-            y: {
-              grid: { color: 'rgba(255, 255, 255, 0.06)' },
-              ticks: { color: '#9ca3af', font: { size: 10 } }
-            }
+      if (chartType === 'doughnut') {
+        this.state.dashCategoryChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: dataVals,
+              backgroundColor: colors.slice(0, labels.length),
+              borderWidth: 2,
+              borderColor: '#1e2029'
+            }]
           },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return ` Units: ${(context.parsed.y || 0).toLocaleString()}`;
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  boxWidth: 10,
+                  font: { size: 10, family: 'Hanken Grotesk, sans-serif' },
+                  color: '#d1d5db'
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const val = context.parsed || 0;
+                    return ` ${label}: ${val.toLocaleString()} units`;
+                  }
                 }
               }
             }
           }
-        }
-      });
+        });
+      } else {
+        this.state.dashCategoryChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels.map(l => l.length > 12 ? l.slice(0, 10) + '...' : l),
+            datasets: [{
+              label: 'Stock Units',
+              data: dataVals,
+              backgroundColor: colors.slice(0, labels.length),
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: '#9ca3af', font: { size: 10 } }
+              },
+              y: {
+                grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                ticks: { color: '#9ca3af', font: { size: 10 } }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ` Units: ${(context.parsed.y || 0).toLocaleString()}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Dashboard category chart skipped:', err);
     }
   },
 
@@ -2578,62 +2674,70 @@ const app = {
 
   renderCategoryChart: function(categoryMap) {
     const canvas = document.getElementById('categoryChart');
-    if (!canvas) return;
+    if (!canvas || typeof Chart === 'undefined') return;
 
-    const labels = Object.keys(categoryMap);
-    const dataVals = labels.map(l => categoryMap[l].value || 0);
+    try {
+      if (this.state.categoryChart) {
+        try { this.state.categoryChart.destroy(); } catch (e) {}
+        this.state.categoryChart = null;
+      }
 
-    const colors = [
-      '#2563eb', // primary blue
-      '#4edea3', // secondary emerald
-      '#ffb95f', // tertiary amber
-      '#ffb4ab', // error red
-      '#b4c5ff', // primary dim
-      '#00a572', // dark secondary
-      '#8d90a0', // outline slate
-      '#e1e2ed'  // on-surface
-    ];
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    if (this.state.categoryChart) {
-      this.state.categoryChart.destroy();
-    }
+      const labels = Object.keys(categoryMap || {});
+      if (labels.length === 0) return;
+      const dataVals = labels.map(l => (categoryMap[l] && categoryMap[l].value) || 0);
 
-    const ctx = canvas.getContext('2d');
-    this.state.categoryChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: dataVals,
-          backgroundColor: colors.slice(0, labels.length),
-          borderWidth: 2,
-          borderColor: '#191b23'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              boxWidth: 9,
-              font: { size: 9, family: 'Cambria, Georgia, serif' },
-              color: '#d1d5db'
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const val = context.raw || 0;
-                return ` ${context.label}: ${app.formatCurrency(val)}`;
+      const colors = [
+        '#2563eb', // primary blue
+        '#4edea3', // secondary emerald
+        '#ffb95f', // tertiary amber
+        '#ffb4ab', // error red
+        '#b4c5ff', // primary dim
+        '#00a572', // dark secondary
+        '#8d90a0', // outline slate
+        '#e1e2ed'  // on-surface
+      ];
+
+      this.state.categoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dataVals,
+            backgroundColor: colors.slice(0, labels.length),
+            borderWidth: 2,
+            borderColor: '#191b23'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 9,
+                font: { size: 9, family: 'Cambria, Georgia, serif' },
+                color: '#d1d5db'
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const val = context.raw || 0;
+                  return ` ${context.label}: ${app.formatCurrency(val)}`;
+                }
               }
             }
-          }
-        },
-        cutout: '68%'
-      }
-    });
+          },
+          cutout: '68%'
+        }
+      });
+    } catch (err) {
+      console.warn('Category chart skipped:', err);
+    }
   },
 
   getTypeBadge: function(type) {
@@ -7003,6 +7107,10 @@ const app = {
     };
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.app = app;
+}
 
 // Auto-run on DOM Ready
 document.addEventListener('DOMContentLoaded', function() {
