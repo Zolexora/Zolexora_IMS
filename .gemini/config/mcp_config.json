@@ -4,6 +4,10 @@
       "serverUrl": "https://mcp.cloudflare.com/mcp",
       "url": "https://mcp.cloudflare.com/mcp"
     },
+    "cloudflare-api": {
+      "serverUrl": "https://mcp.cloudflare.com/mcp",
+      "url": "https://mcp.cloudflare.com/mcp"
+    },
     "cloudflare-docs": {
       "serverUrl": "https://docs.mcp.cloudflare.com/mcp",
       "url": "https://docs.mcp.cloudflare.com/mcp"
