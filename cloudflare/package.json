@@ -5,6 +5,7 @@
   "main": "worker.js",
   "scripts": {
     "dev": "wrangler dev",
+    "build:ui": "node build-ui.js",
     "deploy": "wrangler deploy",
     "kv:create": "wrangler kv namespace create SESSION_KV",
     "kv:create:preview": "wrangler kv namespace create SESSION_KV --preview",

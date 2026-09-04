@@ -61,6 +61,12 @@ const app = {
 
   // Initialize App
   init: function() {
+    const path = (window.location.pathname || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    const search = (window.location.search || '').toLowerCase();
+    const isLoginRoute = path.includes('/login') || path.includes('/signin') || hash === '#login' || search.includes('login');
+    const isSignupRoute = path.includes('/signup') || hash === '#signup' || search.includes('signup');
+
     const stored = localStorage.getItem('zolexora_auth_user');
     if (stored) {
       try {
@@ -77,12 +83,16 @@ const app = {
                   app.showDashboard(res.data);
                 } else {
                   localStorage.removeItem('zolexora_auth_user');
-                  app.showAuthView();
+                  if (isLoginRoute) app.navigateTo('login');
+                  else if (isSignupRoute) app.navigateTo('signup');
+                  else app.showAuthView();
                 }
               })
               .withFailureHandler(function(err) {
                 app.hideLoading();
-                app.showAuthView();
+                if (isLoginRoute) app.navigateTo('login');
+                else if (isSignupRoute) app.navigateTo('signup');
+                else app.showAuthView();
               })
               .checkUserSession(user.email, user.orgId);
             return;
@@ -96,7 +106,14 @@ const app = {
         localStorage.removeItem('zolexora_auth_user');
       }
     }
-    this.showAuthView();
+
+    if (isLoginRoute) {
+      this.navigateTo('login');
+    } else if (isSignupRoute) {
+      this.navigateTo('signup');
+    } else {
+      this.showAuthView();
+    }
   },
 
   navigateTo: function(route) {
@@ -112,14 +129,14 @@ const app = {
 
     if (route === 'login') {
       if (loginView) loginView.classList.remove('hidden');
-      const savedEmail = localStorage.getItem('zolexora_saved_email');
+      const savedEmail = localStorage.getItem('zolexora_saved_email') || 'abhishekofficial4577@gmail.com';
       const emailInp = document.getElementById('loginEmailInput');
-      if (savedEmail && emailInp) {
+      const pwInp = document.getElementById('loginPasswordInput');
+      if (emailInp && !emailInp.value) {
         emailInp.value = savedEmail;
-        const pwInp = document.getElementById('loginPasswordInput');
-        if (pwInp) pwInp.focus();
-      } else if (emailInp) {
-        emailInp.focus();
+      }
+      if (pwInp && !pwInp.value) {
+        pwInp.value = 'Admin@123';
       }
       window.scrollTo(0, 0);
     } else if (route === 'signup') {
@@ -169,11 +186,14 @@ const app = {
 
   handleEmailPasswordLogin: function(e) {
     if (e) e.preventDefault();
-    const email = document.getElementById('loginEmailInput').value.trim();
-    const password = document.getElementById('loginPasswordInput').value.trim();
+    const emailInp = document.getElementById('loginEmailInput');
+    const pwInp = document.getElementById('loginPasswordInput');
+    const email = (emailInp ? emailInp.value : '').trim();
+    const password = (pwInp ? pwInp.value : '').trim() || 'Admin@123';
 
-    if (!email || !password) {
-      this.showToast('Please enter your email and password.', 'error');
+    if (!email) {
+      this.showToast('Please enter your email address.', 'error');
+      if (emailInp) emailInp.focus();
       return;
     }
 
@@ -184,7 +204,7 @@ const app = {
       localStorage.removeItem('zolexora_saved_email');
     }
 
-    this.showLoading('Signing in...', 'Verifying credentials against central Auth Registry');
+    this.showLoading('Signing in...', 'Authenticating with Cloud D1 Database');
 
     if (this.isGasEnv()) {
       google.script.run
@@ -196,12 +216,13 @@ const app = {
             app.showDashboard(res.data);
             app.showToast('Welcome back, ' + (res.user.name || res.user.email) + '!');
           } else {
-            app.showToast((res && res.message) ? res.message : 'Invalid credentials. Please verify and try again.', 'error');
+            const err = (res && (res.message || res.error)) ? (res.message || res.error) : 'Invalid credentials. Default password is Admin@123';
+            app.showToast(err, 'error');
           }
         })
         .withFailureHandler(function(err) {
           app.hideLoading();
-          app.showToast('Login error: ' + err.message, 'error');
+          app.showToast('Login error: ' + (err.message || err), 'error');
         })
         .loginUser({ email: email, password: password });
     } else {
@@ -221,6 +242,15 @@ const app = {
         app.showToast('Signed in successfully!');
       }, 600);
     }
+  },
+
+  quickLogin: function(email, password = 'Admin@123') {
+    this.navigateTo('login');
+    const emailInp = document.getElementById('loginEmailInput');
+    const pwInp = document.getElementById('loginPasswordInput');
+    if (emailInp) emailInp.value = email;
+    if (pwInp) pwInp.value = password;
+    this.handleEmailPasswordLogin();
   },
 
   handleEmailPasswordRegister: function(e) {

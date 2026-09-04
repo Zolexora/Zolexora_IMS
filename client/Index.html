@@ -148,8 +148,8 @@
         <!-- Center Navigation Links (Desktop) -->
         <nav class="hidden md:flex items-center gap-6 text-xs font-semibold text-on-surface-variant">
           <a href="#features" class="hover:text-white transition-colors">Features</a>
-          <a href="#architecture" class="hover:text-white transition-colors">Multi-Store Setup</a>
-          <a href="#how-it-works" class="hover:text-white transition-colors">How It Works</a>
+          <a href="/inv-dashboard" class="text-primary hover:underline flex items-center gap-1"><span class="material-symbols-outlined text-[15px]">inventory_2</span> Inv Dashboard</a>
+          <a href="/pos-dashboard" class="text-secondary hover:underline flex items-center gap-1"><span class="material-symbols-outlined text-[15px]">point_of_sale</span> POS Dashboard</a>
           <a href="#security" class="hover:text-white transition-colors">Data Security</a>
         </nav>
 
@@ -201,8 +201,12 @@
             <span>Start Free Organization</span>
           </button>
           <button onclick="app.navigateTo('login')" class="w-full sm:w-auto px-6 py-3.5 bg-surface-container-high/80 hover:bg-surface-container-high text-white font-semibold text-sm rounded-xl border border-outline-variant/25 transition flex items-center justify-center gap-2 cursor-pointer">
-            <span class="material-symbols-outlined text-[20px]">verified_user</span>
-            <span>Sign In with Google</span>
+            <span class="material-symbols-outlined text-[20px]">login</span>
+            <span>Sign In to Workspace</span>
+          </button>
+          <button onclick="app.quickLogin('abhishekofficial4577@gmail.com', 'Admin@123')" class="w-full sm:w-auto px-5 py-3.5 bg-secondary/15 hover:bg-secondary/25 text-secondary border border-secondary/30 font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">bolt</span>
+            <span>1-Click SuperAdmin Login</span>
           </button>
         </div>
 
@@ -552,23 +556,70 @@
       <!-- Login Form Card -->
       <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-7 space-y-5">
         
+        <!-- 1-Click Role Login Bar -->
+        <div class="p-3.5 bg-surface-container-high/70 border border-outline-variant/20 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-secondary text-[16px]">bolt</span>
+              <span>1-Click Quick Login</span>
+            </span>
+            <span class="text-[10px] text-on-surface-variant font-mono bg-surface-container px-2 py-0.5 rounded border border-outline-variant/15">Pass: Admin@123</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="app.quickLogin('abhishekofficial4577@gmail.com', 'Admin@123')" class="p-2 rounded-lg bg-primary/15 hover:bg-primary/25 border border-primary/35 text-left transition cursor-pointer flex flex-col group">
+              <div class="flex items-center justify-between w-full">
+                <span class="text-[11px] font-bold text-white group-hover:text-primary transition">SuperAdmin</span>
+                <span class="material-symbols-outlined text-primary text-[14px]">arrow_forward</span>
+              </div>
+              <span class="text-[10px] text-on-surface-variant truncate">abhishekofficial4577@gmail.com</span>
+            </button>
+            <button type="button" onclick="app.quickLogin('aeroma7701@gmail.com', 'Admin@123')" class="p-2 rounded-lg bg-secondary/15 hover:bg-secondary/25 border border-secondary/35 text-left transition cursor-pointer flex flex-col group">
+              <div class="flex items-center justify-between w-full">
+                <span class="text-[11px] font-bold text-white group-hover:text-secondary transition">System Admin</span>
+                <span class="material-symbols-outlined text-secondary text-[14px]">arrow_forward</span>
+              </div>
+              <span class="text-[10px] text-on-surface-variant truncate">aeroma7701@gmail.com</span>
+            </button>
+            <button type="button" onclick="app.quickLogin('store1@zolexora.com', 'Admin@123')" class="p-2 rounded-lg bg-surface-container hover:bg-surface-bright border border-outline-variant/20 text-left transition cursor-pointer flex flex-col group">
+              <div class="flex items-center justify-between w-full">
+                <span class="text-[11px] font-bold text-white">Store Manager</span>
+                <span class="material-symbols-outlined text-on-surface-variant text-[14px]">arrow_forward</span>
+              </div>
+              <span class="text-[10px] text-on-surface-variant truncate">store1@zolexora.com</span>
+            </button>
+            <button type="button" onclick="app.quickLogin('pos1@zolexora.com', 'Admin@123')" class="p-2 rounded-lg bg-surface-container hover:bg-surface-bright border border-outline-variant/20 text-left transition cursor-pointer flex flex-col group">
+              <div class="flex items-center justify-between w-full">
+                <span class="text-[11px] font-bold text-white">POS Cashier</span>
+                <span class="material-symbols-outlined text-on-surface-variant text-[14px]">arrow_forward</span>
+              </div>
+              <span class="text-[10px] text-on-surface-variant truncate">pos1@zolexora.com</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="relative flex items-center justify-center">
+          <div class="flex-grow border-t border-outline-variant/15"></div>
+          <span class="flex-shrink mx-3 text-[10px] text-outline font-medium">Or enter credentials manually</span>
+          <div class="flex-grow border-t border-outline-variant/15"></div>
+        </div>
+
         <form id="standaloneLoginForm" onsubmit="app.handleEmailPasswordLogin(event)" class="space-y-4 text-xs">
           <div>
             <label class="block font-bold text-on-surface mb-1.5">Email Address *</label>
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">mail</span>
-              <input type="email" id="loginEmailInput" required placeholder="abhishekofficial4577@gmail.com" class="w-full pl-10 pr-3.5 py-3 bg-surface-container-high border border-outline-variant/20 rounded-xl text-white text-xs focus:border-primary outline-none transition">
+              <input type="email" id="loginEmailInput" required value="abhishekofficial4577@gmail.com" placeholder="abhishekofficial4577@gmail.com" class="w-full pl-10 pr-3.5 py-3 bg-surface-container-high border border-outline-variant/20 rounded-xl text-white text-xs focus:border-primary outline-none transition">
             </div>
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <label class="block font-bold text-on-surface">Password *</label>
-              <span class="text-[10px] text-on-surface-variant">Min. 6 characters</span>
+              <span class="text-[10px] text-on-surface-variant font-mono">Default: Admin@123</span>
             </div>
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">lock</span>
-              <input type="password" id="loginPasswordInput" required placeholder="••••••••" class="w-full pl-10 pr-10 py-3 bg-surface-container-high border border-outline-variant/20 rounded-xl text-white text-xs focus:border-primary outline-none transition">
+              <input type="password" id="loginPasswordInput" required value="Admin@123" placeholder="••••••••" class="w-full pl-10 pr-10 py-3 bg-surface-container-high border border-outline-variant/20 rounded-xl text-white text-xs focus:border-primary outline-none transition">
               <button type="button" onclick="app.togglePasswordVisibility('loginPasswordInput', 'loginEyeIcon')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-white transition cursor-pointer">
                 <span id="loginEyeIcon" class="material-symbols-outlined text-[18px]">visibility</span>
               </button>
@@ -580,7 +631,7 @@
               <input type="checkbox" id="rememberEmailCheckbox" checked class="rounded border-outline-variant/30 text-primary focus:ring-0 bg-surface-container-high">
               <span>Remember email</span>
             </label>
-            <span class="text-primary hover:underline cursor-pointer" onclick="app.showToast('Contact your system administrator to reset password.')">Forgot password?</span>
+            <span class="text-primary hover:underline cursor-pointer" onclick="app.showToast('Default password is Admin@123')">Default password is Admin@123</span>
           </div>
 
           <!-- Submit Button -->
@@ -589,6 +640,22 @@
             <span>Sign In to Dashboard</span>
           </button>
         </form>
+
+        <!-- Dedicated Dashboards Direct Links -->
+        <div class="pt-2 border-t border-outline-variant/15 text-center">
+          <span class="text-[10px] text-on-surface-variant block mb-1.5">Direct Access Dashboards:</span>
+          <div class="flex items-center justify-center gap-3 text-xs">
+            <a href="/inv-dashboard" class="text-primary hover:underline flex items-center gap-1 font-semibold">
+              <span class="material-symbols-outlined text-[15px]">inventory_2</span>
+              <span>Inventory Dashboard</span>
+            </a>
+            <span class="text-outline">•</span>
+            <a href="/pos-dashboard" class="text-secondary hover:underline flex items-center gap-1 font-semibold">
+              <span class="material-symbols-outlined text-[15px]">point_of_sale</span>
+              <span>POS Dashboard</span>
+            </a>
+          </div>
+        </div>
 
         <!-- Divider -->
         <div class="relative flex py-1 items-center">
