@@ -8,13 +8,16 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "build:ims": "npm run build --workspace=@zolexora/ims",
-    "build:admin": "npm run build --workspace=@zolexora/admin",
-    "deploy:all": "npm run deploy --workspace=@zolexora/ims && npm run deploy --workspace=@zolexora/admin",
-    "deploy:ims": "npm run deploy --workspace=@zolexora/ims",
-    "deploy:admin": "npm run deploy --workspace=@zolexora/admin",
-    "dev:ims": "npm run dev --workspace=@zolexora/ims",
-    "dev:admin": "npm run dev --workspace=@zolexora/admin"
+    "build:user": "npm run build --workspace=@zolexora/ims-user",
+    "build:admin": "npm run build --workspace=@zolexora/ims-admin",
+    "build:ims": "npm run build --workspace=@zolexora/ims-user",
+    "deploy:all": "npm run deploy --workspace=@zolexora/ims-user && npm run deploy --workspace=@zolexora/ims-admin",
+    "deploy:user": "npm run deploy --workspace=@zolexora/ims-user",
+    "deploy:admin": "npm run deploy --workspace=@zolexora/ims-admin",
+    "deploy:ims": "npm run deploy --workspace=@zolexora/ims-user",
+    "dev:user": "npm run dev --workspace=@zolexora/ims-user",
+    "dev:admin": "npm run dev --workspace=@zolexora/ims-admin",
+    "dev:ims": "npm run dev --workspace=@zolexora/ims-user"
   },
   "devDependencies": {
     "wrangler": "^4.129.0"

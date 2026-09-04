@@ -1,5 +1,5 @@
 {
-  "name": "@zolexora/ims",
+  "name": "@zolexora/ims-user",
   "version": "1.0.0",
   "description": "Zolexora IMS — Multi-Tenant Business Inventory Application",
   "main": "worker.js",

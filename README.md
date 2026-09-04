@@ -9,14 +9,14 @@ Enterprise Multi-Tenant Cloud Inventory Management System (IMS) running on Cloud
 ```
 Zolexora_IMS/
 ├── apps/
-│   ├── admin/                    # Platform SuperAdmin Control Plane
+│   ├── ims-admin/                # Platform SuperAdmin Control Plane
 │   │   ├── client/               # Control plane UI (Index.html, CSS.html, JavaScript.html)
 │   │   ├── build-ui.js           # Admin UI single-file bundler
 │   │   ├── worker.js             # Platform Admin Worker & API router
 │   │   ├── wrangler.toml         # Cloudflare Worker configuration (service: admin-ims)
 │   │   └── README.md             # Admin plane documentation
 │   │
-│   └── ims/                      # Multi-Tenant Business IMS Application
+│   └── ims-user/                 # Multi-Tenant Business IMS Application
 │       ├── client/               # Business application UI (Index.html, JavaScript.html, Styles.html)
 │       ├── migrations/           # Cloudflare D1 relational database schemas
 │       ├── build-ui.js           # Business application UI bundler
@@ -36,10 +36,10 @@ Zolexora_IMS/
 
 ## 🚀 Live Production Applications
 
-| Application | Service Name | Production Edge URL | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Tenant IMS Application** | `ims` | [https://ims.zolexora.workers.dev](https://ims.zolexora.workers.dev) | Multi-tenant inventory, stores, POS billing, purchases, expenses |
-| **Platform Admin Control Plane** | `admin-ims` | [https://admin-ims.zolexora.workers.dev](https://admin-ims.zolexora.workers.dev) | SuperAdmin tenant lifecycle, user directory, D1 diagnostics, SQL console |
+| Application | Directory | Service Name | Production Edge URL | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tenant IMS Application** | `apps/ims-user` | `ims` | [https://ims.zolexora.workers.dev](https://ims.zolexora.workers.dev) | Multi-tenant inventory, stores, POS billing, purchases, expenses |
+| **Platform Admin Control Plane** | `apps/ims-admin` | `admin-ims` | [https://admin-ims.zolexora.workers.dev](https://admin-ims.zolexora.workers.dev) | SuperAdmin tenant lifecycle, user directory, D1 diagnostics, SQL console |
 
 ---
 
@@ -52,18 +52,18 @@ From the root directory:
 npm run build
 
 # Build individual apps
-npm run build:ims
+npm run build:user     # or npm run build:ims
 npm run build:admin
 
 # Deploy both applications to Cloudflare Workers
 npm run deploy:all
 
 # Deploy individual applications
-npm run deploy:ims
+npm run deploy:user     # or npm run deploy:ims
 npm run deploy:admin
 
 # Local edge development
-npm run dev:ims
+npm run dev:user        # or npm run dev:ims
 npm run dev:admin
 ```
 
