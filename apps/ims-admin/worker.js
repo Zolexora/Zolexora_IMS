@@ -45,30 +45,51 @@ export default {
   }
 };
 
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  /^https:\/\/.*\.zolexora\.pages\.dev$/,
+  /^https:\/\/.*\.zolexora\.workers\.dev$/,
+  /^https:\/\/([a-zA-Z0-9-]+\.)*zolexora\.com$/
+];
+
+function getSafeCorsHeaders(request) {
+  const origin = request?.headers?.get('Origin');
+  const headers = {};
+  if (origin && ALLOWED_ORIGIN_PATTERNS.some(p => p.test(origin))) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  } else {
+    headers['Access-Control-Allow-Origin'] = '*';
+  }
+  return headers;
+}
+
 function handleCorsPreflight(request) {
-  const origin = request.headers.get('Origin') || '*';
+  const corsHeaders = getSafeCorsHeaders(request);
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': origin,
+      ...corsHeaders,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Max-Age': '86400'
     }
   });
 }
 
 function jsonResponse(data, status = 200, request = null, extraHeaders = {}) {
-  const origin = request?.headers?.get('Origin') || '*';
+  const headers = {
+    'Content-Type': 'application/json',
+    ...extraHeaders
+  };
+  const corsHeaders = getSafeCorsHeaders(request);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    headers[k] = v;
+  }
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
-      ...extraHeaders
-    }
+    headers
   });
 }
 
@@ -652,14 +673,19 @@ async function getDatabaseDiagnostics(db) {
 }
 
 async function executeSqlConsoleQuery(db, query, session) {
+  if (!session || (session.user?.role !== 'SuperAdmin' && session.user?.role !== 'PlatformAdmin')) {
+    return { success: false, error: 'Unauthorized: Platform SuperAdmin privileges required.' };
+  }
+
   const cleanQuery = String(query || '').trim();
   if (!cleanQuery) {
     return { success: false, error: 'Empty query string provided.' };
   }
 
-  // Safety safeguard against accidental drop of critical database tables
+  // Safety safeguard against destructive commands
   const upper = cleanQuery.toUpperCase();
-  if (upper.includes('DROP DATABASE') || upper.includes('DROP ALL')) {
+  const dangerousPatterns = ['DROP DATABASE', 'DROP ALL', 'ATTACH', 'DETACH', 'PRAGMA', 'DROP TABLE'];
+  if (dangerousPatterns.some(kw => upper.includes(kw))) {
     return { success: false, error: 'Unsafe operation rejected by Platform Security Guardian.' };
   }
 

@@ -131,6 +131,16 @@ async function handleD1Rpc(request, env, functionName) {
     return jsonResponse({ success: false, error: 'Database binding env.DB not available.' }, 500, request);
   }
 
+  // Enforce session authentication on protected RPC methods
+  const publicRpcFunctions = ['loginUser', 'authenticateUser', 'logoutUser'];
+  let session = null;
+  if (!publicRpcFunctions.includes(functionName)) {
+    session = await authenticateUserSession(request, env);
+    if (!session) {
+      return jsonResponse({ success: false, error: 'Unauthorized: Valid user session required.' }, 401, request);
+    }
+  }
+
   try {
     let result;
     switch (functionName) {
@@ -297,7 +307,11 @@ async function handleD1Rpc(request, env, functionName) {
         }, 404, request);
     }
 
-    return jsonResponse(result, 200, request);
+    const headers = new Headers();
+    if (result && result.success && result.sessionId) {
+      headers.set('Set-Cookie', `${COOKIE_NAME}=${result.sessionId}; Path=/; Max-Age=${DEFAULT_SESSION_TTL_SECONDS}; HttpOnly; Secure; SameSite=Lax`);
+    }
+    return jsonResponse(result, 200, request, headers);
   } catch (err) {
     return jsonResponse({
       success: false,
@@ -318,14 +332,27 @@ async function handleRestApi(request, env, url) {
   const method = request.method;
   const isGetOrHead = method === 'GET' || method === 'HEAD';
 
-  if (path === '/api/dashboard' && isGetOrHead) {
-    return jsonResponse(await getInitialData(db), 200, request);
-  }
-
   if (path === '/api/login' && method === 'POST') {
     const payload = await request.json().catch(() => ({}));
     const res = await loginUser(db, env, payload);
-    return jsonResponse(res, res.success ? 200 : 401, request);
+    const headers = new Headers();
+    if (res.success && res.sessionId) {
+      headers.set('Set-Cookie', `${COOKIE_NAME}=${res.sessionId}; Path=/; Max-Age=${DEFAULT_SESSION_TTL_SECONDS}; HttpOnly; Secure; SameSite=Lax`);
+    }
+    return jsonResponse(res, res.success ? 200 : 401, request, headers);
+  }
+
+  // Protected REST routes: Require valid session for mutations & sensitive reads
+  const protectedRestRoutes = ['/api/products', '/api/sales', '/api/stores', '/api/selling-points', '/api/suppliers', '/api/users', '/api/dashboard'];
+  if (protectedRestRoutes.includes(path) && (method === 'POST' || path === '/api/users' || path === '/api/dashboard')) {
+    const session = await authenticateUserSession(request, env);
+    if (!session) {
+      return jsonResponse({ success: false, error: 'Unauthorized: Session authentication required.' }, 401, request);
+    }
+  }
+
+  if (path === '/api/dashboard' && isGetOrHead) {
+    return jsonResponse(await getInitialData(db), 200, request);
   }
 
   if (path === '/api/login' && isGetOrHead) {
@@ -1518,8 +1545,9 @@ async function loginUser(db, env, credentials) {
   };
 
   // Cache in SESSION_KV if available
+  let sessionId = null;
   if (env.SESSION_KV) {
-    const sessionId = generateSessionId();
+    sessionId = generateSessionId();
     await env.SESSION_KV.put(`session:${sessionId}`, JSON.stringify({
       sessionId: sessionId,
       user: formattedUser,
@@ -1531,6 +1559,7 @@ async function loginUser(db, env, credentials) {
 
   return {
     success: true,
+    sessionId: sessionId,
     user: formattedUser,
     data: initialData
   };
@@ -1602,22 +1631,7 @@ async function handleSessionApi(request, env, url) {
   }
 
   if (method === 'POST') {
-    const payload = await request.json();
-    const user = payload.user || payload;
-    const ttl = Number(payload.ttl || env.SESSION_TTL_SECONDS || DEFAULT_SESSION_TTL_SECONDS);
-    const sessionId = payload.sessionId || generateSessionId();
-
-    const record = {
-      sessionId: sessionId,
-      user: user,
-      createdAt: Date.now(),
-      expiresAt: new Date(Date.now() + ttl * 1000).toISOString()
-    };
-
-    await env.SESSION_KV.put(`session:${sessionId}`, JSON.stringify(record), { expirationTtl: ttl });
-    const headers = new Headers();
-    headers.set('Set-Cookie', `${COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${ttl}; HttpOnly; Secure; SameSite=Lax`);
-    return jsonResponse({ success: true, sessionId: sessionId, user: user }, 200, request, headers);
+    return jsonResponse({ success: false, error: 'Direct session injection is disabled. Authenticate via /api/login.' }, 403, request);
   }
 
   if (method === 'DELETE') {
@@ -1745,6 +1759,25 @@ function getSessionToken(request, url) {
   return null;
 }
 
+async function authenticateUserSession(request, env) {
+  const token = getSessionToken(request);
+  if (!token) return null;
+  if (env.SESSION_KV) {
+    try {
+      const raw = await env.SESSION_KV.get(`session:${token}`, { type: 'json' });
+      if (raw && raw.user) {
+        if (raw.expiresAt && new Date(raw.expiresAt) < new Date()) {
+          return null;
+        }
+        return raw;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
 function generateSessionId() {
   const array = new Uint8Array(24);
   crypto.getRandomValues(array);
@@ -1764,27 +1797,48 @@ function parseCookies(header) {
   return list;
 }
 
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  /^https:\/\/.*\.zolexora\.pages\.dev$/,
+  /^https:\/\/.*\.zolexora\.workers\.dev$/,
+  /^https:\/\/([a-zA-Z0-9-]+\.)*zolexora\.com$/
+];
+
+function getSafeCorsHeaders(request) {
+  const origin = request?.headers?.get('Origin');
+  const headers = {};
+  if (origin && ALLOWED_ORIGIN_PATTERNS.some(p => p.test(origin))) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  } else {
+    headers['Access-Control-Allow-Origin'] = '*';
+  }
+  return headers;
+}
+
 function handleCorsPreflight(request) {
-  const origin = request.headers.get('Origin') || '*';
+  const corsHeaders = getSafeCorsHeaders(request);
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': origin,
+      ...corsHeaders,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-session-id, x-session-token, x-requested-with',
-      'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Max-Age': '86400'
     }
   });
 }
 
 function jsonResponse(data, status = 200, request = null, extraHeaders = undefined) {
-  const origin = request?.headers?.get('Origin') || '*';
   const headers = new Headers(extraHeaders || undefined);
   headers.set('Content-Type', 'application/json; charset=utf-8');
-  headers.set('Access-Control-Allow-Origin', origin);
-  headers.set('Access-Control-Allow-Credentials', 'true');
   headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+  const corsHeaders = getSafeCorsHeaders(request);
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    headers.set(k, v);
+  }
 
   return new Response(JSON.stringify(data, null, 2), {
     status: status,
