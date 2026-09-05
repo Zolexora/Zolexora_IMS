@@ -38,6 +38,9 @@ Thumbs.db
 # Agent local cache
 .gemini/config/.migrated
 
+# Supabase temporary files
+supabase/.temp/
+
 # Python
 __pycache__/
 *.py[cod]
