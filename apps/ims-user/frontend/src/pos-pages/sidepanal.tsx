@@ -8,17 +8,17 @@ import {
   Clock,
   Database,
   Receipt,
-  ScanBarcode,
-  CreditCard,
-  UserCircle,
   UtensilsCrossed,
+  BookOpen,
+  Users,
+  Wallet,
+  BarChart3,
+  Settings,
+  CreditCard,
 } from 'lucide-react';
 
 interface PosSidepanalProps {
-  onOpenHistory?: () => void;
   sellingPoint?: string;
-  onRefresh?: () => void;
-  loading?: boolean;
 }
 
 export default function PosSidepanal({
@@ -26,13 +26,20 @@ export default function PosSidepanal({
 }: PosSidepanalProps) {
   const location = useLocation();
 
-  const isPosDashboard =
-    location.pathname === '/pos/dashboard' ||
-    location.pathname === '/pos';
+  const navLinks = [
+    { label: 'Register Terminal', path: '/pos/dashboard', icon: ShoppingCart },
+    { label: 'Orders & KOT Tickets', path: '/pos/orders', icon: Receipt },
+    { label: 'Floor & Table Map', path: '/pos/tables', icon: UtensilsCrossed },
+    { label: 'Menu & Quick Keys', path: '/pos/menu', icon: BookOpen },
+    { label: 'Customer CRM & Club', path: '/pos/customers', icon: Users },
+    { label: 'Cash Drawer & Float', path: '/pos/cash-drawer', icon: Wallet },
+    { label: 'POS Sales & Z-Report', path: '/pos/reports', icon: BarChart3 },
+    { label: 'Hardware & Printers', path: '/pos/settings', icon: Settings },
+  ];
 
   return (
     <aside className="w-64 border-r border-white/10 bg-[#0f111c] flex flex-col justify-between p-4 flex-shrink-0 select-none">
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Brand */}
         <div className="flex items-center gap-3 px-2">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center font-black text-white shadow-md text-sm">
@@ -44,7 +51,7 @@ export default function PosSidepanal({
           </div>
         </div>
 
-        {/* Inventory Terminal Switcher Button (Requested: inv pterminal btn on pos sidepanal) */}
+        {/* Dedicated Inventory Switcher Button (Only way to switch from POS to INV) */}
         <div className="p-3 bg-gradient-to-r from-indigo-950/60 to-purple-950/60 border border-indigo-500/40 rounded-xl space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-300">
             <span className="flex items-center gap-1.5">
@@ -57,6 +64,7 @@ export default function PosSidepanal({
           </div>
           <Link
             to="/inv/dashboard"
+            onClick={() => localStorage.setItem('zolexora_last_app', 'inv')}
             className="flex items-center justify-between px-3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-indigo-600/30 group"
           >
             <div className="flex items-center gap-2">
@@ -67,55 +75,35 @@ export default function PosSidepanal({
           </Link>
         </div>
 
-        {/* Main POS Navigation Links */}
+        {/* Main POS Navigation Links (ALL strictly pointing to /pos/*) */}
         <div className="space-y-1">
           <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            POS Operations
+            POS Navigation
           </div>
           <nav className="space-y-0.5">
-            <Link
-              to="/pos/dashboard"
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                isPosDashboard
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-xs font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>POS Register Terminal</span>
-            </Link>
+            {navLinks.map((item) => {
+              const active =
+                location.pathname === item.path ||
+                (item.path === '/pos/dashboard' &&
+                  (location.pathname === '/pos' || location.pathname === '/pos/dashboard'));
+              const Icon = item.icon;
 
-            <Link
-              to="/pos/dashboard"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
-            >
-              <UtensilsCrossed className="w-4 h-4 text-indigo-400" />
-              <span>Dine-In Table Floor</span>
-            </Link>
-
-            <Link
-              to="/inv/products"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
-            >
-              <ScanBarcode className="w-4 h-4 text-cyan-400" />
-              <span>Product SKU Catalog</span>
-            </Link>
-
-            <Link
-              to="/inv/issuance-logs"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
-            >
-              <Receipt className="w-4 h-4 text-amber-400" />
-              <span>Sales Ledger & Audit</span>
-            </Link>
-
-            <Link
-              to="/inv/profile"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
-            >
-              <UserCircle className="w-4 h-4 text-purple-400" />
-              <span>Cashier Profile & Shift</span>
-            </Link>
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => localStorage.setItem('zolexora_last_app', 'pos')}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                    active
+                      ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-xs font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -135,7 +123,7 @@ export default function PosSidepanal({
             <div className="flex items-center justify-between text-slate-300">
               <span className="flex items-center gap-1 text-slate-400">
                 <CreditCard className="w-3 h-3 text-indigo-400" />
-                Payment Gateway
+                Payments
               </span>
               <span className="text-emerald-400 font-medium">Cash / Card / UPI</span>
             </div>

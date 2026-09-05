@@ -14,7 +14,14 @@ import Profile from './inv-pages/profile';
 import SKUaddition from './inv-pages/forms/sku-addition';
 import PurchaseEntry from './inv-pages/forms/purchase-entry';
 import IssuanceEntry from './inv-pages/forms/issuance-entry';
-import POSTerminal from './pos-pages/pos-terminal';
+import POSDashboard from './pos-pages/dashboard';
+import POSOrders from './pos-pages/orders';
+import POSTables from './pos-pages/tables';
+import POSMenu from './pos-pages/menu';
+import POSCustomers from './pos-pages/customers';
+import POSCashDrawer from './pos-pages/cash-drawer';
+import POSReports from './pos-pages/reports';
+import POSSettings from './pos-pages/settings';
 
 // Shared Pages
 import LandingPage from './shared-pages/landing-page';
@@ -58,6 +65,15 @@ export default function App() {
   // Public standalone authentication/onboarding routes
   const isPublicRoute = ['/landing', '/login', '/onboarding'].includes(location.pathname);
   const isPosRoute = location.pathname.startsWith('/pos');
+
+  // Track active workspace to eliminate accidental jumps between POS and INV
+  React.useEffect(() => {
+    if (location.pathname.startsWith('/pos')) {
+      localStorage.setItem('zolexora_last_app', 'pos');
+    } else if (location.pathname.startsWith('/inv')) {
+      localStorage.setItem('zolexora_last_app', 'inv');
+    }
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -126,7 +142,10 @@ export default function App() {
               path="/"
               element={
                 <ProtectedRoute>
-                  <Navigate to="/inv/dashboard" replace />
+                  <Navigate
+                    to={localStorage.getItem('zolexora_last_app') === 'pos' ? '/pos/dashboard' : '/inv/dashboard'}
+                    replace
+                  />
                 </ProtectedRoute>
               }
             />
@@ -139,7 +158,7 @@ export default function App() {
               }
             />
 
-            {/* POS App Routes */}
+            {/* POS Multipage App Routes */}
             <Route
               path="/pos"
               element={
@@ -152,7 +171,63 @@ export default function App() {
               path="/pos/dashboard"
               element={
                 <ProtectedRoute>
-                  <POSTerminal />
+                  <POSDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/orders"
+              element={
+                <ProtectedRoute>
+                  <POSOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/tables"
+              element={
+                <ProtectedRoute>
+                  <POSTables />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/menu"
+              element={
+                <ProtectedRoute>
+                  <POSMenu />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/customers"
+              element={
+                <ProtectedRoute>
+                  <POSCustomers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/cash-drawer"
+              element={
+                <ProtectedRoute>
+                  <POSCashDrawer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/reports"
+              element={
+                <ProtectedRoute>
+                  <POSReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/settings"
+              element={
+                <ProtectedRoute>
+                  <POSSettings />
                 </ProtectedRoute>
               }
             />

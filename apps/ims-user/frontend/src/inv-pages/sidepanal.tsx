@@ -59,6 +59,7 @@ export default function Sidepanal() {
           </div>
           <Link
             to="/pos/dashboard"
+            onClick={() => localStorage.setItem('zolexora_last_app', 'pos')}
             className="flex items-center justify-between px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-emerald-600/30 group"
           >
             <div className="flex items-center gap-2">
