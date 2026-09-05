@@ -1,16 +1,16 @@
 services:
+  # ----------------------------------------------------------------------------
+  # 1. Zolexora IMS Core API (Docker Container)
+  # ----------------------------------------------------------------------------
   - type: web
     name: zolexora-ims-api
-    runtime: python
+    runtime: docker
     region: oregon
-    plan: standard
-    rootDir: apps/ims-user/backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    dockerfilePath: apps/ims-user/backend/Dockerfile
+    dockerContext: apps/ims-user/backend
     healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.8
       - key: PORT
         value: 8000
       - key: ENVIRONMENT
@@ -32,18 +32,18 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
 
+  # ----------------------------------------------------------------------------
+  # 2. Zolexora Admin API (Docker Container)
+  # ----------------------------------------------------------------------------
   - type: web
     name: zolexora-admin-api
-    runtime: python
+    runtime: docker
     region: oregon
-    plan: starter
-    rootDir: apps/ims-admin/backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    dockerfilePath: apps/ims-admin/backend/Dockerfile
+    dockerContext: apps/ims-admin/backend
     healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.8
       - key: PORT
         value: 8001
       - key: ENVIRONMENT
@@ -61,3 +61,32 @@ services:
       - key: CLOUDFLARE_API_TOKEN
         sync: false
 
+  # ----------------------------------------------------------------------------
+  # 3. Zolexora User Frontend (POS & Inventory SPA Container)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: zolexora-user-frontend
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: apps/ims-user/frontend/Dockerfile
+    dockerContext: apps/ims-user/frontend
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 3000
+
+  # ----------------------------------------------------------------------------
+  # 4. Zolexora SuperAdmin Frontend (Docker Container)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: zolexora-admin-frontend
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: apps/ims-admin/frontend/Dockerfile
+    dockerContext: apps/ims-admin/frontend
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 3001

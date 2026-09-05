@@ -94,3 +94,16 @@ class DashboardMetrics(BaseModel):
     activeStores: int = 0
     activeSellingPoints: int = 0
     currency: str = "₹"
+
+
+class AggregatorStatusUpdate(BaseModel):
+    status: str  # ACCEPTED, PREPARING, READY, DISPATCHED, CANCELLED
+    prep_time_mins: Optional[int] = 20
+    reason: Optional[str] = None
+
+
+class DiningBenefitVerify(BaseModel):
+    platform: str  # "Zomato Gold", "Swiggy Dineout", "Dineout Pay", "Magicpin"
+    membership_code: str
+    bill_amount: float
+

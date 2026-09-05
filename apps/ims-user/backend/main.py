@@ -34,11 +34,11 @@ except ImportError:
 try:
     from .db import db
     from .auth import get_current_user
-    from .models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile
+    from .models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify
 except ImportError:
     from db import db
     from auth import get_current_user
-    from models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile
+    from models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify
 
 
 @asynccontextmanager
@@ -317,6 +317,154 @@ async def record_sale(sale: SaleRequest, user: UserProfile = Depends(get_current
 @app.get("/api/v1/auth/me")
 async def get_me(user: UserProfile = Depends(get_current_user)):
     return user
+
+
+# --- Online Platforms & Food Aggregators (Swiggy, Zomato, Dineout, Zomato Gold) ---
+_aggregator_platforms = [
+    {"id": "swiggy", "name": "Swiggy Delivery", "status": "Online", "active_orders": 3, "auto_accept": False, "rating": 4.6},
+    {"id": "zomato", "name": "Zomato Delivery", "status": "Online", "active_orders": 2, "auto_accept": False, "rating": 4.8},
+    {"id": "dineout", "name": "Swiggy Dineout", "status": "Online", "active_orders": 1, "auto_accept": True, "rating": 4.7},
+    {"id": "zomato_gold", "name": "Zomato Gold Privilege", "status": "Online", "active_orders": 0, "auto_accept": True, "rating": 4.9},
+    {"id": "ondc", "name": "ONDC Food Network", "status": "Online", "active_orders": 1, "auto_accept": False, "rating": 4.5},
+]
+
+_aggregator_orders = [
+    {
+        "id": "SW-4892",
+        "platform": "Swiggy",
+        "channel_color": "orange",
+        "order_time": "3 mins ago",
+        "customer_name": "Aditya Sharma",
+        "customer_phone": "+91 98200 11223",
+        "items": [
+            {"name": "Oat Milk Cappuccino", "qty": 2, "price": 220, "notes": "Less ice, extra cinnamon"},
+            {"name": "Butter Croissant Flaky", "qty": 2, "price": 160}
+        ],
+        "subtotal": 760.0,
+        "tax": 38.0,
+        "total_amount": 798.0,
+        "payment_status": "Paid Online (Swiggy Money)",
+        "status": "NEW",
+        "rider": {"name": "Manoj Kumar", "phone": "+91 97110 33445", "status": "En Route to Store (4 mins)", "otp": "4892"},
+        "prep_time_mins": 15
+    },
+    {
+        "id": "ZM-8102",
+        "platform": "Zomato",
+        "channel_color": "red",
+        "order_time": "8 mins ago",
+        "customer_name": "Priyanka Joshi",
+        "customer_phone": "+91 91234 88776",
+        "items": [
+            {"name": "Tandoori Paneer Roll", "qty": 2, "price": 240, "notes": "Mint chutney separate"},
+            {"name": "Parmesan Truffle Fries", "qty": 1, "price": 220}
+        ],
+        "subtotal": 700.0,
+        "tax": 35.0,
+        "total_amount": 735.0,
+        "payment_status": "Paid Online (Zomato Pay)",
+        "status": "ACCEPTED",
+        "rider": {"name": "Deepak Yadav", "phone": "+91 99882 11002", "status": "Arrived at Outlet", "otp": "8102"},
+        "prep_time_mins": 20
+    },
+    {
+        "id": "DO-3019",
+        "platform": "Dineout",
+        "channel_color": "purple",
+        "order_time": "14 mins ago",
+        "customer_name": "Karan Singhal",
+        "customer_phone": "+91 98450 77661",
+        "items": [
+            {"name": "Smoked Salmon Bagel", "qty": 1, "price": 380},
+            {"name": "Artisan Espresso Single", "qty": 2, "price": 140}
+        ],
+        "subtotal": 660.0,
+        "tax": 33.0,
+        "total_amount": 693.0,
+        "payment_status": "Pre-paid (Dineout Pay)",
+        "status": "READY",
+        "table_no": "T-03",
+        "prep_time_mins": 10
+    }
+]
+
+@app.get("/api/v1/aggregator/platforms")
+async def get_platforms():
+    return _aggregator_platforms
+
+@app.post("/api/v1/aggregator/platforms/{platform_id}/toggle")
+async def toggle_platform(platform_id: str):
+    for p in _aggregator_platforms:
+        if p["id"] == platform_id:
+            p["status"] = "Paused" if p["status"] == "Online" else "Online"
+            return {"success": True, "platform": p}
+    raise HTTPException(status_code=404, detail="Platform not found")
+
+@app.get("/api/v1/aggregator/orders")
+async def get_aggregator_orders():
+    return _aggregator_orders
+
+@app.post("/api/v1/aggregator/orders/{order_id}/status")
+async def update_order_status(order_id: str, body: AggregatorStatusUpdate):
+    for order in _aggregator_orders:
+        if order["id"] == order_id:
+            order["status"] = body.status
+            if body.prep_time_mins:
+                order["prep_time_mins"] = body.prep_time_mins
+            if body.reason:
+                order["cancel_reason"] = body.reason
+            return {"success": True, "order": order}
+    raise HTTPException(status_code=404, detail="Order not found")
+
+@app.post("/api/v1/aggregator/dining-benefit/verify")
+async def verify_dining_benefit(body: DiningBenefitVerify):
+    code = body.membership_code.strip().upper()
+    bill = max(0.0, body.bill_amount)
+    
+    if "GOLD" in body.platform.upper() or "GOLD" in code:
+        discount = round(min(bill * 0.15, 300.0), 2)
+        return {
+            "valid": True,
+            "platform": "Zomato Gold",
+            "benefit_title": "Zomato Gold 15% Dining Privilege",
+            "discount_percent": 15,
+            "discount_amount": discount,
+            "max_cap": 300.0,
+            "net_payable": round(bill - discount, 2),
+            "member_name": "Verified Gold Member",
+            "code": code
+        }
+    elif "DINEOUT" in body.platform.upper() or "DINEOUT" in code or "SWIGGY" in code:
+        discount = round(min(bill * 0.20, 400.0), 2)
+        return {
+            "valid": True,
+            "platform": "Swiggy Dineout",
+            "benefit_title": "Swiggy Dineout Pay 20% Off",
+            "discount_percent": 20,
+            "discount_amount": discount,
+            "max_cap": 400.0,
+            "net_payable": round(bill - discount, 2),
+            "member_name": "Dineout Gourmet Member",
+            "code": code
+        }
+    elif "MAGIC" in code:
+        discount = round(min(bill * 0.10, 150.0), 2)
+        return {
+            "valid": True,
+            "platform": "Magicpin",
+            "benefit_title": "Magicpin Voucher 10% Off",
+            "discount_percent": 10,
+            "discount_amount": discount,
+            "max_cap": 150.0,
+            "net_payable": round(bill - discount, 2),
+            "member_name": "Magicpin User",
+            "code": code
+        }
+    
+    return {
+        "valid": False,
+        "message": f"Invalid or expired membership code: '{body.membership_code}'"
+    }
 
 
 if __name__ == "__main__":

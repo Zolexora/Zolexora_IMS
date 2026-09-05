@@ -15,6 +15,7 @@ import {
   BarChart3,
   Settings,
   CreditCard,
+  Bike,
 } from 'lucide-react';
 
 interface PosSidepanalProps {
@@ -28,6 +29,7 @@ export default function PosSidepanal({
 
   const navLinks = [
     { label: 'Register Terminal', path: '/pos/dashboard', icon: ShoppingCart },
+    { label: 'Online Aggregators', path: '/pos/online-orders', icon: Bike },
     { label: 'Orders & KOT Tickets', path: '/pos/orders', icon: Receipt },
     { label: 'Floor & Table Map', path: '/pos/tables', icon: UtensilsCrossed },
     { label: 'Menu & Quick Keys', path: '/pos/menu', icon: BookOpen },

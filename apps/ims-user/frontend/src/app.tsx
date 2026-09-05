@@ -22,6 +22,7 @@ import POSCustomers from './pos-pages/customers';
 import POSCashDrawer from './pos-pages/cash-drawer';
 import POSReports from './pos-pages/reports';
 import POSSettings from './pos-pages/settings';
+import POSOnlineOrders from './pos-pages/online-orders';
 
 // Shared Pages
 import LandingPage from './shared-pages/landing-page';
@@ -172,6 +173,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <POSDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/online-orders"
+              element={
+                <ProtectedRoute>
+                  <POSOnlineOrders />
                 </ProtectedRoute>
               }
             />

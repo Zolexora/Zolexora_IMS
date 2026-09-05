@@ -365,7 +365,19 @@ export default function POSTerminal() {
   // Apply Coupon Code
   const handleApplyCoupon = () => {
     const code = couponCode.trim().toUpperCase();
-    if (code === 'ZOLEXORA10' || code === 'SAVE10') {
+    if (code === 'GOLD15' || code === 'ZOMATOGOLD' || code.includes('GOLD')) {
+      const disc = Math.min(subtotal * 0.15, 300);
+      setCustomDiscountAmount(Math.round(disc));
+      setDiscountPercent(0);
+      playSound('success');
+      alert(`🎉 Zomato Gold 15% Dining Privilege applied (-₹${Math.round(disc)})!`);
+    } else if (code === 'DINEOUT20' || code.includes('DINEOUT')) {
+      const disc = Math.min(subtotal * 0.20, 400);
+      setCustomDiscountAmount(Math.round(disc));
+      setDiscountPercent(0);
+      playSound('success');
+      alert(`🎉 Swiggy Dineout 20% Privilege applied (-₹${Math.round(disc)})!`);
+    } else if (code === 'ZOLEXORA10' || code === 'SAVE10') {
       setDiscountPercent(10);
       playSound('success');
       alert('10% Promotional discount applied!');
@@ -374,7 +386,7 @@ export default function POSTerminal() {
       playSound('success');
       alert('₹50 Flat discount applied!');
     } else {
-      alert('Invalid or expired coupon code');
+      alert('Invalid or expired coupon code. Try GOLD15, DINEOUT20, SAVE10, or FLAT50.');
     }
   };
 
@@ -1047,6 +1059,25 @@ export default function POSTerminal() {
                   {pct === 0 ? 'None' : `${pct}%`}
                 </button>
               ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCouponCode('GOLD15');
+                  const disc = Math.min(subtotal * 0.15, 300);
+                  setCustomDiscountAmount(Math.round(disc));
+                  setDiscountPercent(0);
+                  playSound('success');
+                }}
+                className={`px-2 py-0.5 rounded font-bold transition text-[10px] ${
+                  couponCode === 'GOLD15' && customDiscountAmount > 0
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30'
+                }`}
+                title="Apply Zomato Gold 15% Dining Privilege"
+              >
+                ★ Gold
+              </button>
 
               <div className="flex-1 flex items-center ml-1">
                 <input
