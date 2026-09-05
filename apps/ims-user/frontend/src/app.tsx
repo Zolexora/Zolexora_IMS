@@ -74,14 +74,14 @@ export default function App() {
   // Public standalone authentication/onboarding routes
   const isPublicRoute = ['/landing', '/login', '/onboarding'].includes(location.pathname);
   const isPosRoute = location.pathname.startsWith('/pos');
-  const isOrgRoute = location.pathname.startsWith('/org');
+  const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/org');
 
-  // Track active workspace to eliminate accidental jumps between POS, INV, and ORG
+  // Track active workspace to eliminate accidental jumps between POS, INV, and ADMIN
   React.useEffect(() => {
     if (location.pathname.startsWith('/pos')) {
       localStorage.setItem('zolexora_last_app', 'pos');
-    } else if (location.pathname.startsWith('/org')) {
-      localStorage.setItem('zolexora_last_app', 'org');
+    } else if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/org')) {
+      localStorage.setItem('zolexora_last_app', 'admin');
     } else if (location.pathname.startsWith('/inv')) {
       localStorage.setItem('zolexora_last_app', 'inv');
     }
@@ -94,9 +94,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-[#07080e] text-slate-100 font-sans">
-      {/* Dynamic Sidepanel: PosSidepanal for POS, OrgSidepanal for Org Admin, Sidepanal for Inventory */}
+      {/* Dynamic Sidepanel: PosSidepanal for POS, OrgSidepanal for Admin, Sidepanal for Inventory */}
       {!isPublicRoute && user && (
-        isPosRoute ? <PosSidepanal /> : isOrgRoute ? <OrgSidepanal /> : <Sidepanal />
+        isPosRoute ? <PosSidepanal /> : isAdminRoute ? <OrgSidepanal /> : <Sidepanal />
       )}
 
       {/* Main Viewport */}
@@ -110,11 +110,11 @@ export default function App() {
                   <span>Workspace:</span>
                   <span className="text-emerald-400 font-medium">POS Register Terminal (Desk SP_001)</span>
                 </>
-              ) : isOrgRoute ? (
+              ) : isAdminRoute ? (
                 <>
                   <ShieldCheck className="w-4 h-4 text-purple-400" />
                   <span>Workspace:</span>
-                  <span className="text-purple-300 font-medium">Organization Admin (Corporate Governance)</span>
+                  <span className="text-purple-300 font-medium">Admin Dashboard (Corporate Governance)</span>
                 </>
               ) : (
                 <>
@@ -131,11 +131,11 @@ export default function App() {
                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border ${
                   isPosRoute
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    : isOrgRoute
+                    : isAdminRoute
                     ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
                     : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
                 }`}>
-                  {user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : isOrgRoute ? 'Org Admin' : 'Staff')}
+                  {user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : isAdminRoute ? 'Admin' : 'Staff')}
                 </span>
               </div>
               <button
@@ -266,17 +266,17 @@ export default function App() {
               }
             />
 
-            {/* Organization Admin Module Core Routes (Sensitive Setup & Governance) */}
+            {/* Admin Dashboard & Corporate Governance Core Routes */}
             <Route
-              path="/org"
+              path="/admin"
               element={
                 <ProtectedRoute>
-                  <Navigate to="/org/dashboard" replace />
+                  <Navigate to="/admin/dashboard" replace />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/org/dashboard"
+              path="/admin/dashboard"
               element={
                 <ProtectedRoute>
                   <OrgDashboard />
@@ -284,7 +284,7 @@ export default function App() {
               }
             />
             <Route
-              path="/org/payments"
+              path="/admin/payments"
               element={
                 <ProtectedRoute>
                   <OrgPaymentSetup />
@@ -292,7 +292,7 @@ export default function App() {
               }
             />
             <Route
-              path="/org/users"
+              path="/admin/users"
               element={
                 <ProtectedRoute>
                   <OrgUsers />
@@ -300,7 +300,7 @@ export default function App() {
               }
             />
             <Route
-              path="/org/sites"
+              path="/admin/sites"
               element={
                 <ProtectedRoute>
                   <OrgSiteManagement />
@@ -308,13 +308,21 @@ export default function App() {
               }
             />
             <Route
-              path="/org/company"
+              path="/admin/company"
               element={
                 <ProtectedRoute>
                   <OrgCompanyProfile />
                 </ProtectedRoute>
               }
             />
+
+            {/* /org/* Aliases (Mapped seamlessly to Admin Dashboard) */}
+            <Route path="/org" element={<ProtectedRoute><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/org/dashboard" element={<ProtectedRoute><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/org/payments" element={<ProtectedRoute><Navigate to="/admin/payments" replace /></ProtectedRoute>} />
+            <Route path="/org/users" element={<ProtectedRoute><Navigate to="/admin/users" replace /></ProtectedRoute>} />
+            <Route path="/org/sites" element={<ProtectedRoute><Navigate to="/admin/sites" replace /></ProtectedRoute>} />
+            <Route path="/org/company" element={<ProtectedRoute><Navigate to="/admin/company" replace /></ProtectedRoute>} />
 
             {/* Inventory Module Core Routes */}
             <Route

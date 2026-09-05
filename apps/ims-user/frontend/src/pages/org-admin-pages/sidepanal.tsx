@@ -19,32 +19,32 @@ export default function OrgSidepanal() {
   const navLinks = [
     {
       label: 'Admin Overview',
-      path: '/org/dashboard',
+      path: '/admin/dashboard',
       icon: ShieldCheck,
       desc: 'Governance & security audit',
     },
     {
       label: 'Payment Rails & Gateways',
-      path: '/org/payments',
+      path: '/admin/payments',
       icon: CreditCard,
       desc: 'SBI VPA, Razorpay, Cashfree & Instant Settle',
       badge: 'SENSITIVE',
     },
     {
       label: 'Staff & Role Permissions',
-      path: '/org/users',
+      path: '/admin/users',
       icon: Users,
       desc: 'RBAC, cashier accounts & access control',
     },
     {
       label: 'Sites, Stores & Terminals',
-      path: '/org/sites',
+      path: '/admin/sites',
       icon: Building2,
       desc: 'Warehouses, branches & POS registers',
     },
     {
       label: 'Company Legal Profile',
-      path: '/org/company',
+      path: '/admin/company',
       icon: Briefcase,
       desc: 'GSTIN, PAN, legal entity & tax rules',
     },
@@ -62,10 +62,10 @@ export default function OrgSidepanal() {
             <div className="font-bold text-sm tracking-wide text-white flex items-center gap-1.5">
               <span>ZOLEXORA</span>
               <span className="text-[10px] px-1.5 py-0.2 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-mono">
-                ORG
+                ADMIN
               </span>
             </div>
-            <div className="text-[10px] text-purple-300/80 font-medium">Organization Administration</div>
+            <div className="text-[10px] text-purple-300/80 font-medium">Corporate Administration</div>
           </div>
         </div>
 
@@ -81,7 +81,10 @@ export default function OrgSidepanal() {
             Governance & Setup
           </div>
           {navLinks.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive =
+              location.pathname === item.path ||
+              location.pathname === item.path.replace('/admin', '/org') ||
+              (item.path === '/admin/dashboard' && (location.pathname === '/admin' || location.pathname === '/org'));
             const Icon = item.icon;
             return (
               <Link

@@ -72,7 +72,7 @@ export default function OrgDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Payment Rails */}
         <Link
-          to="/org/payments"
+          to="/admin/payments"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-purple-500/20 hover:border-purple-500/50 rounded-2xl transition duration-200 shadow-md relative overflow-hidden flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -101,7 +101,7 @@ export default function OrgDashboard() {
 
         {/* Card 2: Staff & Roles */}
         <Link
-          to="/org/users"
+          to="/admin/users"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-white/10 hover:border-indigo-500/40 rounded-2xl transition duration-200 shadow-md flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -125,7 +125,7 @@ export default function OrgDashboard() {
 
         {/* Card 3: Sites & Terminals */}
         <Link
-          to="/org/sites"
+          to="/admin/sites"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-white/10 hover:border-teal-500/40 rounded-2xl transition duration-200 shadow-md flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -149,7 +149,7 @@ export default function OrgDashboard() {
 
         {/* Card 4: Company Legal Profile */}
         <Link
-          to="/org/company"
+          to="/admin/company"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-white/10 hover:border-amber-500/40 rounded-2xl transition duration-200 shadow-md flex flex-col justify-between"
         >
           <div className="space-y-3">

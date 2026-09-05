@@ -77,17 +77,17 @@ export default function PosSidepanal({
             <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
           </Link>
 
-          {/* Org Admin Switcher */}
+          {/* Admin Dashboard Switcher */}
           <Link
-            to="/org/dashboard"
-            onClick={() => localStorage.setItem('zolexora_last_app', 'org')}
-            className="flex items-center justify-between px-3 py-2 bg-purple-950/40 hover:bg-purple-950/70 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-200 transition group"
+            to="/admin/dashboard"
+            onClick={() => localStorage.setItem('zolexora_last_app', 'admin')}
+            className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-purple-900/30 group"
           >
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-purple-400" />
-              <span>Org Admin & Setup</span>
+              <ShieldCheck className="w-4 h-4 text-white" />
+              <span>Admin Dashboard</span>
             </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-purple-400 group-hover:translate-x-0.5 transition" />
+            <ArrowUpRight className="w-3.5 h-3.5 text-purple-200 group-hover:translate-x-0.5 transition" />
           </Link>
         </div>
 
