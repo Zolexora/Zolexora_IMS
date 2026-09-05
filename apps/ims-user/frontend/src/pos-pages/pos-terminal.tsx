@@ -16,8 +16,8 @@ import {
   AlertCircle,
   Percent,
 } from 'lucide-react';
-import ReceiptModal, { CartItem, SaleReceipt } from './components/ReceiptModal';
-import RecentSalesDrawer, { RecentTxn } from './components/RecentSalesDrawer';
+import ReceiptModal, { CartItem, SaleReceipt } from './components/receipt-modal';
+import RecentSalesDrawer, { RecentTxn } from './components/recent-sales-drawer';
 
 interface Product {
   item_code: string;

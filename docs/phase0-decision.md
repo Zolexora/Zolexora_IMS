@@ -143,13 +143,10 @@ SUPABASE_URL=https://<PROJECT_REF>.supabase.co
 SUPABASE_ANON_KEY=<SUPABASE_ANON_KEY>
 SUPABASE_SERVICE_KEY=<SUPABASE_SERVICE_KEY>
 CLOUDFLARE_ACCOUNT_ID=<CLOUDFLARE_ACCOUNT_ID>
-CLOUDFLARE_D1_DATABASE_ID=63b1b80b-ee96-4948-acce-c96d6ac65f61
+CLOUDFLARE_D1_DATABASE_ID=<CLOUDFLARE_D1_DATABASE_ID>
 CLOUDFLARE_API_TOKEN=<CLOUDFLARE_D1_API_TOKEN>
-LOCAL_SQLITE_PATH=./dev.db
 EOF
 
-# Initialize local SQLite with existing D1 schema
-sqlite3 dev.db < ../apps/ims-user/migrations/0001_initial_schema.sql
 uvicorn main:app --reload --port 8000
 
 # 2. Setup Frontend (React + Vite + TypeScript)

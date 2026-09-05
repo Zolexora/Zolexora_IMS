@@ -1,8 +1,8 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Shield, Terminal, Home as HomeIcon } from 'lucide-react';
-import Home from './pages/Home';
-import AdminDashboard from './pages/AdminDashboard';
+import Home from './pages/home';
+import AdminDashboard from './pages/admin-dashboard';
 
 export default function App() {
   const location = useLocation();

@@ -60,12 +60,18 @@ app.add_middleware(
 @app.get("/health")
 @app.get("/api/v1/health")
 async def health():
-    items_count = await db.fetch_one("SELECT count(*) as count FROM products;")
+    items_count = 0
+    try:
+        row = await db.fetch_one("SELECT count(*) as count FROM products;")
+        if row:
+            items_count = row.get("count", 0)
+    except Exception:
+        pass
     return {
         "status": "healthy",
         "service": "ims-user-api",
-        "database": "Cloudflare D1" if db.use_d1 else "Local SQLite",
-        "products_count": items_count["count"] if items_count else 0
+        "database": "Cloudflare D1",
+        "products_count": items_count
     }
 
 

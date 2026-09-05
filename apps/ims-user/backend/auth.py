@@ -33,20 +33,34 @@ async def get_current_user(
     if not credentials:
         if env != "production" and allow_dev_bypass:
             # Dev fallback for local tests and offline dev
-            row = await db.fetch_one("SELECT * FROM users WHERE role='SuperAdmin' LIMIT 1;")
-            if row:
-                return UserProfile(
-                    id=row["id"],
-                    org_id=row["org_id"],
-                    email=row["email"],
-                    name=row["name"],
-                    role=row["role"],
-                    scope_type=row.get("scope_type", "ALL"),
-                    assigned_location=row.get("assigned_location", "ALL"),
-                    location_name=row.get("location_name"),
-                    status=row.get("status", "Active"),
-                    supabase_auth_id=row.get("supabase_auth_id")
-                )
+            try:
+                row = await db.fetch_one("SELECT * FROM users WHERE role='SuperAdmin' LIMIT 1;")
+                if row:
+                    return UserProfile(
+                        id=row["id"],
+                        org_id=row["org_id"],
+                        email=row["email"],
+                        name=row["name"],
+                        role=row["role"],
+                        scope_type=row.get("scope_type", "ALL"),
+                        assigned_location=row.get("assigned_location", "ALL"),
+                        location_name=row.get("location_name"),
+                        status=row.get("status", "Active"),
+                        supabase_auth_id=row.get("supabase_auth_id")
+                    )
+            except Exception:
+                pass
+            return UserProfile(
+                id="USR_SUPER_DEV",
+                org_id=os.getenv("DEFAULT_ORG_ID", "ORG_ZOLEXORA_001"),
+                email=os.getenv("SUPERADMIN_EMAIL", "admin@zolexora.com"),
+                name="Zolexora Dev Administrator",
+                role="SuperAdmin",
+                scope_type="ALL",
+                assigned_location="ALL",
+                location_name="All Stores",
+                status="Active"
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials required"

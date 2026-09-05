@@ -7,11 +7,10 @@ import {
   RefreshCw,
   Boxes,
   Truck,
-  Send,
   PackagePlus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import StockAdjustModal from './components/StockAdjustModal';
+import StockAdjustModal from './components/stock-adjust-modal';
 
 interface Product {
   item_code: string;

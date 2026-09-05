@@ -1,53 +1,63 @@
 import os
-import aiosqlite
 import httpx
 from typing import Any, Dict, List, Optional
 
 
 class AdminD1Adapter:
-    def __init__(self):
+    """Pure Cloudflare D1 Serverless SQL Adapter for Admin Control Plane (No local SQLite fallback)."""
+
+    def __init__(self, http_client: Optional[httpx.AsyncClient] = None):
         self.account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
         self.database_id = os.getenv("CLOUDFLARE_D1_DATABASE_ID")
         self.api_token = os.getenv("CLOUDFLARE_API_TOKEN")
-        self.sqlite_path = os.getenv(
-            "LOCAL_SQLITE_PATH",
-            os.path.abspath(os.path.join(os.path.dirname(__file__), "../../ims-user/backend/data/zolexora.db"))
-        )
+        self.http_client = http_client
         self.use_d1 = bool(self.account_id and self.database_id and self.api_token)
 
     async def init(self):
         pass
 
-    async def query(self, sql: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
-        params = params or []
-        if self.use_d1:
-            url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/d1/database/{self.database_id}/query"
-            headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(url, headers=headers, json={"sql": sql, "params": params})
-                return resp.json().get("result", [{}])[0].get("results", [])
+    def _ensure_configured(self):
+        if not (self.account_id and self.database_id and self.api_token):
+            raise RuntimeError(
+                "Cloudflare D1 is not configured. Please set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_API_TOKEN."
+            )
 
-        async with aiosqlite.connect(self.sqlite_path) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(sql, params) as cursor:
-                rows = await cursor.fetchall()
-                return [dict(r) for r in rows]
+    async def _get_client(self) -> httpx.AsyncClient:
+        return self.http_client or httpx.AsyncClient(timeout=15.0)
+
+    async def query(self, sql: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+        self._ensure_configured()
+        params = params or []
+        url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/d1/database/{self.database_id}/query"
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+        client = await self._get_client()
+        try:
+            resp = await client.post(url, headers=headers, json={"sql": sql, "params": params})
+            data = resp.json()
+            if not data.get("success"):
+                raise RuntimeError(f"D1 Query Error: {data.get('errors')}")
+            return data.get("result", [{}])[0].get("results", [])
+        finally:
+            if not self.http_client:
+                await client.aclose()
 
     async def fetch_one(self, sql: str, params: Optional[List[Any]] = None) -> Optional[Dict[str, Any]]:
         rows = await self.query(sql, params)
         return rows[0] if rows else None
 
     async def execute(self, sql: str, params: Optional[List[Any]] = None) -> Dict[str, Any]:
+        self._ensure_configured()
         params = params or []
-        if self.use_d1:
-            url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/d1/database/{self.database_id}/query"
-            headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(url, headers=headers, json={"sql": sql, "params": params})
-                meta = resp.json().get("result", [{}])[0].get("meta", {})
-                return {"success": True, "rows_affected": meta.get("changes", 0)}
-
-        async with aiosqlite.connect(self.sqlite_path) as db:
-            async with db.execute(sql, params) as cursor:
-                await db.commit()
-                return {"success": True, "rows_affected": cursor.rowcount}
+        url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/d1/database/{self.database_id}/query"
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+        client = await self._get_client()
+        try:
+            resp = await client.post(url, headers=headers, json={"sql": sql, "params": params})
+            data = resp.json()
+            if not data.get("success"):
+                raise RuntimeError(f"D1 Execute Error: {data.get('errors')}")
+            meta = data.get("result", [{}])[0].get("meta", {})
+            return {"success": True, "rows_affected": meta.get("changes", 0)}
+        finally:
+            if not self.http_client:
+                await client.aclose()

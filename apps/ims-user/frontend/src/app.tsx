@@ -1,25 +1,25 @@
 import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import Sidepanal from './inv-pages/Sidepanal';
-import Dashboard from './inv-pages/Dashboard';
-import Products from './inv-pages/Products';
-import Requisitions from './inv-pages/Requisitions';
-import Suppliers from './inv-pages/Suppliers';
-import IssuanceLogs from './inv-pages/IssuanceLogs';
-import Reports from './inv-pages/Reports';
-import Users from './inv-pages/Users';
-import SiteManagement from './inv-pages/SiteManagement';
-import Profile from './inv-pages/Profile';
-import SKUaddition from './inv-pages/forms/SKUaddition';
-import PurchaseEntry from './inv-pages/forms/PurchaseEntry';
-import IssuanceEntry from './inv-pages/forms/IssuanceEntry';
-import POSTerminal from './pos-pages/POSTerminal';
+import Sidepanal from './inv-pages/sidepanal';
+import Dashboard from './inv-pages/dashboard';
+import Products from './inv-pages/products';
+import Requisitions from './inv-pages/requisitions';
+import Suppliers from './inv-pages/suppliers';
+import IssuanceLogs from './inv-pages/issuance-logs';
+import Reports from './inv-pages/reports';
+import Users from './inv-pages/users';
+import SiteManagement from './inv-pages/site-management';
+import Profile from './inv-pages/profile';
+import SKUaddition from './inv-pages/forms/sku-addition';
+import PurchaseEntry from './inv-pages/forms/purchase-entry';
+import IssuanceEntry from './inv-pages/forms/issuance-entry';
+import POSTerminal from './pos-pages/pos-terminal';
 
 // Shared Pages
-import LandingPage from './shared-pages/LandingPage';
-import LoginPage from './shared-pages/LoginPage';
-import OnboardingPage from './shared-pages/OnboardingPage';
-import NotFoundPage from './shared-pages/NotFoundPage';
+import LandingPage from './shared-pages/landing-page';
+import LoginPage from './shared-pages/login-page';
+import OnboardingPage from './shared-pages/onboarding-page';
+import NotFoundPage from './shared-pages/not-found-page';
 
 export default function App() {
   const location = useLocation();
