@@ -69,7 +69,7 @@ export default function Sidepanal() {
             </Link>
           </div>
 
-          {/* Command Panel Switcher Button (Direct access to Admin Dashboard) */}
+          {/* Command Panel Switcher Button (Direct access to Command Panel) */}
           <div className="p-2.5 bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-500/40 rounded-xl space-y-1.5 shadow-md">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-purple-300">
               <span className="flex items-center gap-1.5">
@@ -77,12 +77,12 @@ export default function Sidepanal() {
                 Corporate Governance
               </span>
               <span className="text-[9px] px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 font-mono font-bold">
-                OPS MASTER
+                COMMANDER
               </span>
             </div>
             <Link
-              to="/admin/dashboard"
-              onClick={() => localStorage.setItem('zolexora_last_app', 'admin')}
+              to="/cmd-panal/dashboard"
+              onClick={() => localStorage.setItem('zolexora_last_app', 'cmd-panal')}
               className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-purple-900/30 group"
             >
               <div className="flex items-center gap-2">

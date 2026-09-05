@@ -1,2 +1,2 @@
-// Re-export from dedicated org-admin-pages for backward compatibility
-export { default } from '../org-admin-pages/site-management';
+// Re-export from dedicated cmd-panal-pages for backward compatibility
+export { default } from '../cmd-panal-pages/site-management';

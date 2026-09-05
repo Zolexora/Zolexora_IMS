@@ -332,7 +332,7 @@ export default function PosSettings() {
               </div>
             </div>
             <Link
-              to="/admin/payments"
+              to="/cmd-panal/payments"
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 rounded-xl text-xs font-semibold transition"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
@@ -346,11 +346,11 @@ export default function PosSettings() {
             <div className="flex items-center gap-2 text-purple-200">
               <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <span>
-                <strong>Enterprise Security:</strong> Payment Rails, Bank VPA & API secrets are centrally managed under the Command Panel (Ops Master).
+                <strong>Enterprise Security:</strong> Payment Rails, Bank VPA & API secrets are centrally managed under the Command Panel (Commander).
               </span>
             </div>
             <Link
-              to="/admin/payments"
+              to="/cmd-panal/payments"
               className="text-purple-300 hover:text-white font-semibold underline text-[11px] ml-2 flex-shrink-0"
             >
               Open Command Panel Setup ➔

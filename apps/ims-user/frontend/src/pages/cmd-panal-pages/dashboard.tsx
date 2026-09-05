@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
-export default function OrgDashboard() {
+export default function CmdDashboard() {
   const { authFetch } = useAuth();
   const [paymentConfig, setPaymentConfig] = useState<any>(null);
   const [terminalConfig, setTerminalConfig] = useState<any>(null);
@@ -46,7 +46,7 @@ export default function OrgDashboard() {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-200 border border-purple-500/30 text-xs font-semibold">
               <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-mono font-bold tracking-wider">OPS MASTER</span>
+              <span className="font-mono font-bold tracking-wider">COMMANDER</span>
               <span className="text-slate-400">•</span>
               <span>Command Panel</span>
             </div>
@@ -74,7 +74,7 @@ export default function OrgDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Payment Rails */}
         <Link
-          to="/admin/payments"
+          to="/cmd-panal/payments"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-purple-500/20 hover:border-purple-500/50 rounded-2xl transition duration-200 shadow-md relative overflow-hidden flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -103,7 +103,7 @@ export default function OrgDashboard() {
 
         {/* Card 2: Staff & Roles */}
         <Link
-          to="/admin/users"
+          to="/cmd-panal/users"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-white/10 hover:border-indigo-500/40 rounded-2xl transition duration-200 shadow-md flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -127,7 +127,7 @@ export default function OrgDashboard() {
 
         {/* Card 3: Sites & Terminals */}
         <Link
-          to="/admin/sites"
+          to="/cmd-panal/sites"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-white/10 hover:border-teal-500/40 rounded-2xl transition duration-200 shadow-md flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -151,7 +151,7 @@ export default function OrgDashboard() {
 
         {/* Card 4: Company Legal Profile */}
         <Link
-          to="/admin/company"
+          to="/cmd-panal/company"
           className="group p-5 bg-slate-900/50 hover:bg-slate-900 border border-white/10 hover:border-amber-500/40 rounded-2xl transition duration-200 shadow-md flex flex-col justify-between"
         >
           <div className="space-y-3">
@@ -247,8 +247,8 @@ export default function OrgDashboard() {
             <div className="flex items-start gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
               <div>
-                <div className="font-semibold text-white">Isolated Admin Routes</div>
-                <div className="text-[11px] text-slate-400">Sensitive financial keys hidden from cashiers</div>
+                <div className="font-semibold text-white">Isolated Command Panel Routes</div>
+                <div className="text-[11px] text-slate-400">Sensitive financial keys hidden from counter operations</div>
               </div>
             </div>
 

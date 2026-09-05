@@ -18,7 +18,7 @@ export interface StaffUser {
   id: string;
   name: string;
   email: string;
-  role: 'Ops Master' | 'Org Admin' | 'Inventory Manager' | 'POS Cashier' | 'Storekeeper' | 'Procurement Officer' | 'Auditor';
+  role: 'Commander' | 'Ops Master' | 'Org Admin' | 'Inventory Manager' | 'POS Cashier' | 'Storekeeper' | 'Procurement Officer' | 'Auditor';
   location: string;
   status: 'Active' | 'Suspended';
   last_login: string;
@@ -29,7 +29,7 @@ const INITIAL_USERS: StaffUser[] = [
     id: 'usr_1',
     name: 'Abhishek Sharma',
     email: 'abhishek@zolexora.com',
-    role: 'Ops Master',
+    role: 'Commander',
     location: 'ALL (Enterprise)',
     status: 'Active',
     last_login: 'Today at 10:45 AM',
@@ -159,7 +159,7 @@ export default function OrgUsers() {
       {/* Role Summary Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { role: 'Ops Master', count: users.filter((u) => u.role === 'Ops Master' || u.role === 'Org Admin').length, color: 'text-purple-400' },
+          { role: 'Commander', count: users.filter((u) => u.role === 'Commander' || u.role === 'Ops Master' || u.role === 'Org Admin').length, color: 'text-purple-400' },
           { role: 'POS Cashier', count: users.filter((u) => u.role === 'POS Cashier').length, color: 'text-emerald-400' },
           { role: 'Inventory Mgr', count: users.filter((u) => u.role === 'Inventory Manager').length, color: 'text-indigo-400' },
           { role: 'Storekeeper', count: users.filter((u) => u.role === 'Storekeeper').length, color: 'text-amber-400' },
@@ -193,7 +193,7 @@ export default function OrgUsers() {
             className="bg-black/40 border border-white/10 text-slate-200 text-xs rounded-xl px-3 py-2 outline-none focus:border-purple-500 cursor-pointer"
           >
             <option value="All">All Staff Roles</option>
-            <option value="Ops Master">Ops Master</option>
+            <option value="Commander">Commander</option>
             <option value="POS Cashier">POS Cashier</option>
             <option value="Inventory Manager">Inventory Manager</option>
             <option value="Storekeeper">Storekeeper</option>
@@ -231,7 +231,7 @@ export default function OrgUsers() {
                   <td className="py-3 px-3">
                     <span
                       className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                        u.role === 'Ops Master' || u.role === 'Org Admin'
+                        u.role === 'Commander' || u.role === 'Ops Master' || u.role === 'Org Admin'
                           ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
                           : u.role === 'POS Cashier'
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
@@ -240,7 +240,7 @@ export default function OrgUsers() {
                           : 'bg-slate-500/20 text-slate-300 border-slate-500/30'
                       }`}
                     >
-                      {u.role}
+                      {u.role === 'Org Admin' || u.role === 'Ops Master' ? 'Commander' : u.role}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-slate-400 flex items-center gap-1.5">
@@ -337,7 +337,7 @@ export default function OrgUsers() {
                   <option value="Inventory Manager">Inventory Manager (Stock Requisition & Purchase)</option>
                   <option value="Procurement Officer">Procurement Officer (Vendor Management)</option>
                   <option value="Auditor">Auditor (View-Only Reports & Reconciliations)</option>
-                  <option value="Ops Master">Ops Master (Full Administrative Authority)</option>
+                  <option value="Commander">Commander (Full Corporate & Executive Authority)</option>
                 </select>
               </div>
 

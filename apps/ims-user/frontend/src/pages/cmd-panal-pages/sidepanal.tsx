@@ -13,38 +13,38 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-export default function OrgSidepanal() {
+export default function CmdSidepanal() {
   const location = useLocation();
 
   const navLinks = [
     {
-      label: 'Admin Overview',
-      path: '/admin/dashboard',
+      label: 'Command Overview',
+      path: '/cmd-panal/dashboard',
       icon: ShieldCheck,
       desc: 'Governance & security audit',
     },
     {
       label: 'Payment Rails & Gateways',
-      path: '/admin/payments',
+      path: '/cmd-panal/payments',
       icon: CreditCard,
       desc: 'SBI VPA, Razorpay, Cashfree & Instant Settle',
       badge: 'SENSITIVE',
     },
     {
       label: 'Staff & Role Permissions',
-      path: '/admin/users',
+      path: '/cmd-panal/users',
       icon: Users,
       desc: 'RBAC, cashier accounts & access control',
     },
     {
       label: 'Sites, Stores & Terminals',
-      path: '/admin/sites',
+      path: '/cmd-panal/sites',
       icon: Building2,
       desc: 'Warehouses, branches & POS registers',
     },
     {
       label: 'Company Legal Profile',
-      path: '/admin/company',
+      path: '/cmd-panal/company',
       icon: Briefcase,
       desc: 'GSTIN, PAN, legal entity & tax rules',
     },
@@ -61,8 +61,8 @@ export default function OrgSidepanal() {
           <div>
             <div className="font-bold text-sm tracking-wide text-white flex items-center gap-1.5">
               <span>COMMAND PANEL</span>
-              <span className="text-[9px] px-1.5 py-0.2 bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 rounded font-mono font-bold tracking-wider">
-                OPS MASTER
+              <span className="text-[9px] px-1.5 py-0.5 bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 rounded font-mono font-bold tracking-wider">
+                COMMANDER
               </span>
             </div>
             <div className="text-[10px] text-purple-300/80 font-medium">Executive Command Center</div>
@@ -83,8 +83,10 @@ export default function OrgSidepanal() {
           {navLinks.map((item) => {
             const isActive =
               location.pathname === item.path ||
-              location.pathname === item.path.replace('/admin', '/org') ||
-              (item.path === '/admin/dashboard' && (location.pathname === '/admin' || location.pathname === '/org'));
+              (item.path === '/cmd-panal/dashboard' &&
+                (location.pathname === '/cmd-panal' ||
+                  location.pathname === '/admin' ||
+                  location.pathname === '/admin/dashboard'));
             const Icon = item.icon;
             return (
               <Link

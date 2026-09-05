@@ -24,13 +24,13 @@ import POSReports from './pages/pos-pages/reports';
 import POSSettings from './pages/pos-pages/settings';
 import POSOnlineOrders from './pages/pos-pages/online-orders';
 
-// Org Admin Pages
-import OrgSidepanal from './pages/org-admin-pages/sidepanal';
-import OrgDashboard from './pages/org-admin-pages/dashboard';
-import OrgPaymentSetup from './pages/org-admin-pages/payment-setup';
-import OrgUsers from './pages/org-admin-pages/users';
-import OrgSiteManagement from './pages/org-admin-pages/site-management';
-import OrgCompanyProfile from './pages/org-admin-pages/company-profile';
+// Command Panel Pages
+import CmdSidepanal from './pages/cmd-panal-pages/sidepanal';
+import CmdDashboard from './pages/cmd-panal-pages/dashboard';
+import CmdPaymentSetup from './pages/cmd-panal-pages/payment-setup';
+import CmdUsers from './pages/cmd-panal-pages/users';
+import CmdSiteManagement from './pages/cmd-panal-pages/site-management';
+import CmdCompanyProfile from './pages/cmd-panal-pages/company-profile';
 
 // Shared Pages
 import LandingPage from './pages/shared-pages/landing-page';
@@ -74,14 +74,14 @@ export default function App() {
   // Public standalone authentication/onboarding routes
   const isPublicRoute = ['/landing', '/login', '/onboarding'].includes(location.pathname);
   const isPosRoute = location.pathname.startsWith('/pos');
-  const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/org');
+  const isCmdRoute = location.pathname.startsWith('/cmd-panal') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/org');
 
-  // Track active workspace to eliminate accidental jumps between POS, INV, and ADMIN
+  // Track active workspace to eliminate accidental jumps between POS, INV, and COMMAND PANEL
   React.useEffect(() => {
     if (location.pathname.startsWith('/pos')) {
       localStorage.setItem('zolexora_last_app', 'pos');
-    } else if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/org')) {
-      localStorage.setItem('zolexora_last_app', 'admin');
+    } else if (location.pathname.startsWith('/cmd-panal') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/org')) {
+      localStorage.setItem('zolexora_last_app', 'cmd-panal');
     } else if (location.pathname.startsWith('/inv')) {
       localStorage.setItem('zolexora_last_app', 'inv');
     }
@@ -94,9 +94,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-[#07080e] text-slate-100 font-sans">
-      {/* Dynamic Sidepanel: PosSidepanal for POS, OrgSidepanal for Admin, Sidepanal for Inventory */}
+      {/* Dynamic Sidepanel: PosSidepanal for POS, CmdSidepanal for Command Panel, Sidepanal for Inventory */}
       {!isPublicRoute && user && (
-        isPosRoute ? <PosSidepanal /> : isAdminRoute ? <OrgSidepanal /> : <Sidepanal />
+        isPosRoute ? <PosSidepanal /> : isCmdRoute ? <CmdSidepanal /> : <Sidepanal />
       )}
 
       {/* Main Viewport */}
@@ -110,7 +110,7 @@ export default function App() {
                   <span>Workspace:</span>
                   <span className="text-emerald-400 font-medium">POS Register Terminal (Desk SP_001)</span>
                 </>
-              ) : isAdminRoute ? (
+              ) : isCmdRoute ? (
                 <>
                   <ShieldCheck className="w-4 h-4 text-purple-400" />
                   <span>Workspace:</span>
@@ -131,11 +131,11 @@ export default function App() {
                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border ${
                   isPosRoute
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    : isAdminRoute
+                    : isCmdRoute
                     ? 'bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border-purple-500/40 font-bold uppercase tracking-wider shadow-xs'
                     : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
                 }`}>
-                  {isAdminRoute ? 'Ops Master' : user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : 'Staff')}
+                  {isCmdRoute ? 'Commander' : user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : 'Staff')}
                 </span>
               </div>
               <button
@@ -166,8 +166,10 @@ export default function App() {
                     to={
                       localStorage.getItem('zolexora_last_app') === 'pos'
                         ? '/pos/dashboard'
-                        : localStorage.getItem('zolexora_last_app') === 'admin' || localStorage.getItem('zolexora_last_app') === 'org'
-                        ? '/admin/dashboard'
+                        : localStorage.getItem('zolexora_last_app') === 'cmd-panal' ||
+                          localStorage.getItem('zolexora_last_app') === 'admin' ||
+                          localStorage.getItem('zolexora_last_app') === 'org'
+                        ? '/cmd-panal/dashboard'
                         : '/inv/dashboard'
                     }
                     replace
@@ -266,63 +268,70 @@ export default function App() {
               }
             />
 
-            {/* Command Panel / Admin Dashboard Core Routes */}
+            {/* Command Panel (Commander Governance) Core Routes */}
             <Route
-              path="/admin"
+              path="/cmd-panal"
               element={
                 <ProtectedRoute>
-                  <OrgDashboard />
+                  <CmdDashboard />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/admin/dashboard"
+              path="/cmd-panal/dashboard"
               element={
                 <ProtectedRoute>
-                  <OrgDashboard />
+                  <CmdDashboard />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/admin/payments"
+              path="/cmd-panal/payments"
               element={
                 <ProtectedRoute>
-                  <OrgPaymentSetup />
+                  <CmdPaymentSetup />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/admin/users"
+              path="/cmd-panal/users"
               element={
                 <ProtectedRoute>
-                  <OrgUsers />
+                  <CmdUsers />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/admin/sites"
+              path="/cmd-panal/sites"
               element={
                 <ProtectedRoute>
-                  <OrgSiteManagement />
+                  <CmdSiteManagement />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/admin/company"
+              path="/cmd-panal/company"
               element={
                 <ProtectedRoute>
-                  <OrgCompanyProfile />
+                  <CmdCompanyProfile />
                 </ProtectedRoute>
               }
             />
 
-            {/* /org/* Aliases (Mapped seamlessly to Admin Dashboard) */}
-            <Route path="/org" element={<ProtectedRoute><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
-            <Route path="/org/dashboard" element={<ProtectedRoute><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
-            <Route path="/org/payments" element={<ProtectedRoute><Navigate to="/admin/payments" replace /></ProtectedRoute>} />
-            <Route path="/org/users" element={<ProtectedRoute><Navigate to="/admin/users" replace /></ProtectedRoute>} />
-            <Route path="/org/sites" element={<ProtectedRoute><Navigate to="/admin/sites" replace /></ProtectedRoute>} />
-            <Route path="/org/company" element={<ProtectedRoute><Navigate to="/admin/company" replace /></ProtectedRoute>} />
+            {/* Seamless Fallback Aliases (Redirect legacy /admin/* and /org/* to /cmd-panal/*) */}
+            <Route path="/admin" element={<ProtectedRoute><Navigate to="/cmd-panal/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/admin/dashboard" element={<ProtectedRoute><Navigate to="/cmd-panal/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/admin/payments" element={<ProtectedRoute><Navigate to="/cmd-panal/payments" replace /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><Navigate to="/cmd-panal/users" replace /></ProtectedRoute>} />
+            <Route path="/admin/sites" element={<ProtectedRoute><Navigate to="/cmd-panal/sites" replace /></ProtectedRoute>} />
+            <Route path="/admin/company" element={<ProtectedRoute><Navigate to="/cmd-panal/company" replace /></ProtectedRoute>} />
+
+            <Route path="/org" element={<ProtectedRoute><Navigate to="/cmd-panal/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/org/dashboard" element={<ProtectedRoute><Navigate to="/cmd-panal/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/org/payments" element={<ProtectedRoute><Navigate to="/cmd-panal/payments" replace /></ProtectedRoute>} />
+            <Route path="/org/users" element={<ProtectedRoute><Navigate to="/cmd-panal/users" replace /></ProtectedRoute>} />
+            <Route path="/org/sites" element={<ProtectedRoute><Navigate to="/cmd-panal/sites" replace /></ProtectedRoute>} />
+            <Route path="/org/company" element={<ProtectedRoute><Navigate to="/cmd-panal/company" replace /></ProtectedRoute>} />
 
             {/* Inventory Module Core Routes */}
             <Route
