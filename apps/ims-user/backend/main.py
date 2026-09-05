@@ -21,11 +21,11 @@ except ImportError:
 try:
     from .db import db
     from .auth import get_current_user
-    from .models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, DashboardMetrics, UserProfile
+    from .models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile
 except ImportError:
     from db import db
     from auth import get_current_user
-    from models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, DashboardMetrics, UserProfile
+    from models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile
 
 
 @asynccontextmanager
@@ -175,6 +175,27 @@ async def update_item(item_code: str, item: ItemUpdate, user: UserProfile = Depe
     clauses = [f"{k} = ?" for k in updates.keys()]
     params = list(updates.values()) + [item_code, user.org_id]
     await db.execute(f"UPDATE products SET {', '.join(clauses)} WHERE item_code = ? AND org_id = ?;", params)
+    return await get_item(item_code, user)
+
+
+@app.post("/api/v1/items/{item_code}/adjust", response_model=ItemResponse)
+async def adjust_stock(item_code: str, req: StockAdjustRequest, user: UserProfile = Depends(get_current_user)):
+    existing = await get_item(item_code, user)
+    stock_col = "stock_s_001" if req.store_code == "S_001" else ("stock_s_002" if req.store_code == "S_002" else "central_stock")
+    cur_stock = getattr(existing, stock_col, 0.0) or 0.0
+    new_store_stock = max(0.0, cur_stock + req.adjustment)
+
+    s1 = new_store_stock if stock_col == "stock_s_001" else existing.stock_s_001
+    s2 = new_store_stock if stock_col == "stock_s_002" else existing.stock_s_002
+    central = new_store_stock if stock_col == "central_stock" else existing.central_stock
+    total_stock = s1 + s2 + central
+    total_val = round(total_stock * existing.rate, 2)
+    now = now_utc_iso()
+
+    await db.execute(
+        f"UPDATE products SET {stock_col} = ?, total_stock = ?, total_valuation = ?, last_updated = ? WHERE item_code = ? AND org_id = ?;",
+        [new_store_stock, total_stock, total_val, now, item_code, user.org_id]
+    )
     return await get_item(item_code, user)
 
 

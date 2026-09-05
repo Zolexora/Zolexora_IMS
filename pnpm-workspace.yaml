@@ -1,2 +1,4 @@
 packages:
   - 'apps/*/frontend'
+  - 'apps/ims-user/POSfrontend'
+  - 'apps/ims-user/INVfrontend'

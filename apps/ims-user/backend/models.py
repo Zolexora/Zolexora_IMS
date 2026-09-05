@@ -78,6 +78,12 @@ class SaleRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class StockAdjustRequest(BaseModel):
+    store_code: str = "S_001"  # S_001, S_002, or central_stock
+    adjustment: float  # positive to add, negative to reduce
+    reason: Optional[str] = "Manual restock/adjustment"
+
+
 class DashboardMetrics(BaseModel):
     totalSKUs: int = 0
     totalStockValuation: float = 0.0
