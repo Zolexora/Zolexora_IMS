@@ -43,57 +43,6 @@ export default function Sidepanal() {
           </div>
         </div>
 
-        {/* Workspace Switchers */}
-        <div className="space-y-2">
-          {/* POS Terminal Switcher Button */}
-          <div className="p-2.5 bg-gradient-to-r from-emerald-950/50 to-teal-950/50 border border-emerald-500/30 rounded-xl space-y-1.5 shadow-md">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-              <span className="flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5 text-emerald-400" />
-                Retail Checkout
-              </span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-200 font-mono">
-                POS
-              </span>
-            </div>
-            <Link
-              to="/pos/dashboard"
-              onClick={() => localStorage.setItem('zolexora_last_app', 'pos')}
-              className="flex items-center justify-between px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-emerald-600/30 group"
-            >
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4 text-white" />
-                <span>POS Terminal</span>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
-            </Link>
-          </div>
-
-          {/* Command Panel Switcher Button (Direct access to Command Panel) */}
-          <div className="p-2.5 bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-500/40 rounded-xl space-y-1.5 shadow-md">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-purple-300">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                Corporate Governance
-              </span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 font-mono font-bold">
-                COMMANDER
-              </span>
-            </div>
-            <Link
-              to="/cmd-panal/dashboard"
-              onClick={() => localStorage.setItem('zolexora_last_app', 'cmd-panal')}
-              className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-purple-900/30 group"
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-white" />
-                <span>Command Panel</span>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
-            </Link>
-          </div>
-        </div>
-
         {/* Quick Action Forms */}
         <div className="p-3 bg-white/5 border border-white/5 rounded-xl space-y-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -158,24 +107,64 @@ export default function Sidepanal() {
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="border-t border-white/10 pt-4 px-2 space-y-2 text-xs text-slate-400">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <Store className="w-3.5 h-3.5 text-slate-500" />
-            <span>Store Scope</span>
-          </span>
-          <span className="text-white font-mono text-[11px]">S_001 (Main)</span>
+      {/* Bottom Actions & Footer Info */}
+      <div className="border-t border-white/10 pt-3 space-y-3">
+        {/* Compact Workspace Switchers (Side-by-Side at Bottom) */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 px-1">
+            <span>Switch Workspace</span>
+            <span className="text-[8px] text-slate-500 font-mono">DOCK</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {/* POS Terminal */}
+            <Link
+              to="/pos/dashboard"
+              onClick={() => localStorage.setItem('zolexora_last_app', 'pos')}
+              className="flex items-center justify-between px-2.5 py-1.5 bg-emerald-950/40 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 rounded-lg text-xs font-semibold transition group shadow-xs"
+              title="Front Desk POS Terminal"
+            >
+              <div className="flex items-center gap-1.5 truncate">
+                <Store className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                <span className="truncate">POS</span>
+              </div>
+              <ArrowUpRight className="w-3 h-3 text-emerald-400/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition flex-shrink-0" />
+            </Link>
+
+            {/* Command Panel (Commander) */}
+            <Link
+              to="/cmd-panal/dashboard"
+              onClick={() => localStorage.setItem('zolexora_last_app', 'cmd-panal')}
+              className="flex items-center justify-between px-2.5 py-1.5 bg-purple-950/40 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 rounded-lg text-xs font-semibold transition group shadow-xs"
+              title="Command Panel (Commander)"
+            >
+              <div className="flex items-center gap-1.5 truncate">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                <span className="truncate">Command</span>
+              </div>
+              <ArrowUpRight className="w-3 h-3 text-purple-400/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition flex-shrink-0" />
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Cloudflare D1</span>
-          </span>
-          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Sync Active
-          </span>
+
+        {/* System Scope Info */}
+        <div className="px-1 space-y-1.5 text-xs text-slate-400 pt-1 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px]">
+              <Store className="w-3 h-3 text-slate-500" />
+              <span>Scope</span>
+            </span>
+            <span className="text-white font-mono text-[11px]">S_001 (Main)</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px]">
+              <Database className="w-3 h-3 text-indigo-400" />
+              <span>Cloudflare D1</span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Sync Active
+            </span>
+          </div>
         </div>
       </div>
     </aside>
