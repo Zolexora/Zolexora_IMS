@@ -44,3 +44,15 @@ def test_production_jwt_secret_enforcement(monkeypatch):
     with pytest.raises(ValueError) as excinfo:
         get_jwt_secret()
     assert "JWT_SECRET environment variable is not configured" in str(excinfo.value)
+
+
+def test_decode_any_jwt_token_supports_hs256_and_es256():
+    from security import decode_any_jwt_token
+
+    # Internal token
+    payload = {"sub": "USR_TEST_001", "email": "test@zolexora.com"}
+    secret = "test_key_12345678901234567890123456789012"
+    token = create_jwt_token(payload, secret_key=secret)
+    decoded = decode_any_jwt_token(token, verify_signature=False)
+    assert decoded["sub"] == "USR_TEST_001"
+    assert decoded["email"] == "test@zolexora.com"

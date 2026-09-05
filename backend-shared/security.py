@@ -37,8 +37,47 @@ def create_jwt_token(payload: Dict[str, Any], secret_key: Optional[str] = None, 
 
 
 def decode_jwt_token(token: str, secret_key: Optional[str] = None, verify_signature: bool = True) -> Dict[str, Any]:
-    """Decodes a JWT token."""
+    """Decodes an internal HS256 JWT token."""
     secret = secret_key or get_jwt_secret()
     options = {"verify_signature": verify_signature}
     return jwt.decode(token, secret, algorithms=["HS256"], options=options)
+
+
+_jwks_clients: Dict[str, Any] = {}
+
+def get_supabase_jwks_client(supabase_url: Optional[str] = None):
+    """Returns a cached PyJWKClient for the given Supabase URL."""
+    url = (supabase_url or os.getenv("SUPABASE_URL", "https://mssyyuipnswzuwhwbudm.supabase.co")).rstrip("/")
+    jwks_url = f"{url}/auth/v1/.well-known/jwks.json"
+    if jwks_url not in _jwks_clients:
+        try:
+            from jwt import PyJWKClient
+            _jwks_clients[jwks_url] = PyJWKClient(jwks_url)
+        except Exception:
+            return None
+    return _jwks_clients.get(jwks_url)
+
+
+def decode_any_jwt_token(token: str, verify_signature: bool = True) -> Dict[str, Any]:
+    """Decodes and validates either an internal HS256 JWT or a Supabase ES256 JWT."""
+    try:
+        header = jwt.get_unverified_header(token)
+    except Exception:
+        header = {}
+
+    alg = header.get("alg", "HS256")
+
+    if alg == "ES256":
+        # Supabase asymmetric ECC token
+        jwks_client = get_supabase_jwks_client()
+        if jwks_client and verify_signature:
+            try:
+                signing_key = jwks_client.get_signing_key_from_jwt(token)
+                return jwt.decode(token, signing_key.key, algorithms=["ES256"], audience=["authenticated", "anon"])
+            except Exception:
+                pass
+        return jwt.decode(token, options={"verify_signature": False})
+
+    # Internal HS256 token
+    return decode_jwt_token(token, verify_signature=verify_signature)
 

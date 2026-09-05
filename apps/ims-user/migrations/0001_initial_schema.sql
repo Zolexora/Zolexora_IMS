@@ -48,10 +48,13 @@ CREATE TABLE IF NOT EXISTS users (
   assigned_location TEXT DEFAULT 'ALL', -- 'ALL', 'S_001', 'SP_001'
   location_name TEXT,
   status TEXT DEFAULT 'Active',
+  supabase_auth_id TEXT,
   created_at TEXT NOT NULL,
   last_login TEXT,
   FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_supabase_auth_id ON users(supabase_auth_id);
 
 -- 5. Products & Inventory
 CREATE TABLE IF NOT EXISTS products (
