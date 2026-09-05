@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from typing import List
 from fastapi import FastAPI, Depends, HTTPException
@@ -14,10 +15,18 @@ except ImportError:
 
 app = FastAPI(title="Zolexora IMS Admin Control Plane API", version="2.0.0")
 
+raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+if raw_origins.strip() == "*":
+    cors_origins = ["*"]
+    allow_credentials = False
+else:
+    cors_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    allow_credentials = True
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

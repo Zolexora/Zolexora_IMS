@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 class AdminD1Adapter:
     def __init__(self):
         self.account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        self.database_id = os.getenv("CLOUDFLARE_D1_DATABASE_ID", "63b1b80b-ee96-4948-acce-c96d6ac65f61")
+        self.database_id = os.getenv("CLOUDFLARE_D1_DATABASE_ID")
         self.api_token = os.getenv("CLOUDFLARE_API_TOKEN")
         self.sqlite_path = os.getenv(
             "LOCAL_SQLITE_PATH",

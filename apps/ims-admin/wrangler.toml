@@ -23,6 +23,6 @@ preview_id = "07e2d34d75414835ad296d6a0887a89b"
 # Environment Variables
 [vars]
 PLATFORM_APP_NAME = "Zolexora IMS Platform Admin"
-SUPERADMIN_EMAIL = "abhishekofficial4577@gmail.com"
+SUPERADMIN_EMAIL = "admin@zolexora.com"
 SESSION_TTL_SECONDS = "604800"
 TENANT_IMS_URL = "https://ims.zolexora.workers.dev"

@@ -10,6 +10,19 @@ node_modules/
 !.env.example
 !**/.env.example
 
+# Credentials, Keys & Secrets
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.token
+*.credentials
+credentials.json
+service_account.json
+client_secret*.json
+
 # OS and temporary files
 .DS_Store
 Thumbs.db

@@ -186,33 +186,19 @@ async function handleAdminLogin(request, env) {
     return jsonResponse({ success: false, error: 'Email and password are required.' }, 400, request);
   }
 
-  // 1. Check SuperAdmin Master Credentials
-  const isSuperAdminEmail = email === 'abhishekofficial4577@gmail.com' || email === 'aeroma7701@gmail.com' || email === 'superadmin@zolexora.com';
-  const isMasterPassword = password === 'Admin@123' || password === 'Zolexora@2026';
-
+  // Query DB for user with Admin or SuperAdmin role
+  const dbUser = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1;').bind(email).first();
   let user = null;
-  if (isSuperAdminEmail && isMasterPassword) {
-    user = {
-      id: 'SUPERADMIN_' + email.split('@')[0].toUpperCase(),
-      email: email,
-      name: email === 'abhishekofficial4577@gmail.com' ? 'Abhishek Sharma' : 'Platform SuperAdmin',
-      role: 'SuperAdmin',
-      orgId: 'ALL'
-    };
-  } else {
-    // 2. Query DB for user with Admin or SuperAdmin role
-    const dbUser = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1;').bind(email).first();
-    if (dbUser && (dbUser.role === 'SuperAdmin' || dbUser.role === 'PlatformAdmin' || dbUser.role === 'Admin')) {
-      const hashed = await hashPassword(password);
-      if (dbUser.password_hash === hashed || password === 'Admin@123') {
-        user = {
-          id: dbUser.id,
-          email: dbUser.email,
-          name: dbUser.name,
-          role: dbUser.role,
-          orgId: dbUser.org_id
-        };
-      }
+  if (dbUser && (dbUser.role === 'SuperAdmin' || dbUser.role === 'PlatformAdmin' || dbUser.role === 'Admin')) {
+    const hashed = await hashPassword(password);
+    if (dbUser.password_hash === hashed) {
+      user = {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role,
+        orgId: dbUser.org_id
+      };
     }
   }
 
@@ -282,18 +268,6 @@ async function handleAdminLogout(request, env) {
 async function getAdminSession(request, env) {
   const token = extractSessionToken(request);
   if (!token) {
-    // If running in development without KV, check for dev bypass header
-    if (request.headers.get('X-Dev-Bypass') === 'true') {
-      return {
-        user: {
-          id: 'DEV_SUPERADMIN',
-          email: 'abhishekofficial4577@gmail.com',
-          name: 'Abhishek Sharma (Root Dev)',
-          role: 'SuperAdmin',
-          orgId: 'ALL'
-        }
-      };
-    }
     return null;
   }
 
@@ -302,19 +276,6 @@ async function getAdminSession(request, env) {
     if (raw) {
       try { return JSON.parse(raw); } catch (e) {}
     }
-  }
-
-  // Fallback token check
-  if (token.startsWith('adm_')) {
-    return {
-      user: {
-        id: 'SUPERADMIN_ROOT',
-        email: 'abhishekofficial4577@gmail.com',
-        name: 'Abhishek Sharma',
-        role: 'SuperAdmin',
-        orgId: 'ALL'
-      }
-    };
   }
   return null;
 }
@@ -450,7 +411,8 @@ async function savePlatformOrganization(db, org, session) {
 
     // Provision Tenant Admin user
     const userId = `USR_${id.slice(-3)}_ADMIN`;
-    const defaultPasswordHash = await hashPassword('Admin@123');
+    const tempPassword = org.adminPassword || crypto.randomUUID().slice(0, 12);
+    const defaultPasswordHash = await hashPassword(tempPassword);
     await db.prepare(`
       INSERT INTO users (id, org_id, email, password_hash, name, role, scope_type, assigned_location, status, created_at)
       VALUES (?, ?, ?, ?, ?, 'Admin', 'ALL', 'ALL', 'Active', ?);
@@ -565,7 +527,7 @@ async function savePlatformUser(db, user, session) {
   const now = new Date().toISOString();
 
   if (isNew) {
-    const password = user.password || 'Admin@123';
+    const password = user.password || crypto.randomUUID().slice(0, 12);
     const passwordHash = await hashPassword(password);
 
     await db.prepare(`
@@ -778,8 +740,8 @@ async function createImpersonationToken(env, { tenantId, userId }, session) {
   const token = 'imp_' + crypto.randomUUID().replace(/-/g, '');
   const impUser = {
     id: userId || 'USR_SUPERADMIN_IMPERSONATE',
-    email: session?.user?.email || 'abhishekofficial4577@gmail.com',
-    name: 'SuperAdmin (' + (session?.user?.name || 'Abhishek') + ')',
+    email: session?.user?.email || env.SUPERADMIN_EMAIL || 'admin@zolexora.com',
+    name: 'SuperAdmin (' + (session?.user?.name || 'Administrator') + ')',
     role: 'SuperAdmin',
     orgId: tenantId,
     impersonated: true

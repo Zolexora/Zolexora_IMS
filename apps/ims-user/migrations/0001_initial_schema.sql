@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- ====================================================================
 
 INSERT OR IGNORE INTO organizations (id, name, industry, owner_email, currency, status, created_at)
-VALUES ('ORG_ZOLEXORA_001', 'Zolexora_1''s org', 'Retail & E-Commerce', 'abhishekofficial4577@gmail.com', '₹', 'Active', '2026-09-04T00:00:00.000Z');
+VALUES ('ORG_ZOLEXORA_001', 'Zolexora_1''s org', 'Retail & E-Commerce', 'admin@zolexora.com', '₹', 'Active', '2026-09-04T00:00:00.000Z');
 
 INSERT OR IGNORE INTO stores (code, org_id, name, type, status, description) VALUES
 ('S_001', 'ORG_ZOLEXORA_001', 'Store 1 - Main Branch', 'Main Outlet Store', 'Active', 'Primary inventory depot'),
@@ -240,8 +240,8 @@ INSERT OR IGNORE INTO selling_points (code, org_id, name, assigned_store_code, t
 ('SP_003', 'ORG_ZOLEXORA_001', 'Main Production / Kitchen', 'S_001', 'Production Unit', 'Active');
 
 INSERT OR IGNORE INTO users (id, org_id, email, password_hash, name, role, scope_type, assigned_location, location_name, status, created_at, last_login) VALUES
-('USR_SUPER_001', 'ORG_ZOLEXORA_001', 'abhishekofficial4577@gmail.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Abhishek Sharma', 'SuperAdmin', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
-('USR_001', 'ORG_ZOLEXORA_001', 'aeroma7701@gmail.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Zolexora Admin', 'System Administrator & Owner', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
+('USR_SUPER_001', 'ORG_ZOLEXORA_001', 'superadmin@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Super Administrator', 'SuperAdmin', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
+('USR_001', 'ORG_ZOLEXORA_001', 'admin@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Zolexora Admin', 'System Administrator & Owner', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
 ('USR_002', 'ORG_ZOLEXORA_001', 'store1@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Ramesh Sharma', 'Store Incharge', 'STORE', 'S_001', 'Store 1 - Main Branch', 'Active', '2026-09-04T00:00:00.000Z', NULL),
 ('USR_003', 'ORG_ZOLEXORA_001', 'pos1@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Pooja Verma', 'Selling Point Cashier', 'SELLING_POINT', 'SP_001', 'Front Counter / Retail Sales', 'Active', '2026-09-04T00:00:00.000Z', NULL),
 ('USR_004', 'ORG_ZOLEXORA_001', 'pos2@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Sunil Kumar', 'Selling Point Cashier', 'SELLING_POINT', 'SP_002', 'Branch Dispenser Counter', 'Active', '2026-09-04T00:00:00.000Z', NULL);

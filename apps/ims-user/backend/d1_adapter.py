@@ -25,7 +25,7 @@ class D1Adapter:
         schema_path: Optional[str] = None,
     ):
         self.account_id = account_id or os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        self.database_id = database_id or os.getenv("CLOUDFLARE_D1_DATABASE_ID", "63b1b80b-ee96-4948-acce-c96d6ac65f61")
+        self.database_id = database_id or os.getenv("CLOUDFLARE_D1_DATABASE_ID")
         self.api_token = api_token or os.getenv("CLOUDFLARE_API_TOKEN")
         self.sqlite_path = sqlite_path or os.getenv(
             "LOCAL_SQLITE_PATH",

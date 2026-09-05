@@ -332,13 +332,6 @@ async function handleRestApi(request, env, url) {
     return jsonResponse({
       success: true,
       message: 'Zolexora IMS Edge Auth Service',
-      defaultCredentials: {
-        superAdmin: 'abhishekofficial4577@gmail.com',
-        admin: 'aeroma7701@gmail.com',
-        store1: 'store1@zolexora.com',
-        pos1: 'pos1@zolexora.com',
-        defaultPassword: 'Admin@123'
-      },
       loginPage: '/login'
     }, 200, request);
   }
@@ -1479,55 +1472,38 @@ async function createOrganization(db, orgData) {
 
 async function loginUser(db, env, credentials) {
   const email = String(credentials.email || '').trim().toLowerCase();
-  let password = String(credentials.password || '').trim();
+  const password = String(credentials.password || '').trim();
 
-  if (!email) {
-    return { success: false, error: 'Email is required', message: 'Email is required' };
-  }
-
-  // Auto-fill default password if empty
-  if (!password) {
-    password = 'Admin@123';
+  if (!email || !password) {
+    return { success: false, error: 'Email and password are required', message: 'Email and password are required' };
   }
 
   const user = await db.prepare('SELECT * FROM users WHERE LOWER(email) = ?;').bind(email).first();
   if (!user) {
     return { 
       success: false, 
-      error: 'User account not found for ' + email + '. Try abhishekofficial4577@gmail.com or 1-Click Quick Login', 
-      message: 'User account not found for ' + email + '. Try abhishekofficial4577@gmail.com or 1-Click Quick Login' 
+      error: 'Invalid email or password', 
+      message: 'Invalid email or password' 
     };
   }
 
   // Verify SHA-256 hash
   const hash = await hashPassword(password);
-  const validFallbackPasswords = [
-    'Admin@123', 'admin@123', 'admin', 'Admin', '123456', 'password', 'Password@123', 'Zolexora@2026'
-  ];
-
-  // SuperAdmin/Owner auto-login or valid fallback passwords
-  const isSuperAdmin = (email === 'abhishekofficial4577@gmail.com' || email === 'aeroma7701@gmail.com');
-  const passwordMatches = (user.password_hash === hash) || validFallbackPasswords.includes(password) || isSuperAdmin;
+  const passwordMatches = (user.password_hash === hash);
 
   if (!passwordMatches) {
     return { 
       success: false, 
-      error: 'Invalid password. Default password is Admin@123', 
-      message: 'Invalid password. Default password is Admin@123 (or use 1-Click Quick Login)' 
+      error: 'Invalid email or password', 
+      message: 'Invalid email or password' 
     };
   }
 
-  // Update last_login & sync hash if new password used
+  // Update last_login
   const now = new Date().toISOString();
-  if (user.password_hash !== hash && (validFallbackPasswords.includes(password) || isSuperAdmin)) {
-    try {
-      await db.prepare('UPDATE users SET last_login = ?, password_hash = ? WHERE id = ?;').bind(now, hash, user.id).run();
-    } catch (e) {}
-  } else {
-    try {
-      await db.prepare('UPDATE users SET last_login = ? WHERE id = ?;').bind(now, user.id).run();
-    } catch (e) {}
-  }
+  try {
+    await db.prepare('UPDATE users SET last_login = ? WHERE id = ?;').bind(now, user.id).run();
+  } catch (e) {}
 
   const formattedUser = {
     id: user.id,
