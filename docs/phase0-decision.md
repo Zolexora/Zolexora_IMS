@@ -69,7 +69,7 @@ flowchart TD
    - **Web Application**: Frontend transmits the Supabase Access Token (JWT) in the `Authorization: Bearer <JWT>` header or an HttpOnly session cookie.
 3. **Backend Validation & User Mapping**:
    - FastAPI dependency (`get_current_user`) intercepts incoming API requests.
-   - Validates the Supabase JWT cryptographically using Supabase JWKS / `SUPABASE_JWT_SECRET`.
+   - Validates the Supabase JWT cryptographically using Supabase's public JWKS endpoint (`/.well-known/jwks.json`, ES256).
    - Extracts the Supabase `sub` UUID claim.
    - Queries the Cloudflare D1 `users` table:
      ```sql
@@ -116,7 +116,6 @@ flowchart TD
 | `SUPABASE_URL` | Render & Cloudflare Pages | Supabase project API gateway endpoint |
 | `SUPABASE_ANON_KEY` | Cloudflare Pages & Render | Public client-side Supabase SDK initialization |
 | `SUPABASE_SERVICE_KEY` | Render Environment Variables | Backend administrative user actions & role provisioning |
-| `SUPABASE_JWT_SECRET` | Render Environment Variables | Cryptographic signature validation for Supabase JWTs |
 | `CLOUDFLARE_ACCOUNT_ID` | Render & GitHub Actions | Cloudflare account identifier |
 | `CLOUDFLARE_D1_DATABASE_ID`| Render & GitHub Actions | Target D1 relational database UUID |
 | `CLOUDFLARE_API_TOKEN` | Render & GitHub Actions | Scoped Cloudflare token with D1 Edit/Read permissions |
