@@ -7,14 +7,19 @@ export interface CartItem {
   rate: number;
   quantity: number;
   tax_percent: number;
+  notes?: string;
 }
 
 export interface SaleReceipt {
   bill_no: string;
+  token_no?: string;
   date: string;
   selling_point: string;
   cashier: string;
   customer_name: string;
+  customer_phone?: string;
+  order_type?: string;
+  table_no?: string;
   items: CartItem[];
   subtotal: number;
   tax: number;
@@ -23,6 +28,7 @@ export interface SaleReceipt {
   payment_mode: string;
   tendered?: number;
   change?: number;
+  loyalty_points?: number;
 }
 
 interface ReceiptModalProps {
@@ -64,12 +70,22 @@ export default function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
           </div>
 
           <div className="flex justify-between text-[11px]">
-            <span>Bill No: <strong className="text-white print:text-black">{receipt.bill_no}</strong></span>
+            <span>Bill: <strong className="text-white print:text-black">{receipt.bill_no}</strong></span>
             <span>{receipt.date}</span>
           </div>
+          {receipt.token_no && (
+            <div className="flex justify-between text-xs font-bold text-amber-400 print:text-black">
+              <span>Token: {receipt.token_no}</span>
+              <span>{receipt.order_type || 'Counter'}</span>
+            </div>
+          )}
           <div className="flex justify-between text-[11px]">
             <span>Cashier: {receipt.cashier}</span>
+            <span>{receipt.table_no ? `Table: ${receipt.table_no}` : (receipt.order_type || 'Takeaway')}</span>
+          </div>
+          <div className="flex justify-between text-[11px]">
             <span>Cust: {receipt.customer_name}</span>
+            {receipt.customer_phone && <span>Ph: {receipt.customer_phone}</span>}
           </div>
 
           <div className="border-b border-dashed border-white/20 my-2 print:border-black/40" />
@@ -86,9 +102,14 @@ export default function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
             </thead>
             <tbody className="divide-y divide-white/5 print:divide-black/10">
               {receipt.items.map((item, idx) => (
-                <tr key={idx} className="py-1">
-                  <td className="py-1 pr-2 truncate max-w-[130px] font-sans text-xs text-white print:text-black">
-                    {item.description}
+                <tr key={idx} className="py-1 align-top">
+                  <td className="py-1 pr-2 max-w-[130px] font-sans text-xs text-white print:text-black">
+                    <div>{item.description}</div>
+                    {item.notes && (
+                      <div className="text-[10px] text-amber-300 print:text-black font-mono italic">
+                        ↳ {item.notes}
+                      </div>
+                    )}
                   </td>
                   <td className="py-1 text-center">{item.quantity}</td>
                   <td className="py-1 text-right">₹{item.rate.toFixed(2)}</td>

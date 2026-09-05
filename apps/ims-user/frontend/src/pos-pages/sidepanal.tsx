@@ -11,6 +11,7 @@ import {
   ScanBarcode,
   CreditCard,
   UserCircle,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 interface PosSidepanalProps {
@@ -85,10 +86,18 @@ export default function PosSidepanal({
             </Link>
 
             <Link
+              to="/pos/dashboard"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
+            >
+              <UtensilsCrossed className="w-4 h-4 text-indigo-400" />
+              <span>Dine-In Table Floor</span>
+            </Link>
+
+            <Link
               to="/inv/products"
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
             >
-              <ScanBarcode className="w-4 h-4" />
+              <ScanBarcode className="w-4 h-4 text-cyan-400" />
               <span>Product SKU Catalog</span>
             </Link>
 
@@ -96,7 +105,7 @@ export default function PosSidepanal({
               to="/inv/issuance-logs"
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
             >
-              <Receipt className="w-4 h-4" />
+              <Receipt className="w-4 h-4 text-amber-400" />
               <span>Sales Ledger & Audit</span>
             </Link>
 
@@ -104,7 +113,7 @@ export default function PosSidepanal({
               to="/inv/profile"
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition"
             >
-              <UserCircle className="w-4 h-4" />
+              <UserCircle className="w-4 h-4 text-purple-400" />
               <span>Cashier Profile & Shift</span>
             </Link>
           </nav>
