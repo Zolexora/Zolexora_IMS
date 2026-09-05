@@ -149,11 +149,63 @@ class GenerateDynamicQrRequest(BaseModel):
     customer_name: Optional[str] = None
 
 
+class TerminalSettingsConfig(BaseModel):
+    printer_interface: str = "network"  # network, usb, bluetooth, browser
+    printer_ip: str = "192.168.1.180"
+    printer_port: str = "9100"
+    paper_width: str = "80mm"  # 80mm or 58mm
+    auto_cut_paper: bool = True
+    drawer_kick_on_cash: bool = True
+    kot_printer_ip: str = "192.168.1.185"
+    auto_print_kot_on_hold: bool = True
+    large_token_font: bool = True
+    store_legal_name: str = "Zolexora Retail Operations Pvt Ltd"
+    gstin: str = "27AABCZ1234F1Z8"
+    store_address: str = "Shop 4, Ground Floor, Cyber City Boulevard, Mumbai"
+    phone_on_receipt: str = "+91 98765 43210"
+    receipt_footer: str = "Thank you for dining with Zolexora! Have a great day."
+    service_charge_percent: float = 0.0
+    soundbox_enabled: bool = True
+
+
+class CustomerModel(BaseModel):
+    phone: str
+    name: str
+    email: Optional[str] = None
+    tier: Optional[str] = "Silver"
+    loyalty_points: Optional[int] = 0
+    total_orders: Optional[int] = 0
+    total_spend: Optional[float] = 0.0
+
+
 class PaymentVerifyRequest(BaseModel):
     bill_no: str
     amount: float
     payment_mode: str = "UPI"  # UPI, Card, Netbanking
     transaction_ref: Optional[str] = None  # Bank UTR / Reference No / Card Auth Code
     status: str = "SUCCESS"
+
+
+class PosTableModel(BaseModel):
+    id: str
+    number: str
+    section: str
+    capacity: int = 4
+    status: str = "Vacant"
+    current_bill: Optional[float] = 0.0
+    waiter: Optional[str] = None
+    token: Optional[str] = None
+    items_count: Optional[int] = 0
+    seated_since: Optional[str] = None
+
+
+class CashDrawerLogModel(BaseModel):
+    id: Optional[str] = None
+    timestamp: Optional[str] = None
+    type: str  # 'Opening Float' | 'Cash Sale' | 'Pay In' | 'Pay Out' | 'Cash Drop (Safe)'
+    amount: float
+    reason: str
+    cashier: str
+
 
 

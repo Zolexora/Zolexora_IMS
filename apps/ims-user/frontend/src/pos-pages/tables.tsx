@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UtensilsCrossed,
   Users,
@@ -17,6 +17,7 @@ import {
   IndianRupee,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth-context';
 
 interface PosTable {
   id: string;
@@ -56,11 +57,40 @@ const INITIAL_TABLES: PosTable[] = [
 
 export default function PosTables() {
   const navigate = useNavigate();
+  const { authFetch } = useAuth();
   const [tables, setTables] = useState<PosTable[]>(INITIAL_TABLES);
   const [selectedSection, setSelectedSection] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTable, setSelectedTable] = useState<PosTable | null>(null);
+
+  const fetchTables = () => {
+    authFetch('/api/v1/tables')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTables(
+            data.map((t: any) => ({
+              id: t.id,
+              number: t.number,
+              section: t.section,
+              capacity: t.capacity,
+              status: t.status,
+              currentBill: t.current_bill || undefined,
+              waiter: t.waiter || undefined,
+              seatedSince: t.seated_since || undefined,
+              token: t.token || undefined,
+              itemsCount: t.items_count || undefined,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchTables();
+  }, []);
 
   const sections = ['All', 'Main Hall', 'AC Lounge', 'Rooftop Patio', 'Bar Counter'];
 
@@ -89,7 +119,7 @@ export default function PosTables() {
     navigate(`/pos/dashboard?table=${table.number}`);
   };
 
-  const handleToggleStatus = (tableId: string, newStatus: PosTable['status']) => {
+  const handleToggleStatus = async (tableId: string, newStatus: PosTable['status']) => {
     setTables((prev) =>
       prev.map((t) => {
         if (t.id === tableId) {
@@ -108,6 +138,19 @@ export default function PosTables() {
     if (selectedTable && selectedTable.id === tableId) {
       setSelectedTable((prev) => (prev ? { ...prev, status: newStatus } : null));
     }
+    try {
+      await authFetch(`/api/v1/tables/${tableId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+          current_bill: newStatus === 'Vacant' ? 0.0 : undefined,
+          token: newStatus === 'Vacant' ? null : undefined,
+          items_count: newStatus === 'Vacant' ? 0 : undefined,
+          seated_since: newStatus === 'Occupied' ? 'Just now' : newStatus === 'Vacant' ? null : undefined,
+        }),
+      });
+    } catch {}
   };
 
   return (

@@ -211,21 +211,25 @@ export default function POSTerminal() {
     fetchData();
   }, []);
 
-  // Customer Phone lookup simulation
+  // Customer Phone CRM Database lookup
   useEffect(() => {
     const cleaned = customerPhone.replace(/\D/g, '');
     if (cleaned.length >= 10) {
-      // Mock CRM lookup
-      if (cleaned.endsWith('1234')) {
-        setCustomerName('Rahul Malhotra (Gold Member)');
-        setLoyaltyPoints(420);
-      } else if (cleaned.endsWith('5678')) {
-        setCustomerName('Priya Sharma (VIP)');
-        setLoyaltyPoints(850);
-      } else {
-        setCustomerName(`Guest (${cleaned.slice(-4)})`);
-        setLoyaltyPoints(50);
-      }
+      authFetch(`/api/v1/customers/${cleaned}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((cust) => {
+          if (cust && cust.name) {
+            setCustomerName(`${cust.name} (${cust.tier || 'Member'})`);
+            setLoyaltyPoints(cust.loyalty_points || 0);
+          } else {
+            setCustomerName(`Guest (${cleaned.slice(-4)})`);
+            setLoyaltyPoints(0);
+          }
+        })
+        .catch(() => {
+          setCustomerName(`Guest (${cleaned.slice(-4)})`);
+          setLoyaltyPoints(0);
+        });
     } else if (cleaned.length === 0) {
       setCustomerName('Walk-in Customer');
       setLoyaltyPoints(0);
@@ -490,6 +494,27 @@ export default function POSTerminal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(salePayload),
       });
+
+      if (customerPhone.trim()) {
+        const cleaned = customerPhone.replace(/\D/g, '');
+        if (cleaned.length >= 10) {
+          const earnedPoints = Math.round(grandTotal * 0.05);
+          const newTotalPoints = (loyaltyPoints || 0) + earnedPoints;
+          const tier = newTotalPoints > 1000 ? 'Platinum' : newTotalPoints > 300 ? 'Gold' : 'Silver';
+          await authFetch('/api/v1/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: customerPhone.trim(),
+              name: customerName.replace(/\s*\(.*?\)\s*/g, '').trim() || `Customer ${cleaned.slice(-4)}`,
+              tier: tier,
+              loyalty_points: newTotalPoints,
+              total_orders: 1,
+              total_spend: grandTotal,
+            }),
+          });
+        }
+      }
     } catch {}
 
     // Deduct stock in local view
@@ -1239,6 +1264,7 @@ export default function POSTerminal() {
       <UpiQrModal
         amount={grandTotal}
         billNo={receipt?.bill_no || `BILL-${Date.now().toString().slice(-6)}`}
+        customerPhone={customerPhone}
         isOpen={upiModalOpen}
         onClose={() => setUpiModalOpen(false)}
         onPaymentSuccess={() => {

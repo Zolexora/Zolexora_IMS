@@ -24,6 +24,8 @@ interface UpiQrModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPaymentSuccess: (utrRef?: string) => void;
+  customerPhone?: string;
+  customerEmail?: string;
 }
 
 export default function UpiQrModal({
@@ -32,6 +34,8 @@ export default function UpiQrModal({
   isOpen,
   onClose,
   onPaymentSuccess,
+  customerPhone,
+  customerEmail,
 }: UpiQrModalProps) {
   const { authFetch } = useAuth();
 
@@ -168,8 +172,8 @@ export default function UpiQrModal({
         body: JSON.stringify({
           amount: amount,
           bill_no: billNo,
-          customer_phone: '9876543210',
-          customer_email: 'guest@zolexora.com',
+          customer_phone: customerPhone?.replace(/\D/g, '') || '9876543210',
+          customer_email: customerEmail || 'guest@zolexora.com',
         }),
       });
       const orderData = await res.json();
@@ -242,8 +246,8 @@ export default function UpiQrModal({
         body: JSON.stringify({
           amount: amount,
           bill_no: billNo,
-          customer_phone: '9876543210',
-          customer_email: 'guest@zolexora.com',
+          customer_phone: customerPhone?.replace(/\D/g, '') || '9876543210',
+          customer_email: customerEmail || 'guest@zolexora.com',
         }),
       });
       const data = await res.json();

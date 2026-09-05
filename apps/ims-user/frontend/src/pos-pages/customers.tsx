@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -16,8 +16,10 @@ import {
   ShoppingBag,
   IndianRupee,
   X,
+  Loader2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/auth-context';
 
 interface Customer {
   id: string;
@@ -32,18 +34,11 @@ interface Customer {
   fav_item: string;
 }
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'Vikram Sharma', phone: '+91 98765 43210', email: 'vikram.s@gmail.com', tier: 'Platinum', loyalty_points: 1240, total_orders: 28, lifetime_spent: 34500, last_visit: 'Today', fav_item: 'Oat Milk Cappuccino' },
-  { id: 'c2', name: 'Sneha Patel', phone: '+91 91234 56789', email: 'sneha.p@outlook.com', tier: 'Gold', loyalty_points: 620, total_orders: 14, lifetime_spent: 18200, last_visit: 'Yesterday', fav_item: 'Smoked Salmon Bagel' },
-  { id: 'c3', name: 'Amit Verma', phone: '+91 99887 76655', email: 'amit.verma@tech.in', tier: 'Silver', loyalty_points: 340, total_orders: 8, lifetime_spent: 9400, last_visit: '3 days ago', fav_item: 'Tandoori Paneer Roll' },
-  { id: 'c4', name: 'Pooja Reddy', phone: '+91 94455 66778', email: 'pooja.r@yahoo.com', tier: 'Gold', loyalty_points: 850, total_orders: 19, lifetime_spent: 24300, last_visit: 'Last week', fav_item: 'Ceremonial Matcha Latte' },
-  { id: 'c5', name: 'Rahul Kapoor', phone: '+91 97711 22334', email: 'rahul.k@design.io', tier: 'Bronze', loyalty_points: 110, total_orders: 3, lifetime_spent: 3100, last_visit: '2 weeks ago', fav_item: 'Butter Croissant Flaky' },
-  { id: 'c6', name: 'Dr. Ananya Roy', phone: '+91 98112 34567', email: 'ananya.roy@health.org', tier: 'Platinum', loyalty_points: 2150, total_orders: 42, lifetime_spent: 56900, last_visit: 'Today', fav_item: 'Parmesan Truffle Fries' },
-];
-
 export default function PosCustomers() {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const { authFetch } = useAuth();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTier, setSelectedTier] = useState<string>('All');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -56,6 +51,36 @@ export default function PosCustomers() {
     email: '',
     tier: 'Bronze' as Customer['tier'],
   });
+
+  const loadCustomers = () => {
+    setLoading(true);
+    authFetch('/api/v1/customers')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setCustomers(
+            data.map((c: any) => ({
+              id: c.phone,
+              name: c.name,
+              phone: c.phone,
+              email: c.email || undefined,
+              tier: (c.tier as Customer['tier']) || 'Silver',
+              loyalty_points: c.loyalty_points || 0,
+              total_orders: c.total_orders || 0,
+              lifetime_spent: c.total_spend || 0,
+              last_visit: c.last_visit || 'Recently',
+              fav_item: 'Oat Milk Cappuccino',
+            }))
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadCustomers();
+  }, []);
 
   const tiers = ['All', 'Platinum', 'Gold', 'Silver', 'Bronze'];
 
@@ -73,26 +98,30 @@ export default function PosCustomers() {
   const totalPoints = customers.reduce((acc, c) => acc + c.loyalty_points, 0);
   const totalLifetimeRevenue = customers.reduce((acc, c) => acc + c.lifetime_spent, 0);
 
-  const handleCreateCustomer = (e: React.FormEvent) => {
+  const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone) return;
 
-    const newCust: Customer = {
-      id: `c_${Date.now()}`,
-      name: form.name,
-      phone: form.phone,
-      email: form.email || undefined,
-      tier: form.tier,
-      loyalty_points: 50, // Welcome bonus
-      total_orders: 0,
-      lifetime_spent: 0,
-      last_visit: 'Never',
-      fav_item: 'None yet',
-    };
+    try {
+      const res = await authFetch('/api/v1/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim() || undefined,
+          tier: form.tier,
+          loyalty_points: 50,
+          total_orders: 0,
+          total_spend: 0,
+        }),
+      });
+      if (res.ok) {
+        loadCustomers();
+      }
+    } catch {}
 
-    setCustomers([newCust, ...customers]);
     setShowAddModal(false);
-    setSelectedCustomer(newCust);
     setForm({ name: '', phone: '', email: '', tier: 'Bronze' });
   };
 

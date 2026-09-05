@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   Calendar,
@@ -14,7 +14,9 @@ import {
   IndianRupee,
   Utensils,
   ChevronDown,
+  Loader2,
 } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
 
 interface SalesMetric {
   title: string;
@@ -25,50 +27,40 @@ interface SalesMetric {
 }
 
 export default function PosReports() {
+  const { authFetch } = useAuth();
   const [timeRange, setTimeRange] = useState<'Today' | 'Yesterday' | 'This Week' | 'This Month'>('Today');
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Realistic mock data reflecting current register sales
-  const salesData = {
-    grossSales: 38450,
-    netSales: 34820,
-    discounts: 1850,
-    taxes: 1780,
-    orderCount: 46,
-    avgTicket: 835,
-    tenders: [
-      { mode: 'UPI / Dynamic QR', amount: 19800, count: 24, percent: 51.5, color: 'text-cyan-400', bg: 'bg-cyan-500' },
-      { mode: 'Cash', amount: 11250, count: 14, percent: 29.3, color: 'text-emerald-400', bg: 'bg-emerald-500' },
-      { mode: 'Credit / Debit Card', amount: 7400, count: 8, percent: 19.2, color: 'text-indigo-400', bg: 'bg-indigo-500' },
-    ],
-    categories: [
-      { name: 'Beverages', revenue: 14200, qty: 68, share: 37 },
-      { name: 'Mains & Rolls', revenue: 12400, qty: 42, share: 32 },
-      { name: 'Appetizers & Wings', revenue: 6850, qty: 22, share: 18 },
-      { name: 'Bakery & Pastries', revenue: 3200, qty: 20, share: 8 },
-      { name: 'Desserts', revenue: 1800, qty: 8, share: 5 },
-    ],
-    topItems: [
-      { rank: 1, name: 'Oat Milk Cappuccino', category: 'Beverages', qty: 34, revenue: 7480 },
-      { rank: 2, name: 'Tandoori Paneer Roll', category: 'Mains', qty: 24, revenue: 5760 },
-      { rank: 3, name: 'Parmesan Truffle Fries', category: 'Appetizers', qty: 18, revenue: 3960 },
-      { rank: 4, name: 'Smoked Salmon Bagel', category: 'Mains', qty: 10, revenue: 3800 },
-      { rank: 5, name: 'Artisan Espresso Single', category: 'Beverages', qty: 22, revenue: 3080 },
-    ],
-    hourly: [
-      { hour: '08 AM - 10 AM', sales: 4200, orders: 8 },
-      { hour: '10 AM - 12 PM', sales: 6800, orders: 11 },
-      { hour: '12 PM - 02 PM', sales: 12400, orders: 16 }, // Peak Lunch
-      { hour: '02 PM - 04 PM', sales: 3800, orders: 4 },
-      { hour: '04 PM - 06 PM', sales: 7450, orders: 9 },
-      { hour: '06 PM - 08 PM', sales: 3800, orders: 4 },
-    ],
-  };
+  // Live database analytics queried directly from selling_point_sales
+  const [salesData, setSalesData] = useState<any>({
+    grossSales: 0,
+    netSales: 0,
+    discounts: 0,
+    taxes: 0,
+    orderCount: 0,
+    avgTicket: 0,
+    tenders: [],
+    categories: [],
+    topItems: [],
+    hourly: [],
+  });
+
+  useEffect(() => {
+    setLoading(true);
+    authFetch(`/api/v1/reports/sales?range=${encodeURIComponent(timeRange)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setSalesData(data);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [timeRange]);
 
   const handleExportCSV = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       'Item,Category,Quantity,Revenue\n' +
-      salesData.topItems.map((i) => `"${i.name}","${i.category}",${i.qty},${i.revenue}`).join('\n');
+      (salesData.topItems || []).map((i: any) => `"${i.name}","${i.category}",${i.qty},${i.revenue}`).join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);

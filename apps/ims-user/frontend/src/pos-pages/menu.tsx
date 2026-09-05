@@ -61,6 +61,32 @@ export default function PosMenu() {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
+  // Fetch live products catalog from database
+  useEffect(() => {
+    authFetch('/api/v1/products')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setItems(
+            data.map((p: any) => ({
+              id: p.id || p.item_code,
+              sku: p.item_code,
+              name: p.description,
+              category: p.category || 'Mains',
+              price: p.rate,
+              tax_rate: p.tax_percent ?? 5,
+              diet: (p.diet as MenuItem['diet']) || 'veg',
+              is_available: p.status === 'Active',
+              shortcode: p.shortcode || p.item_code.slice(0, 3).toUpperCase(),
+              prep_time: p.prep_time || '5m',
+              stock: p.total_stock ?? ((p.stock_s_001 || 0) + (p.stock_s_002 || 0)),
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Form state
   const [formData, setFormData] = useState<Partial<MenuItem>>({
     name: '',
@@ -72,7 +98,7 @@ export default function PosMenu() {
     is_available: true,
   });
 
-  const categories = ['All', 'Beverages', 'Bakery', 'Mains', 'Appetizers', 'Desserts'];
+  const categories = ['All', 'Beverages', 'Bakery', 'Mains', 'Appetizers', 'Desserts', 'Electronics', 'Audio', 'Accessories'];
 
   // Toggle in-stock / 86-item status
   const handleToggleAvailability = (id: string) => {
@@ -100,7 +126,7 @@ export default function PosMenu() {
     setShowModal(true);
   };
 
-  const handleSaveItem = (e: React.FormEvent) => {
+  const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.price) return;
 
@@ -108,21 +134,53 @@ export default function PosMenu() {
       setItems((prev) =>
         prev.map((it) => (it.id === editingItem.id ? { ...it, ...formData } as MenuItem : it))
       );
+      try {
+        await authFetch(`/api/v1/products/${editingItem.sku || editingItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description: formData.name,
+            rate: formData.price,
+            category: formData.category,
+            tax_percent: formData.tax_rate,
+          }),
+        });
+      } catch {}
     } else {
+      const newSku = `SKU_${Date.now().toString().slice(-6)}`;
       const newItem: MenuItem = {
-        id: `m_${Date.now()}`,
-        sku: `SKU_${formData.name.toUpperCase().replace(/\s+/g, '_').slice(0, 10)}`,
+        id: newSku,
+        sku: newSku,
         name: formData.name,
-        category: formData.category || 'Mains',
+        category: formData.category || 'Beverages',
         price: Number(formData.price),
         tax_rate: Number(formData.tax_rate) || 5,
-        diet: (formData.diet as any) || 'veg',
+        diet: (formData.diet as MenuItem['diet']) || 'veg',
         is_available: formData.is_available ?? true,
-        shortcode: formData.shortcode || formData.name.slice(0, 3).toUpperCase(),
-        prep_time: '5m',
-        stock: 50,
+        shortcode: formData.shortcode || newSku.slice(-3),
+        prep_time: formData.prep_time || '5m',
+        stock: Number(formData.stock) || 20,
       };
-      setItems((prev) => [newItem, ...prev]);
+      setItems([newItem, ...items]);
+      try {
+        await authFetch('/api/v1/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_code: newSku,
+            description: newItem.name,
+            category: newItem.category,
+            rate: newItem.price,
+            tax_percent: newItem.tax_rate,
+            uom: 'Pcs',
+            central_stock: newItem.stock,
+            stock_s_001: newItem.stock,
+            stock_s_002: 0,
+            total_stock: newItem.stock,
+            status: 'Active',
+          }),
+        });
+      } catch {}
     }
     setShowModal(false);
   };

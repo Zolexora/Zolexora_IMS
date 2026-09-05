@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wallet,
   ArrowDownRight,
@@ -39,7 +39,7 @@ const INITIAL_LOGS: CashTransaction[] = [
 ];
 
 export default function PosCashDrawer() {
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const [logs, setLogs] = useState<CashTransaction[]>(INITIAL_LOGS);
   const [showPayInOutModal, setShowPayInOutModal] = useState<boolean>(false);
   const [modalType, setModalType] = useState<'Pay In' | 'Pay Out' | 'Cash Drop (Safe)'>('Pay In');
@@ -51,6 +51,30 @@ export default function PosCashDrawer() {
   const [countedCash, setCountedCash] = useState<string>('');
   const [shiftClosed, setShiftClosed] = useState<boolean>(false);
 
+  const fetchLogs = () => {
+    authFetch('/api/v1/cash-drawer/logs')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setLogs(
+            data.map((l: any) => ({
+              id: l.id,
+              timestamp: l.timestamp,
+              type: l.type as CashTransaction['type'],
+              amount: l.amount,
+              reason: l.reason,
+              cashier: l.cashier,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
   // Compute Expected Cash
   const openingFloat = logs.find((l) => l.type === 'Opening Float')?.amount || 3000;
   const cashSales = logs.filter((l) => l.type === 'Cash Sale').reduce((a, b) => a + b.amount, 0);
@@ -60,30 +84,60 @@ export default function PosCashDrawer() {
 
   const expectedCash = openingFloat + cashSales + payIns - payOuts - cashDrops;
 
-  const handleAddDrawerEntry = (e: React.FormEvent) => {
+  const handleAddDrawerEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(amountInput);
     if (isNaN(val) || val <= 0) return;
 
     const actualAmount = modalType === 'Pay In' ? val : -val;
+    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const reasonStr = reasonInput || `${modalType} adjustment`;
+    const cashierStr = user?.email || 'Active Cashier';
 
-    const entry: CashTransaction = {
-      id: `cd_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      type: modalType,
-      amount: actualAmount,
-      reason: reasonInput || `${modalType} adjustment`,
-      cashier: user?.email || 'Active Cashier',
-    };
+    try {
+      await authFetch('/api/v1/cash-drawer/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp: nowStr,
+          type: modalType,
+          amount: actualAmount,
+          reason: reasonStr,
+          cashier: cashierStr,
+        }),
+      });
+      fetchLogs();
+    } catch {
+      const entry: CashTransaction = {
+        id: `cd_${Date.now()}`,
+        timestamp: nowStr,
+        type: modalType,
+        amount: actualAmount,
+        reason: reasonStr,
+        cashier: cashierStr,
+      };
+      setLogs([entry, ...logs]);
+    }
 
-    setLogs([entry, ...logs]);
     setShowPayInOutModal(false);
     setAmountInput('');
     setReasonInput('');
   };
 
-  const handleReconcileShift = (e: React.FormEvent) => {
+  const handleReconcileShift = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      await authFetch('/api/v1/cash-drawer/close-shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          counted_cash: parseFloat(countedCash) || 0,
+          expected_cash: expectedCash,
+          cashier: user?.email || 'Active Cashier',
+        }),
+      });
+      fetchLogs();
+    } catch {}
     setShiftClosed(true);
     setShowCloseShiftModal(false);
   };

@@ -56,7 +56,7 @@ export default function PosSettings() {
   // Test feedback banner
   const [gatewayTestResult, setGatewayTestResult] = useState<{ gateway: string; message: string; ok: boolean } | null>(null);
 
-  // Load existing payment handle from backend
+  // Load existing payment handle & terminal settings from backend
   useEffect(() => {
     authFetch('/api/v1/payment/handle')
       .then((res) => (res.ok ? res.json() : null))
@@ -73,6 +73,29 @@ export default function PosSettings() {
           setCashfreeAppId(data.cashfree_app_id || '');
           setCashfreeEnv(data.cashfree_env || 'TEST');
           setHasCashfreeSecret(data.has_cashfree_secret || false);
+        }
+      })
+      .catch(() => {});
+
+    authFetch('/api/v1/settings/terminal')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          if (data.printer_interface) setPrinterInterface(data.printer_interface);
+          if (data.printer_ip) setPrinterIp(data.printer_ip);
+          if (data.printer_port) setPrinterPort(data.printer_port);
+          if (data.paper_width) setPaperWidth(data.paper_width);
+          if (data.auto_cut_paper !== undefined) setAutoCutPaper(data.auto_cut_paper);
+          if (data.drawer_kick_on_cash !== undefined) setDrawerKickOnCash(data.drawer_kick_on_cash);
+          if (data.kot_printer_ip) setKotPrinterIp(data.kot_printer_ip);
+          if (data.auto_print_kot_on_hold !== undefined) setAutoPrintKotOnHold(data.auto_print_kot_on_hold);
+          if (data.large_token_font !== undefined) setLargeTokenFont(data.large_token_font);
+          if (data.store_legal_name) setStoreLegalName(data.store_legal_name);
+          if (data.gstin) setGstin(data.gstin);
+          if (data.store_address) setStoreAddress(data.store_address);
+          if (data.phone_on_receipt) setPhoneOnReceipt(data.phone_on_receipt);
+          if (data.receipt_footer) setReceiptFooter(data.receipt_footer);
+          if (data.service_charge_percent !== undefined) setServiceChargePercent(data.service_charge_percent);
         }
       })
       .catch(() => {});
@@ -204,31 +227,56 @@ export default function PosSettings() {
     }
   };
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     try {
-      await authFetch('/api/v1/payment/handle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          upi_handle: upiHandle.trim().toLowerCase(),
-          merchant_name: merchantName.trim(),
-          merchant_category_code: mcc,
-          payment_gateway: paymentGateway,
-          razorpay_key_id: razorpayKeyId.trim() || undefined,
-          razorpay_key_secret: razorpayKeySecret.trim() || undefined,
-          cashfree_app_id: cashfreeAppId.trim() || undefined,
-          cashfree_secret_key: cashfreeSecretKey.trim() || undefined,
-          cashfree_env: cashfreeEnv,
-          edc_terminal_id: edcTerminalId.trim() || undefined,
-          soundbox_enabled: soundboxEnabled,
-          auto_settle: true,
+      await Promise.all([
+        authFetch('/api/v1/payment/handle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            upi_handle: upiHandle.trim().toLowerCase(),
+            merchant_name: merchantName.trim(),
+            merchant_category_code: mcc,
+            payment_gateway: paymentGateway,
+            razorpay_key_id: razorpayKeyId.trim() || undefined,
+            razorpay_key_secret: razorpayKeySecret.trim() || undefined,
+            cashfree_app_id: cashfreeAppId.trim() || undefined,
+            cashfree_secret_key: cashfreeSecretKey.trim() || undefined,
+            cashfree_env: cashfreeEnv,
+            edc_terminal_id: edcTerminalId.trim() || undefined,
+            soundbox_enabled: soundboxEnabled,
+            auto_settle: true,
+          }),
         }),
-      });
-    } catch {}
-
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+        authFetch('/api/v1/settings/terminal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            printer_interface: printerInterface,
+            printer_ip: printerIp.trim(),
+            printer_port: printerPort.trim(),
+            paper_width: paperWidth,
+            auto_cut_paper: autoCutPaper,
+            drawer_kick_on_cash: drawerKickOnCash,
+            kot_printer_ip: kotPrinterIp.trim(),
+            auto_print_kot_on_hold: autoPrintKotOnHold,
+            large_token_font: largeTokenFont,
+            store_legal_name: storeLegalName.trim(),
+            gstin: gstin.trim().toUpperCase(),
+            store_address: storeAddress.trim(),
+            phone_on_receipt: phoneOnReceipt.trim(),
+            receipt_footer: receiptFooter.trim(),
+            service_charge_percent: Number(serviceChargePercent) || 0,
+            soundbox_enabled: soundboxEnabled,
+          }),
+        }),
+      ]);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error saving POS settings:', err);
+    }
   };
 
   return (

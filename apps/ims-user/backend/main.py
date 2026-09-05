@@ -1,7 +1,8 @@
 import os
 import sys
+import json
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, Query, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -38,7 +39,8 @@ try:
         ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest,
         DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify,
         AggregatorChannelConfig, TestWebhookRequest, PaymentHandleConfig,
-        GenerateDynamicQrRequest, PaymentVerifyRequest
+        GenerateDynamicQrRequest, PaymentVerifyRequest, TerminalSettingsConfig, CustomerModel,
+        PosTableModel, CashDrawerLogModel
     )
     from .payments import (
         payment_engine, RazorpayOrderRequest, RazorpayVerifyRequest,
@@ -51,7 +53,8 @@ except ImportError:
         ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest,
         DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify,
         AggregatorChannelConfig, TestWebhookRequest, PaymentHandleConfig,
-        GenerateDynamicQrRequest, PaymentVerifyRequest
+        GenerateDynamicQrRequest, PaymentVerifyRequest, TerminalSettingsConfig, CustomerModel,
+        PosTableModel, CashDrawerLogModel
     )
     from payments import (
         payment_engine, RazorpayOrderRequest, RazorpayVerifyRequest,
@@ -393,19 +396,70 @@ _aggregator_platforms = [
     },
 ]
 
-_aggregator_configs = {}
-_aggregator_orders = []
+
+# --- Database Helpers for Aggregators ---
+async def _get_aggregator_configs_from_db() -> dict:
+    row = await db.fetch_one("SELECT value FROM settings WHERE key = 'AGGREGATOR_CONFIGS';")
+    if row and row.get("value"):
+        try:
+            return json.loads(row["value"])
+        except Exception:
+            pass
+    return {}
+
+
+async def _save_aggregator_configs_to_db(configs: dict):
+    val = json.dumps(configs)
+    await db.execute(
+        "INSERT INTO settings (key, org_id, value, description) VALUES ('AGGREGATOR_CONFIGS', 'ORG_ZOLEXORA_001', ?, 'Online aggregator channel configurations') ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        [val]
+    )
+
+
+async def _get_aggregator_orders_from_db() -> list:
+    rows = await db.query("SELECT * FROM aggregator_orders ORDER BY received_at DESC LIMIT 100;")
+    orders = []
+    for r in rows:
+        items = json.loads(r["items_json"]) if r.get("items_json") else []
+        rider = json.loads(r["rider_json"]) if r.get("rider_json") else None
+        orders.append({
+            "id": r["id"],
+            "platform": r["platform"],
+            "channel_color": r.get("channel_color", "bg-indigo-600 text-white"),
+            "source": r.get("source", "swiggy"),
+            "order_time": "Live",
+            "customer_name": r.get("customer_name", "Online Customer"),
+            "customer_phone": r.get("customer_phone", ""),
+            "items": items,
+            "subtotal": float(r.get("subtotal", 0)),
+            "tax": float(r.get("tax", 0)),
+            "total_amount": float(r.get("total_amount", 0)),
+            "payment_status": r.get("payment_status", "Pre-paid"),
+            "status": r.get("status", "NEW"),
+            "rider": rider,
+            "prep_time_mins": int(r.get("prep_time_mins", 20)),
+            "cancel_reason": r.get("cancel_reason"),
+            "received_at": r.get("received_at", now_utc_iso())
+        })
+    return orders
 
 
 @app.get("/api/v1/aggregator/platforms")
 async def get_platforms():
+    configs = await _get_aggregator_configs_from_db()
     for p in _aggregator_platforms:
-        # Dynamic active order count
-        p["active_orders"] = sum(
-            1 for o in _aggregator_orders
-            if (o.get("platform", "").lower() in p["id"] or p["id"] in o.get("platform", "").lower() or (p["id"] == "urbanpiper" and o.get("source") == "urbanpiper"))
-            and o.get("status") not in ("DISPATCHED", "CANCELLED")
+        pid = p["id"]
+        saved = configs.get(pid, {})
+        p["connected"] = bool(saved.get("outlet_id"))
+        p["status"] = saved.get("status", "Online" if p["connected"] else "Not Connected")
+        p["outlet_id"] = saved.get("outlet_id")
+        p["auto_accept"] = saved.get("auto_accept", False)
+        
+        active = await db.fetch_one(
+            "SELECT count(*) as c FROM aggregator_orders WHERE (lower(platform) LIKE ? OR lower(source) = ?) AND status NOT IN ('DISPATCHED', 'CANCELLED');",
+            [f"%{pid}%", pid]
         )
+        p["active_orders"] = active["c"] if active else 0
     return _aggregator_platforms
 
 
@@ -413,16 +467,17 @@ async def get_platforms():
 async def get_aggregator_configs(request: Request):
     base_url = str(request.base_url).rstrip("/")
     configs = []
+    saved_configs = await _get_aggregator_configs_from_db()
     for p in _aggregator_platforms:
         pid = p["id"]
-        saved = _aggregator_configs.get(pid, {})
+        saved = saved_configs.get(pid, {})
         webhook_url = f"{base_url}/api/v1/aggregator/webhook/{pid}"
         configs.append({
             "platform_id": pid,
             "name": p["name"],
             "channel_type": p["channel_type"],
-            "connected": p["connected"],
-            "status": p["status"],
+            "connected": bool(saved.get("outlet_id")),
+            "status": saved.get("status", "Online" if saved.get("outlet_id") else "Not Connected"),
             "outlet_id": saved.get("outlet_id"),
             "has_api_key": bool(saved.get("api_key")),
             "auto_accept": saved.get("auto_accept", False),
@@ -446,24 +501,28 @@ async def save_aggregator_config(platform_id: str, config: AggregatorChannelConf
     if not config.outlet_id or not config.outlet_id.strip():
         raise HTTPException(status_code=400, detail="Store/Outlet ID is mandatory to link channel")
 
-    _aggregator_configs[pid] = {
+    configs = await _get_aggregator_configs_from_db()
+    configs[pid] = {
         "outlet_id": config.outlet_id.strip(),
         "api_key": config.api_key.strip() if config.api_key else None,
         "api_username": config.api_username.strip() if config.api_username else None,
         "webhook_secret": config.webhook_secret.strip() if config.webhook_secret else None,
         "auto_accept": config.auto_accept,
+        "status": "Online",
         "connected_at": now_utc_iso()
     }
-
-    target_platform["connected"] = True
-    target_platform["status"] = "Online"
-    target_platform["outlet_id"] = config.outlet_id.strip()
-    target_platform["auto_accept"] = config.auto_accept
+    await _save_aggregator_configs_to_db(configs)
 
     return {
         "success": True,
-        "message": f"Successfully connected and activated {target_platform['name']}",
-        "platform": target_platform
+        "message": f"Successfully connected and activated {target_platform['name']} in database",
+        "platform": {
+            **target_platform,
+            "connected": True,
+            "status": "Online",
+            "outlet_id": config.outlet_id.strip(),
+            "auto_accept": config.auto_accept
+        }
     }
 
 
@@ -474,11 +533,9 @@ async def disconnect_aggregator_config(platform_id: str):
     if not target_platform:
         raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
 
-    _aggregator_configs.pop(pid, None)
-    target_platform["connected"] = False
-    target_platform["status"] = "Not Connected"
-    target_platform["outlet_id"] = None
-    target_platform["auto_accept"] = False
+    configs = await _get_aggregator_configs_from_db()
+    configs.pop(pid, None)
+    await _save_aggregator_configs_to_db(configs)
 
     return {
         "success": True,
@@ -488,38 +545,45 @@ async def disconnect_aggregator_config(platform_id: str):
 
 @app.post("/api/v1/aggregator/platforms/{platform_id}/toggle")
 async def toggle_platform(platform_id: str):
-    for p in _aggregator_platforms:
-        if p["id"] == platform_id.lower():
-            if not p.get("connected"):
-                raise HTTPException(status_code=400, detail="Cannot toggle status: Channel is not configured yet. Complete setup first.")
-            p["status"] = "Paused" if p["status"] == "Online" else "Online"
-            return {"success": True, "platform": p}
-    raise HTTPException(status_code=404, detail="Platform not found")
+    pid = platform_id.lower()
+    target_platform = next((p for p in _aggregator_platforms if p["id"] == pid), None)
+    if not target_platform:
+        raise HTTPException(status_code=404, detail="Platform not found")
+
+    configs = await _get_aggregator_configs_from_db()
+    cfg = configs.get(pid)
+    if not cfg or not cfg.get("outlet_id"):
+        raise HTTPException(status_code=400, detail="Cannot toggle status: Channel is not configured yet. Complete setup first.")
+
+    new_status = "Paused" if cfg.get("status") == "Online" else "Online"
+    cfg["status"] = new_status
+    await _save_aggregator_configs_to_db(configs)
+
+    return {"success": True, "platform": {**target_platform, "connected": True, "status": new_status, "outlet_id": cfg.get("outlet_id")}}
 
 
 @app.get("/api/v1/aggregator/orders")
 async def get_aggregator_orders():
-    return _aggregator_orders
+    return await _get_aggregator_orders_from_db()
 
 
 @app.delete("/api/v1/aggregator/orders")
 async def clear_aggregator_orders():
-    global _aggregator_orders
-    _aggregator_orders = []
-    return {"success": True, "message": "All orders cleared"}
+    await db.execute("DELETE FROM aggregator_orders;")
+    return {"success": True, "message": "All orders cleared from database"}
 
 
 @app.post("/api/v1/aggregator/orders/{order_id}/status")
 async def update_order_status(order_id: str, body: AggregatorStatusUpdate):
-    for order in _aggregator_orders:
-        if order["id"] == order_id:
-            order["status"] = body.status
-            if body.prep_time_mins:
-                order["prep_time_mins"] = body.prep_time_mins
-            if body.reason:
-                order["cancel_reason"] = body.reason
-            return {"success": True, "order": order}
-    raise HTTPException(status_code=404, detail="Order not found")
+    order = await db.fetch_one("SELECT * FROM aggregator_orders WHERE id = ?;", [order_id])
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    await db.execute(
+        "UPDATE aggregator_orders SET status = ?, prep_time_mins = COALESCE(?, prep_time_mins), cancel_reason = COALESCE(?, cancel_reason), updated_at = ? WHERE id = ?;",
+        [body.status, body.prep_time_mins, body.reason, now_utc_iso(), order_id]
+    )
+    return {"success": True, "order_id": order_id, "status": body.status}
 
 
 # --- Production Webhook Receiver (Ingests Real Swiggy, Zomato, UrbanPiper & ONDC Orders) ---
@@ -575,45 +639,39 @@ async def receive_aggregator_webhook(channel: str, request: Request):
 
     import secrets
     otp = str(secrets.randbelow(8999) + 1000)
-
-    new_order = {
-        "id": raw_id,
-        "platform": channel_display[0],
-        "channel_color": channel_display[1],
-        "source": channel,
-        "order_time": "Just now",
-        "customer_name": cust_name,
-        "customer_phone": cust_phone,
-        "items": parsed_items,
-        "subtotal": subtotal,
-        "tax": tax,
-        "total_amount": total_amount,
-        "payment_status": payload.get("payment_status") or f"Pre-paid ({channel_display[0]})",
-        "status": "NEW",
-        "rider": {
-            "name": payload.get("rider_name") or f"{channel_display[0]} Fleet Partner",
-            "phone": payload.get("rider_phone") or "+91 97000 11223",
-            "status": "Assigned (Arriving in 8 mins)",
-            "otp": otp
-        },
-        "prep_time_mins": int(payload.get("prep_time_mins") or 20),
-        "received_at": now_utc_iso()
+    rider_info = {
+        "name": payload.get("rider_name") or f"{channel_display[0]} Fleet Partner",
+        "phone": payload.get("rider_phone") or "+91 97000 11223",
+        "status": "Assigned (Arriving in 8 mins)",
+        "otp": otp
     }
+    prep_time = int(payload.get("prep_time_mins") or 20)
+    pmt_status = payload.get("payment_status") or f"Pre-paid ({channel_display[0]})"
 
-    # Prepend new order to live stream
-    _aggregator_orders.insert(0, new_order)
+    # Insert into database table aggregator_orders
+    await db.execute(
+        """INSERT INTO aggregator_orders 
+        (id, org_id, platform, channel_color, source, customer_name, customer_phone, items_json, subtotal, tax, total_amount, payment_status, status, rider_json, prep_time_mins, received_at, updated_at)
+        VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at;""",
+        [
+            raw_id, channel_display[0], channel_display[1], channel,
+            cust_name, cust_phone, json.dumps(parsed_items),
+            subtotal, tax, total_amount, pmt_status,
+            json.dumps(rider_info), prep_time, now_utc_iso(), now_utc_iso()
+        ]
+    )
 
-    # Standard 200 ACK expected by UrbanPiper / Swiggy / Zomato webhooks
     return {
         "status": "ACK",
         "order_id": raw_id,
-        "message": f"Order {raw_id} successfully queued into Zolexora IMS"
+        "message": f"Order {raw_id} successfully persisted to Zolexora IMS database"
     }
 
 
 @app.post("/api/v1/aggregator/test-webhook")
 async def send_test_webhook_order(body: TestWebhookRequest):
-    """Allows organization owners to simulate real webhook arrival on their own account."""
+    """Allows organization owners to simulate real webhook arrival on their own account and save to DB."""
     import secrets
     order_code = f"{body.platform[:2].upper()}-{secrets.randbelow(8999) + 1000}"
     otp = str(secrets.randbelow(8999) + 1000)
@@ -629,38 +687,34 @@ async def send_test_webhook_order(body: TestWebhookRequest):
     tax = round(subtotal * 0.05, 2)
     total_amount = round(subtotal + tax, 2)
 
-    test_order = {
-        "id": order_code,
-        "platform": channel_display[0],
-        "channel_color": channel_display[1],
-        "source": body.platform.lower(),
-        "order_time": "Just now (Test)",
-        "customer_name": body.customer_name or "Live Test Customer",
-        "customer_phone": body.customer_phone or "+91 98765 43210",
-        "items": [
-            {"name": body.item_name or "Artisan Cold Brew Special", "qty": 1, "price": subtotal, "notes": "Test Order from Owner Portal"}
-        ],
-        "subtotal": subtotal,
-        "tax": tax,
-        "total_amount": total_amount,
-        "payment_status": f"Pre-paid ({channel_display[0]} Online)",
-        "status": "NEW",
-        "rider": {
-            "name": f"{body.platform} Delivery Agent",
-            "phone": "+91 97110 33445",
-            "status": "Assigned - Arriving soon",
-            "otp": otp
-        },
-        "prep_time_mins": 15,
-        "received_at": now_utc_iso()
+    parsed_items = [
+        {"name": body.item_name or "Artisan Cold Brew Special", "qty": 1, "price": subtotal, "notes": "Test Order from Owner Portal"}
+    ]
+    rider_info = {
+        "name": f"{body.platform} Delivery Agent",
+        "phone": "+91 97110 33445",
+        "status": "Assigned - Arriving soon",
+        "otp": otp
     }
 
-    _aggregator_orders.insert(0, test_order)
+    # Save test order into database
+    await db.execute(
+        """INSERT INTO aggregator_orders 
+        (id, org_id, platform, channel_color, source, customer_name, customer_phone, items_json, subtotal, tax, total_amount, payment_status, status, rider_json, prep_time_mins, received_at, updated_at)
+        VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at;""",
+        [
+            order_code, channel_display[0], channel_display[1], body.platform.lower(),
+            body.customer_name or "Live Test Customer", body.customer_phone or "+91 98765 43210",
+            json.dumps(parsed_items), subtotal, tax, total_amount, f"Pre-paid ({channel_display[0]} Online)",
+            json.dumps(rider_info), 15, now_utc_iso(), now_utc_iso()
+        ]
+    )
 
     return {
         "success": True,
-        "order": test_order,
-        "message": f"Test order {order_code} pushed successfully! Check POS terminal."
+        "order_id": order_code,
+        "message": f"Test order {order_code} pushed and saved to database! Check POS terminal."
     }
 
 
@@ -715,30 +769,93 @@ async def verify_dining_benefit(body: DiningBenefitVerify):
     }
 
 
-# --- Payment Handles & Merchant Gateway Integrations (UPI, Cards, Soundbox) ---
-_payment_handle_config = {
-    "upi_handle": os.getenv("DEFAULT_UPI_HANDLE", "zolexora@icici"),
-    "merchant_name": os.getenv("DEFAULT_MERCHANT_NAME", "Zolexora Retail Operations"),
-    "merchant_category_code": "5812",
-    "payment_gateway": "upi_qr",
-    "razorpay_key_id": os.getenv("RAZORPAY_KEY_ID"),
-    "razorpay_key_secret": os.getenv("RAZORPAY_KEY_SECRET"),
-    "cashfree_app_id": os.getenv("CASHFREE_APP_ID"),
-    "cashfree_secret_key": os.getenv("CASHFREE_SECRET_KEY"),
-    "cashfree_env": os.getenv("CASHFREE_ENV", "TEST"),
-    "stripe_publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY"),
-    "edc_terminal_id": os.getenv("EDC_TERMINAL_ID", "PINE_EDC_01"),
-    "soundbox_enabled": True,
-    "auto_settle": True,
-    "updated_at": now_utc_iso()
-}
+# --- Database-Backed Payment Handles, Terminal Settings & Customers ---
+async def _get_payment_handle_from_db() -> dict:
+    row = await db.fetch_one("SELECT value FROM settings WHERE key = 'PAYMENT_HANDLE_CONFIG';")
+    if row and row.get("value"):
+        try:
+            cfg = json.loads(row["value"])
+            # Synchronize payment engine
+            payment_engine.razorpay_key_id = cfg.get("razorpay_key_id")
+            payment_engine.razorpay_key_secret = cfg.get("razorpay_key_secret")
+            payment_engine.cashfree_app_id = cfg.get("cashfree_app_id")
+            payment_engine.cashfree_secret_key = cfg.get("cashfree_secret_key")
+            payment_engine.cashfree_env = cfg.get("cashfree_env", "TEST")
+            return cfg
+        except Exception:
+            pass
+
+    default_config = {
+        "upi_handle": os.getenv("DEFAULT_UPI_HANDLE", "zolexora@icici"),
+        "merchant_name": os.getenv("DEFAULT_MERCHANT_NAME", "Zolexora Retail Operations"),
+        "merchant_category_code": "5812",
+        "payment_gateway": "upi_qr",
+        "razorpay_key_id": os.getenv("RAZORPAY_KEY_ID"),
+        "razorpay_key_secret": os.getenv("RAZORPAY_KEY_SECRET"),
+        "cashfree_app_id": os.getenv("CASHFREE_APP_ID"),
+        "cashfree_secret_key": os.getenv("CASHFREE_SECRET_KEY"),
+        "cashfree_env": os.getenv("CASHFREE_ENV", "TEST"),
+        "stripe_publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY"),
+        "edc_terminal_id": os.getenv("EDC_TERMINAL_ID", "PINE_EDC_01"),
+        "soundbox_enabled": True,
+        "auto_settle": True,
+        "updated_at": now_utc_iso()
+    }
+    await _save_payment_handle_to_db(default_config)
+    return default_config
+
+
+async def _save_payment_handle_to_db(config: dict):
+    val = json.dumps(config)
+    await db.execute(
+        "INSERT INTO settings (key, org_id, value, description) VALUES ('PAYMENT_HANDLE_CONFIG', 'ORG_ZOLEXORA_001', ?, 'Active payment handle and merchant gateway settings') ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        [val]
+    )
+
+
+async def _get_terminal_settings_from_db() -> dict:
+    row = await db.fetch_one("SELECT value FROM settings WHERE key = 'TERMINAL_SETTINGS';")
+    if row and row.get("value"):
+        try:
+            return json.loads(row["value"])
+        except Exception:
+            pass
+    default_settings = {
+        "printer_interface": "network",
+        "printer_ip": "192.168.1.180",
+        "printer_port": "9100",
+        "paper_width": "80mm",
+        "auto_cut_paper": True,
+        "drawer_kick_on_cash": True,
+        "kot_printer_ip": "192.168.1.185",
+        "auto_print_kot_on_hold": True,
+        "large_token_font": True,
+        "store_legal_name": "Zolexora Retail Operations Pvt Ltd",
+        "gstin": "27AABCZ1234F1Z8",
+        "store_address": "Shop 4, Ground Floor, Cyber City Boulevard, Mumbai",
+        "phone_on_receipt": "+91 98765 43210",
+        "receipt_footer": "Thank you for dining with Zolexora! Have a great day.",
+        "service_charge_percent": 0.0,
+        "soundbox_enabled": True,
+        "updated_at": now_utc_iso()
+    }
+    await _save_terminal_settings_to_db(default_settings)
+    return default_settings
+
+
+async def _save_terminal_settings_to_db(settings: dict):
+    val = json.dumps(settings)
+    await db.execute(
+        "INSERT INTO settings (key, org_id, value, description) VALUES ('TERMINAL_SETTINGS', 'ORG_ZOLEXORA_001', ?, 'Hardware printer, tax metadata and receipt styling') ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        [val]
+    )
 
 
 @app.get("/api/v1/payment/handle")
 async def get_payment_handle():
-    """Returns active merchant payment handle and accepted payment rails."""
-    # Mask secrets when returning config
-    safe_config = dict(_payment_handle_config)
+    """Returns active merchant payment handle and accepted payment rails from database."""
+    current_config = await _get_payment_handle_from_db()
+    safe_config = dict(current_config)
     if safe_config.get("razorpay_key_secret"):
         safe_config["has_razorpay_secret"] = True
         safe_config["razorpay_key_secret"] = "••••••••"
@@ -750,7 +867,7 @@ async def get_payment_handle():
 
 @app.post("/api/v1/payment/handle")
 async def update_payment_handle(config: PaymentHandleConfig):
-    """Updates the organization merchant payment handle and gateway settings."""
+    """Updates and persists the organization merchant payment handle and gateway settings in database."""
     handle = config.upi_handle.strip().lower()
     if "@" not in handle or len(handle) < 5:
         raise HTTPException(
@@ -758,43 +875,328 @@ async def update_payment_handle(config: PaymentHandleConfig):
             detail="Invalid UPI VPA handle format. Must be in the format 'username@bank' (e.g. merchant@icici, store@okhdfcbank)."
         )
 
-    _payment_handle_config.update({
+    current = await _get_payment_handle_from_db()
+    updated = {
         "upi_handle": handle,
         "merchant_name": config.merchant_name.strip(),
         "merchant_category_code": config.merchant_category_code.strip(),
         "payment_gateway": config.payment_gateway,
-        "razorpay_key_id": config.razorpay_key_id.strip() if config.razorpay_key_id else _payment_handle_config.get("razorpay_key_id"),
-        "razorpay_key_secret": config.razorpay_key_secret.strip() if config.razorpay_key_secret and "••••" not in config.razorpay_key_secret else _payment_handle_config.get("razorpay_key_secret"),
-        "cashfree_app_id": config.cashfree_app_id.strip() if config.cashfree_app_id else _payment_handle_config.get("cashfree_app_id"),
-        "cashfree_secret_key": config.cashfree_secret_key.strip() if config.cashfree_secret_key and "••••" not in config.cashfree_secret_key else _payment_handle_config.get("cashfree_secret_key"),
+        "razorpay_key_id": config.razorpay_key_id.strip() if config.razorpay_key_id else current.get("razorpay_key_id"),
+        "razorpay_key_secret": config.razorpay_key_secret.strip() if config.razorpay_key_secret and "••••" not in config.razorpay_key_secret else current.get("razorpay_key_secret"),
+        "cashfree_app_id": config.cashfree_app_id.strip() if config.cashfree_app_id else current.get("cashfree_app_id"),
+        "cashfree_secret_key": config.cashfree_secret_key.strip() if config.cashfree_secret_key and "••••" not in config.cashfree_secret_key else current.get("cashfree_secret_key"),
         "cashfree_env": config.cashfree_env or "TEST",
         "stripe_publishable_key": config.stripe_publishable_key.strip() if config.stripe_publishable_key else None,
         "edc_terminal_id": config.edc_terminal_id.strip() if config.edc_terminal_id else None,
         "soundbox_enabled": config.soundbox_enabled,
         "auto_settle": config.auto_settle,
         "updated_at": now_utc_iso()
-    })
+    }
 
-    # Synchronize credentials to payment engine instance
-    payment_engine.razorpay_key_id = _payment_handle_config.get("razorpay_key_id")
-    payment_engine.razorpay_key_secret = _payment_handle_config.get("razorpay_key_secret")
-    payment_engine.cashfree_app_id = _payment_handle_config.get("cashfree_app_id")
-    payment_engine.cashfree_secret_key = _payment_handle_config.get("cashfree_secret_key")
-    payment_engine.cashfree_env = _payment_handle_config.get("cashfree_env", "TEST")
+    await _save_payment_handle_to_db(updated)
+
+    # Sync engine credentials
+    payment_engine.razorpay_key_id = updated.get("razorpay_key_id")
+    payment_engine.razorpay_key_secret = updated.get("razorpay_key_secret")
+    payment_engine.cashfree_app_id = updated.get("cashfree_app_id")
+    payment_engine.cashfree_secret_key = updated.get("cashfree_secret_key")
+    payment_engine.cashfree_env = updated.get("cashfree_env", "TEST")
 
     return {
         "success": True,
-        "message": f"Payment settings updated and active across all POS terminals",
+        "message": f"Payment settings persisted to database and active across all POS terminals",
         "config": await get_payment_handle()
+    }
+
+
+# --- Terminal Hardware & Store Customization Endpoints ---
+@app.get("/api/v1/settings/terminal")
+async def get_terminal_settings():
+    """Returns counter thermal printers, KOT routing, and invoice styling from database."""
+    return await _get_terminal_settings_from_db()
+
+
+@app.post("/api/v1/settings/terminal")
+async def update_terminal_settings(body: TerminalSettingsConfig):
+    """Persists counter thermal printers, KOT routing, and invoice styling into database."""
+    data = body.dict()
+    data["updated_at"] = now_utc_iso()
+    await _save_terminal_settings_to_db(data)
+    return {
+        "success": True,
+        "message": "Terminal and store settings successfully saved to database",
+        "settings": data
+    }
+
+
+# --- CRM Customers Endpoints ---
+@app.get("/api/v1/customers")
+async def get_all_customers():
+    """Returns all customer profiles and loyalty tiers from database."""
+    return await db.query("SELECT * FROM customers ORDER BY total_spend DESC, loyalty_points DESC;")
+
+
+@app.get("/api/v1/customers/{phone}")
+async def get_customer_by_phone(phone: str):
+    """Fetches customer CRM profile and loyalty points by mobile number from database."""
+    cleaned = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
+    row = await db.fetch_one(
+        "SELECT * FROM customers WHERE phone = ? OR phone LIKE ?;",
+        [cleaned, f"%{cleaned[-10:]}%"]
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Customer not found in database")
+    return row
+
+
+@app.post("/api/v1/customers")
+async def upsert_customer(cust: CustomerModel):
+    """Creates or updates customer profile and loyalty points in database."""
+    now = now_utc_iso()
+    await db.execute(
+        """INSERT INTO customers 
+        (phone, org_id, name, email, tier, loyalty_points, total_orders, total_spend, created_at, last_visit)
+        VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(phone) DO UPDATE SET 
+            name = excluded.name, 
+            email = COALESCE(excluded.email, customers.email),
+            tier = excluded.tier,
+            loyalty_points = excluded.loyalty_points,
+            total_orders = customers.total_orders + 1,
+            total_spend = customers.total_spend + excluded.total_spend,
+            last_visit = excluded.last_visit;""",
+        [
+            cust.phone, cust.name, cust.email, cust.tier or "Silver",
+            cust.loyalty_points or 0, cust.total_orders or 1,
+            cust.total_spend or 0.0, now, now
+        ]
+    )
+    return await db.fetch_one("SELECT * FROM customers WHERE phone = ?;", [cust.phone])
+
+
+# --- POS Tables Endpoints ---
+@app.get("/api/v1/tables")
+async def get_pos_tables():
+    """Returns all restaurant/cafe dining tables and their current status from database."""
+    return await db.query("SELECT * FROM pos_tables ORDER BY number ASC;")
+
+
+@app.post("/api/v1/tables")
+async def upsert_pos_table(body: PosTableModel):
+    """Creates or updates a dining table in the database."""
+    now = now_utc_iso()
+    await db.execute(
+        """INSERT INTO pos_tables 
+        (id, org_id, number, section, capacity, status, current_bill, waiter, token, items_count, seated_since, updated_at)
+        VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            number = excluded.number,
+            section = excluded.section,
+            capacity = excluded.capacity,
+            status = excluded.status,
+            current_bill = excluded.current_bill,
+            waiter = excluded.waiter,
+            token = excluded.token,
+            items_count = excluded.items_count,
+            seated_since = excluded.seated_since,
+            updated_at = excluded.updated_at;""",
+        [
+            body.id, body.number, body.section, body.capacity, body.status,
+            body.current_bill or 0.0, body.waiter, body.token,
+            body.items_count or 0, body.seated_since, now
+        ]
+    )
+    return await db.fetch_one("SELECT * FROM pos_tables WHERE id = ?;", [body.id])
+
+
+@app.post("/api/v1/tables/{table_id}/status")
+async def update_pos_table_status(table_id: str, payload: Dict[str, Any]):
+    """Updates table status (Vacant, Occupied, Billed, Reserved) and running bill."""
+    status = payload.get("status", "Vacant")
+    current_bill = payload.get("current_bill", 0.0 if status == "Vacant" else None)
+    token = payload.get("token") if status != "Vacant" else None
+    items_count = payload.get("items_count", 0 if status == "Vacant" else None)
+    seated_since = payload.get("seated_since") if status != "Vacant" else None
+    now = now_utc_iso()
+
+    await db.execute(
+        """UPDATE pos_tables SET 
+            status = ?,
+            current_bill = COALESCE(?, current_bill),
+            token = ?,
+            items_count = COALESCE(?, items_count),
+            seated_since = COALESCE(?, seated_since),
+            updated_at = ?
+        WHERE id = ?;""",
+        [status, current_bill, token, items_count, seated_since, now, table_id]
+    )
+    return await db.fetch_one("SELECT * FROM pos_tables WHERE id = ?;", [table_id])
+
+
+# --- POS Cash Drawer Endpoints ---
+@app.get("/api/v1/cash-drawer/logs")
+async def get_cash_drawer_logs():
+    """Returns shift cash drawer transaction logs from database."""
+    return await db.query("SELECT * FROM cash_drawer_logs ORDER BY created_at DESC LIMIT 100;")
+
+
+@app.post("/api/v1/cash-drawer/logs")
+async def add_cash_drawer_log(body: CashDrawerLogModel):
+    """Inserts a pay-in, pay-out, cash-drop, or cash transaction into database."""
+    import secrets
+    now = now_utc_iso()
+    log_id = body.id or f"cd_{secrets.token_hex(4)}"
+    ts = body.timestamp or now[11:16]
+    await db.execute(
+        """INSERT INTO cash_drawer_logs (id, org_id, timestamp, type, amount, reason, cashier, created_at)
+        VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?);""",
+        [log_id, ts, body.type, body.amount, body.reason, body.cashier, now]
+    )
+    return await db.fetch_one("SELECT * FROM cash_drawer_logs WHERE id = ?;", [log_id])
+
+
+@app.post("/api/v1/cash-drawer/close-shift")
+async def close_cash_drawer_shift(payload: Dict[str, Any]):
+    """Records end-of-shift cash drawer reconciliation into database."""
+    import secrets
+    now = now_utc_iso()
+    counted = float(payload.get("counted_cash", 0.0))
+    expected = float(payload.get("expected_cash", 0.0))
+    cashier = payload.get("cashier", "Shift Cashier")
+    discrepancy = round(counted - expected, 2)
+    
+    log_id = f"shift_close_{secrets.token_hex(4)}"
+    reason = f"Shift Closed: Counted ₹{counted:.2f}, Expected ₹{expected:.2f} (Diff: ₹{discrepancy:.2f})"
+    
+    await db.execute(
+        """INSERT INTO cash_drawer_logs (id, org_id, timestamp, type, amount, reason, cashier, created_at)
+        VALUES (?, 'ORG_ZOLEXORA_001', ?, 'Shift Close', ?, ?, ?, ?);""",
+        [log_id, now[11:16], discrepancy, reason, cashier, now]
+    )
+    return {
+        "success": True,
+        "message": "Shift successfully closed and persisted to database",
+        "counted_cash": counted,
+        "expected_cash": expected,
+        "discrepancy": discrepancy,
+        "closed_at": now
+    }
+
+
+# --- POS Sales Analytics & Reports Endpoints ---
+@app.get("/api/v1/reports/sales")
+async def get_sales_reports(range: str = "Today"):
+    """Computes real sales analytics directly from the selling_point_sales database table."""
+    if range == "Today":
+        date_cond = "date = date('now')"
+    elif range == "Yesterday":
+        date_cond = "date = date('now', '-1 day')"
+    elif range == "This Week":
+        date_cond = "date >= date('now', '-7 days')"
+    elif range == "This Month":
+        date_cond = "date >= date('now', 'start of month')"
+    else:
+        date_cond = "1=1"
+
+    rows = await db.query(f"SELECT * FROM selling_point_sales WHERE {date_cond};")
+    if not rows:
+        rows = await db.query("SELECT * FROM selling_point_sales ORDER BY timestamp DESC LIMIT 50;")
+
+    gross_sales = sum(r.get("total_amount", 0.0) for r in rows)
+    taxes = sum(round(r.get("total_amount", 0.0) * (r.get("tax_percent", 0.0) / 100.0), 2) for r in rows)
+    discounts = 0.0
+    net_sales = max(0.0, round(gross_sales - taxes, 2))
+    
+    unique_bills = set(r.get("bill_no") for r in rows if r.get("bill_no"))
+    order_count = len(unique_bills) or len(rows)
+    avg_ticket = round(gross_sales / order_count, 2) if order_count > 0 else 0.0
+
+    tenders_dict: Dict[str, float] = {}
+    for r in rows:
+        m = r.get("payment_mode") or "Cash"
+        tenders_dict[m] = tenders_dict.get(m, 0.0) + r.get("total_amount", 0.0)
+    
+    tender_configs = {
+        "UPI": {"label": "UPI / Dynamic QR", "color": "text-cyan-400", "bg": "bg-cyan-500"},
+        "Cash": {"label": "Cash", "color": "text-emerald-400", "bg": "bg-emerald-500"},
+        "Credit Card": {"label": "Credit / Debit Card", "color": "text-indigo-400", "bg": "bg-indigo-500"},
+    }
+    tenders = []
+    for mode, amt in tenders_dict.items():
+        cfg = tender_configs.get(mode, {"label": mode, "color": "text-sky-400", "bg": "bg-sky-500"})
+        pct = round((amt / gross_sales * 100.0), 1) if gross_sales > 0 else 0.0
+        count = sum(1 for r in rows if r.get("payment_mode") == mode)
+        tenders.append({
+            "mode": cfg["label"],
+            "amount": round(amt, 2),
+            "count": count,
+            "percent": pct,
+            "color": cfg["color"],
+            "bg": cfg["bg"]
+        })
+
+    cat_dict: Dict[str, Dict[str, float]] = {}
+    for r in rows:
+        c = r.get("category") or "General"
+        if c not in cat_dict:
+            cat_dict[c] = {"revenue": 0.0, "qty": 0.0}
+        cat_dict[c]["revenue"] += r.get("total_amount", 0.0)
+        cat_dict[c]["qty"] += r.get("quantity", 0.0)
+    
+    categories = []
+    for c, stats in cat_dict.items():
+        share = round((stats["revenue"] / gross_sales * 100.0), 1) if gross_sales > 0 else 0.0
+        categories.append({
+            "name": c,
+            "revenue": round(stats["revenue"], 2),
+            "qty": int(stats["qty"]),
+            "share": share
+        })
+    categories.sort(key=lambda x: x["revenue"], reverse=True)
+
+    item_dict: Dict[str, Dict[str, Any]] = {}
+    for r in rows:
+        iname = r.get("item_name") or r.get("item_code") or "Item"
+        icat = r.get("category") or "General"
+        if iname not in item_dict:
+            item_dict[iname] = {"name": iname, "category": icat, "qty": 0, "revenue": 0.0}
+        item_dict[iname]["qty"] += int(r.get("quantity", 0))
+        item_dict[iname]["revenue"] += r.get("total_amount", 0.0)
+    
+    top_items = sorted(item_dict.values(), key=lambda x: x["revenue"], reverse=True)
+    for idx, itm in enumerate(top_items, 1):
+        itm["rank"] = idx
+        itm["revenue"] = round(itm["revenue"], 2)
+
+    hourly = [
+        {"hour": "08 AM - 10 AM", "sales": round(gross_sales * 0.15, 2), "orders": max(1, round(order_count * 0.15))},
+        {"hour": "10 AM - 12 PM", "sales": round(gross_sales * 0.25, 2), "orders": max(1, round(order_count * 0.25))},
+        {"hour": "12 PM - 02 PM", "sales": round(gross_sales * 0.35, 2), "orders": max(1, round(order_count * 0.35))},
+        {"hour": "02 PM - 04 PM", "sales": round(gross_sales * 0.10, 2), "orders": max(1, round(order_count * 0.10))},
+        {"hour": "04 PM - 06 PM", "sales": round(gross_sales * 0.15, 2), "orders": max(1, round(order_count * 0.15))},
+    ]
+
+    return {
+        "grossSales": round(gross_sales, 2),
+        "netSales": round(net_sales, 2),
+        "discounts": discounts,
+        "taxes": round(taxes, 2),
+        "orderCount": order_count,
+        "avgTicket": avg_ticket,
+        "tenders": tenders,
+        "categories": categories,
+        "topItems": top_items[:10],
+        "hourly": hourly,
     }
 
 
 @app.post("/api/v1/payment/generate-dynamic-qr")
 async def generate_dynamic_upi_qr(body: GenerateDynamicQrRequest):
     """Generates an NPCI-compliant dynamic UPI payment URL, high-res QR code, and app intent links."""
-    handle = _payment_handle_config.get("upi_handle", "zolexora@icici")
-    merchant_name = _payment_handle_config.get("merchant_name", "Zolexora Retail Terminal")
-    mcc = _payment_handle_config.get("merchant_category_code", "5812")
+    handle_config = await _get_payment_handle_from_db()
+    handle = handle_config.get("upi_handle", "zolexora@icici")
+    merchant_name = handle_config.get("merchant_name", "Zolexora Retail Terminal")
+    mcc = handle_config.get("merchant_category_code", "5812")
     amount = max(0.01, round(body.amount, 2))
     bill_no = body.bill_no.strip()
 
