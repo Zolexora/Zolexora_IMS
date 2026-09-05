@@ -12,6 +12,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../lib/auth-context';
 
 export interface SKUAdditionFormData {
   item_code: string;
@@ -37,6 +38,7 @@ interface SKUadditionProps {
 
 export default function SKUaddition({ onSuccess, onCancel, isModal = false }: SKUadditionProps) {
   const navigate = useNavigate();
+  const { authFetch } = useAuth();
 
   const initialFormState: SKUAdditionFormData = {
     item_code: '',
@@ -95,7 +97,7 @@ export default function SKUaddition({ onSuccess, onCancel, isModal = false }: SK
     setSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/v1/items', {
+      const res = await authFetch('/api/v1/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

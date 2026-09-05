@@ -12,6 +12,7 @@ import {
   Save,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../lib/auth-context';
 
 interface PurchaseLineItem {
   item_code: string;
@@ -29,8 +30,9 @@ interface PurchaseEntryProps {
 
 export default function PurchaseEntry({ onSuccess, onCancel, isModal = false }: PurchaseEntryProps) {
   const navigate = useNavigate();
+  const { authFetch } = useAuth();
 
-  const [poInvoiceRef, setPoInvoiceRef] = useState<string>(`PO-${Math.floor(100000 + Math.random() * 900000)}`);
+  const [poInvoiceRef, setPoInvoiceRef] = useState<string>(`PO-${Date.now().toString().slice(-6)}`);
   const [supplierCode, setSupplierCode] = useState<string>('SUP_001');
   const [storeCode, setStoreCode] = useState<string>('S_001');
   const [receiptDate, setReceiptDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -47,7 +49,7 @@ export default function PurchaseEntry({ onSuccess, onCancel, isModal = false }: 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/v1/items')
+    authFetch('/api/v1/items')
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setAvailableProducts(data);
@@ -117,7 +119,7 @@ export default function PurchaseEntry({ onSuccess, onCancel, isModal = false }: 
     try {
       // Adjust stock for each line item in parallel
       for (const line of lines) {
-        await fetch(`/api/v1/items/${line.item_code}/adjust`, {
+        await authFetch(`/api/v1/items/${line.item_code}/adjust`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

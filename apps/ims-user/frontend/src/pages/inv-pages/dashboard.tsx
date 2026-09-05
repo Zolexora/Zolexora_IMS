@@ -15,8 +15,10 @@ import {
   Plus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../lib/auth-context';
 
 export default function Dashboard() {
+  const { authFetch } = useAuth();
   const [metrics, setMetrics] = useState<any>({
     totalSKUs: 12,
     totalStockValuation: 2435000.0,
@@ -33,7 +35,7 @@ export default function Dashboard() {
   const fetchMetrics = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/dashboard/metrics');
+      const res = await authFetch('/api/v1/dashboard/metrics');
       if (res.ok) {
         const data = await res.json();
         setMetrics(data);
@@ -41,7 +43,7 @@ export default function Dashboard() {
     } catch {}
 
     try {
-      const res = await fetch('/api/v1/items');
+      const res = await authFetch('/api/v1/items');
       if (res.ok) {
         const data = await res.json();
         const low = data.filter((item: any) => item.total_stock <= item.min_stock);

@@ -11,6 +11,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../lib/auth-context';
 
 interface IssuanceEntryProps {
   onSuccess?: () => void;
@@ -20,12 +21,13 @@ interface IssuanceEntryProps {
 
 export default function IssuanceEntry({ onSuccess, onCancel, isModal = false }: IssuanceEntryProps) {
   const navigate = useNavigate();
+  const { authFetch } = useAuth();
 
   const [voucherNo, setVoucherNo] = useState<string>(`ISS-${Math.floor(100000 + Math.random() * 900000)}`);
   const [sourceStore, setSourceStore] = useState<string>('S_001');
-  const [destinationDept, setDestinationDept] = useState<string>('SP_001 Counter 1');
+  const [destinationDept, setDestinationDept] = useState<string>('Bar Counter (SP_001)');
   const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [recipientName, setRecipientName] = useState<string>('');
+  const [recipientName, setRecipientName] = useState<string>('Rajesh Kumar (Shift Manager)');
   const [authorizedBy, setAuthorizedBy] = useState<string>('Storekeeper Incharge');
   const [purpose, setPurpose] = useState<string>('Store replenishment for daily operations');
 
@@ -38,7 +40,7 @@ export default function IssuanceEntry({ onSuccess, onCancel, isModal = false }: 
   const [successSlip, setSuccessSlip] = useState<any | null>(null);
 
   useEffect(() => {
-    fetch('/api/v1/items')
+    authFetch('/api/v1/items')
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -78,7 +80,7 @@ export default function IssuanceEntry({ onSuccess, onCancel, isModal = false }: 
     setError(null);
 
     try {
-      await fetch(`/api/v1/items/${selectedItemCode}/adjust`, {
+      await authFetch(`/api/v1/items/${selectedItemCode}/adjust`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

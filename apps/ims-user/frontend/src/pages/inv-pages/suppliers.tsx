@@ -11,6 +11,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../lib/auth-context';
 
 interface Supplier {
   code: string;
@@ -61,6 +62,7 @@ const DEFAULT_SUPPLIERS: Supplier[] = [
 ];
 
 export default function Suppliers() {
+  const { authFetch } = useAuth();
   const [suppliers, setSuppliers] = useState<Supplier[]>(DEFAULT_SUPPLIERS);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -81,7 +83,7 @@ export default function Suppliers() {
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/suppliers');
+      const res = await authFetch('/api/v1/suppliers');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) setSuppliers(data);

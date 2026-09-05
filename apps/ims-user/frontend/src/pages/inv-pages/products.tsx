@@ -10,6 +10,7 @@ import {
   PackagePlus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../lib/auth-context';
 import StockAdjustModal from './components/stock-adjust-modal';
 
 interface Product {
@@ -45,6 +46,7 @@ const DEFAULT_PRODUCTS: Product[] = [
 ];
 
 export default function Products() {
+  const { authFetch } = useAuth();
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,7 +58,7 @@ export default function Products() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/items');
+      const res = await authFetch('/api/v1/items');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -93,7 +95,7 @@ export default function Products() {
   const handleDelete = async (item_code: string) => {
     if (!confirm(`Are you sure you want to delete SKU ${item_code}?`)) return;
     try {
-      await fetch(`/api/v1/items/${item_code}`, { method: 'DELETE' });
+      await authFetch(`/api/v1/items/${item_code}`, { method: 'DELETE' });
     } catch {}
     setProducts((prev) => prev.filter((p) => p.item_code !== item_code));
   };

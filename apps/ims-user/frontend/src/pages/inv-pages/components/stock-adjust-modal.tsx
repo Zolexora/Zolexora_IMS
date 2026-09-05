@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, ArrowUpDown, PlusCircle, MinusCircle, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../../lib/auth-context';
 
 interface ProductItem {
   item_code: string;
@@ -25,6 +26,7 @@ export default function StockAdjustModal({
   product,
   onStockUpdated,
 }: StockAdjustModalProps) {
+  const { authFetch } = useAuth();
   const [storeCode, setStoreCode] = useState<string>('S_001');
   const [actionType, setActionType] = useState<'ADD' | 'DEDUCT'>('ADD');
   const [qty, setQty] = useState<number>(10);
@@ -48,7 +50,7 @@ export default function StockAdjustModal({
     const delta = actionType === 'ADD' ? qty : -qty;
 
     try {
-      const res = await fetch(`/api/v1/items/${product.item_code}/adjust`, {
+      const res = await authFetch(`/api/v1/items/${product.item_code}/adjust`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
