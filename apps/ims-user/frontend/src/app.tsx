@@ -114,7 +114,7 @@ export default function App() {
                 <>
                   <ShieldCheck className="w-4 h-4 text-purple-400" />
                   <span>Workspace:</span>
-                  <span className="text-purple-300 font-medium">Admin Dashboard (Corporate Governance)</span>
+                  <span className="text-purple-300 font-medium">Command Panel (Corporate Governance)</span>
                 </>
               ) : (
                 <>
@@ -132,10 +132,10 @@ export default function App() {
                   isPosRoute
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                     : isAdminRoute
-                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                    ? 'bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border-purple-500/40 font-bold uppercase tracking-wider shadow-xs'
                     : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
                 }`}>
-                  {user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : isAdminRoute ? 'Admin' : 'Staff')}
+                  {isAdminRoute ? 'Ops Master' : user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : 'Staff')}
                 </span>
               </div>
               <button
@@ -166,8 +166,8 @@ export default function App() {
                     to={
                       localStorage.getItem('zolexora_last_app') === 'pos'
                         ? '/pos/dashboard'
-                        : localStorage.getItem('zolexora_last_app') === 'org'
-                        ? '/org/dashboard'
+                        : localStorage.getItem('zolexora_last_app') === 'admin' || localStorage.getItem('zolexora_last_app') === 'org'
+                        ? '/admin/dashboard'
                         : '/inv/dashboard'
                     }
                     replace
@@ -266,12 +266,12 @@ export default function App() {
               }
             />
 
-            {/* Admin Dashboard & Corporate Governance Core Routes */}
+            {/* Command Panel / Admin Dashboard Core Routes */}
             <Route
               path="/admin"
               element={
                 <ProtectedRoute>
-                  <Navigate to="/admin/dashboard" replace />
+                  <OrgDashboard />
                 </ProtectedRoute>
               }
             />

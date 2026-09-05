@@ -54,41 +54,55 @@ export default function PosSidepanal({
           </div>
         </div>
 
-        {/* Dedicated Inventory Switcher Button (Only way to switch from POS to INV) */}
-        <div className="p-3 bg-gradient-to-r from-indigo-950/60 to-purple-950/60 border border-indigo-500/40 rounded-xl space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-300">
-            <span className="flex items-center gap-1.5">
-              <Boxes className="w-3.5 h-3.5 text-indigo-400" />
-              Warehouse Portal
-            </span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-200 font-mono">
-              HUB
-            </span>
+        {/* Workspace Switchers */}
+        <div className="space-y-2">
+          {/* Inventory Terminal Switcher */}
+          <div className="p-2.5 bg-gradient-to-r from-indigo-950/50 to-purple-950/50 border border-indigo-500/30 rounded-xl space-y-1.5 shadow-md">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+              <span className="flex items-center gap-1.5">
+                <Boxes className="w-3.5 h-3.5 text-indigo-400" />
+                Warehouse Portal
+              </span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-200 font-mono">
+                HUB
+              </span>
+            </div>
+            <Link
+              to="/inv/dashboard"
+              onClick={() => localStorage.setItem('zolexora_last_app', 'inv')}
+              className="flex items-center justify-between px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-indigo-600/30 group"
+            >
+              <div className="flex items-center gap-2">
+                <Boxes className="w-4 h-4 text-white" />
+                <span>Inventory Terminal</span>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
+            </Link>
           </div>
-          <Link
-            to="/inv/dashboard"
-            onClick={() => localStorage.setItem('zolexora_last_app', 'inv')}
-            className="flex items-center justify-between px-3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-indigo-600/30 group"
-          >
-            <div className="flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-white" />
-              <span>Inventory Terminal</span>
-            </div>
-            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
-          </Link>
 
-          {/* Admin Dashboard Switcher */}
-          <Link
-            to="/admin/dashboard"
-            onClick={() => localStorage.setItem('zolexora_last_app', 'admin')}
-            className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-purple-900/30 group"
-          >
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-white" />
-              <span>Admin Dashboard</span>
+          {/* Command Panel Switcher Button (Direct access to Admin Dashboard) */}
+          <div className="p-2.5 bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-500/40 rounded-xl space-y-1.5 shadow-md">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-purple-300">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                Corporate Governance
+              </span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 font-mono font-bold">
+                OPS MASTER
+              </span>
             </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-purple-200 group-hover:translate-x-0.5 transition" />
-          </Link>
+            <Link
+              to="/admin/dashboard"
+              onClick={() => localStorage.setItem('zolexora_last_app', 'admin')}
+              className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-purple-900/30 group"
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-white" />
+                <span>Command Panel</span>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
+            </Link>
+          </div>
         </div>
 
         {/* Main POS Navigation Links (ALL strictly pointing to /pos/*) */}

@@ -60,19 +60,19 @@ export default function OrgSidepanal() {
           </div>
           <div>
             <div className="font-bold text-sm tracking-wide text-white flex items-center gap-1.5">
-              <span>ZOLEXORA</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-mono">
-                ADMIN
+              <span>COMMAND PANEL</span>
+              <span className="text-[9px] px-1.5 py-0.2 bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 rounded font-mono font-bold tracking-wider">
+                OPS MASTER
               </span>
             </div>
-            <div className="text-[10px] text-purple-300/80 font-medium">Corporate Administration</div>
+            <div className="text-[10px] text-purple-300/80 font-medium">Executive Command Center</div>
           </div>
         </div>
 
         {/* Security Isolation Notice */}
         <div className="px-3 py-2 bg-purple-950/40 border border-purple-500/20 rounded-xl text-[11px] text-purple-200/90 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <span>Restricted Admin Zone for sensitive corporate decisions.</span>
+          <span>Central Command for corporate governance & sensitive setup.</span>
         </div>
 
         {/* Navigation Links */}

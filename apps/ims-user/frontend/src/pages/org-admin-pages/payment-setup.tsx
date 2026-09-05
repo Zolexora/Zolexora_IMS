@@ -177,7 +177,7 @@ export default function OrgPaymentSetup() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-white tracking-tight">Payment Rails & Bank Gateways</h1>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
-              CONFIDENTIAL • ORG ADMIN
+              CONFIDENTIAL • OPS MASTER
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">

@@ -7,8 +7,6 @@ import {
   Truck,
   FileSpreadsheet,
   BarChart3,
-  Users as UsersIcon,
-  Building2,
   UserCircle,
   PackagePlus,
   ArrowUpRight,
@@ -28,9 +26,6 @@ export default function Sidepanal() {
     { label: 'Suppliers & Vendors', path: '/inv/suppliers', icon: Truck },
     { label: 'Issuance Logs', path: '/inv/issuance-logs', icon: FileSpreadsheet },
     { label: 'Reports & Analytics', path: '/inv/reports', icon: BarChart3 },
-    { label: 'Users & Permissions', path: '/admin/users', icon: UsersIcon },
-    { label: 'Site Management', path: '/admin/sites', icon: Building2 },
-    { label: 'Admin Dashboard', path: '/admin/dashboard', icon: ShieldCheck },
     { label: 'Profile Settings', path: '/inv/profile', icon: UserCircle },
   ];
 
@@ -74,15 +69,15 @@ export default function Sidepanal() {
             </Link>
           </div>
 
-          {/* Admin Dashboard Switcher Button */}
-          <div className="p-2.5 bg-gradient-to-r from-purple-950/50 to-indigo-950/50 border border-purple-500/30 rounded-xl space-y-1.5 shadow-md">
+          {/* Command Panel Switcher Button (Direct access to Admin Dashboard) */}
+          <div className="p-2.5 bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-500/40 rounded-xl space-y-1.5 shadow-md">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-purple-300">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                Governance & Setup
+                Corporate Governance
               </span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 font-mono">
-                ADMIN
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 border border-purple-500/40 font-mono font-bold">
+                OPS MASTER
               </span>
             </div>
             <Link
@@ -92,7 +87,7 @@ export default function Sidepanal() {
             >
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-white" />
-                <span>Admin Dashboard</span>
+                <span>Command Panel</span>
               </div>
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
             </Link>

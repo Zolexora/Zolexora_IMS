@@ -44,15 +44,17 @@ export default function OrgDashboard() {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950/80 via-slate-900 to-[#0c0d18] border border-purple-500/30 p-6 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-200 border border-purple-500/30 text-xs font-semibold">
               <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Isolated Organization Admin Zone</span>
+              <span className="font-mono font-bold tracking-wider">OPS MASTER</span>
+              <span className="text-slate-400">•</span>
+              <span>Command Panel</span>
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
-              Corporate Governance & Setup Center
+              Command Panel & Corporate Governance
             </h1>
             <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-              Manage sensitive financial rails, bank merchant handles, API secrets, multi-site infrastructure, staff RBAC permissions, and legal tax compliance in one centralized administration hub.
+              Executive command center for sensitive financial rails, bank merchant handles, API secrets, multi-site infrastructure, staff RBAC permissions, and legal tax compliance.
             </p>
           </div>
 
