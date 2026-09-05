@@ -15,19 +15,29 @@ import PurchaseEntry from './inv-pages/forms/PurchaseEntry';
 import IssuanceEntry from './inv-pages/forms/IssuanceEntry';
 import POSTerminal from './pos-pages/POSTerminal';
 
+// Shared Pages
+import LandingPage from './shared-pages/LandingPage';
+import LoginPage from './shared-pages/LoginPage';
+import OnboardingPage from './shared-pages/OnboardingPage';
+import NotFoundPage from './shared-pages/NotFoundPage';
+
 export default function App() {
   const location = useLocation();
-  const isPosRoute = location.pathname.startsWith('/pos');
+
+  // Determine if current route should render full-viewport without inventory side panel
+  const isStandaloneRoute =
+    ['/landing', '/login', '/onboarding'].includes(location.pathname) ||
+    location.pathname.startsWith('/pos');
 
   return (
-    <div className="min-h-screen flex bg-[#0b0d14] text-slate-100 font-sans">
-      {/* Sidebar Navigation: Shown on all inventory pages */}
-      {!isPosRoute && <Sidepanal />}
+    <div className="min-h-screen flex bg-[#07080e] text-slate-100 font-sans">
+      {/* Sidebar Navigation: Shown on all inventory module pages */}
+      {!isStandaloneRoute && <Sidepanal />}
 
-      {/* Main Content Viewport */}
+      {/* Main Viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        {!isPosRoute && (
-          <header className="h-14 border-b border-white/10 bg-[#0f111c]/80 backdrop-blur-sm px-6 flex items-center justify-between sticky top-0 z-20 flex-shrink-0">
+        {!isStandaloneRoute && (
+          <header className="h-14 border-b border-white/10 bg-[#0c0e18]/80 backdrop-blur-sm px-6 flex items-center justify-between sticky top-0 z-20 flex-shrink-0">
             <div className="text-xs text-slate-400 font-mono">
               Workspace Scope: <span className="text-white font-medium">Zolexora Retail Operations (D1 Synchronized)</span>
             </div>
@@ -42,6 +52,14 @@ export default function App() {
 
         <main className="flex-1 overflow-hidden flex flex-col">
           <Routes>
+            {/* Shared Standalone Pages */}
+            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+
+            {/* Point of Sale (POS) Module */}
+            <Route path="/pos" element={<POSTerminal />} />
+
             {/* Inventory Core Pages */}
             <Route path="/" element={<div className="p-6 overflow-y-auto flex-1"><Dashboard /></div>} />
             <Route path="/dashboard" element={<div className="p-6 overflow-y-auto flex-1"><Dashboard /></div>} />
@@ -62,11 +80,8 @@ export default function App() {
             <Route path="/forms/purchase-entry" element={<div className="p-6 overflow-y-auto flex-1"><PurchaseEntry /></div>} />
             <Route path="/forms/issuance-entry" element={<div className="p-6 overflow-y-auto flex-1"><IssuanceEntry /></div>} />
 
-            {/* POS Terminal */}
-            <Route path="/pos" element={<POSTerminal />} />
-
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* 404 Route */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
       </div>
