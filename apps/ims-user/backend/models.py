@@ -107,3 +107,21 @@ class DiningBenefitVerify(BaseModel):
     membership_code: str
     bill_amount: float
 
+
+class AggregatorChannelConfig(BaseModel):
+    platform: str  # "urbanpiper", "swiggy", "zomato", "ondc"
+    outlet_id: str  # Store ID / Restaurant ID
+    api_key: Optional[str] = None
+    api_username: Optional[str] = None
+    webhook_secret: Optional[str] = None
+    auto_accept: bool = False
+    is_active: bool = True
+
+
+class TestWebhookRequest(BaseModel):
+    platform: str = "Swiggy"  # "Swiggy", "Zomato", "Dineout", "ONDC"
+    customer_name: Optional[str] = "Live Test Customer"
+    customer_phone: Optional[str] = "+91 98765 43210"
+    item_name: Optional[str] = "Specialty Artisan Cold Brew"
+    amount: Optional[float] = 320.0
+

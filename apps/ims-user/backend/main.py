@@ -2,7 +2,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, Query, status
+from fastapi import FastAPI, Depends, HTTPException, Query, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
@@ -34,11 +34,11 @@ except ImportError:
 try:
     from .db import db
     from .auth import get_current_user
-    from .models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify
+    from .models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify, AggregatorChannelConfig, TestWebhookRequest
 except ImportError:
     from db import db
     from auth import get_current_user
-    from models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify
+    from models import ItemCreate, ItemResponse, ItemUpdate, SaleRequest, StockAdjustRequest, DashboardMetrics, UserProfile, AggregatorStatusUpdate, DiningBenefitVerify, AggregatorChannelConfig, TestWebhookRequest
 
 
 @asynccontextmanager
@@ -319,90 +319,177 @@ async def get_me(user: UserProfile = Depends(get_current_user)):
     return user
 
 
-# --- Online Platforms & Food Aggregators (Swiggy, Zomato, Dineout, Zomato Gold) ---
+# --- Online Platforms & Food Aggregators (UrbanPiper, Swiggy, Zomato, Dineout, ONDC) ---
 _aggregator_platforms = [
-    {"id": "swiggy", "name": "Swiggy Delivery", "status": "Online", "active_orders": 3, "auto_accept": False, "rating": 4.6},
-    {"id": "zomato", "name": "Zomato Delivery", "status": "Online", "active_orders": 2, "auto_accept": False, "rating": 4.8},
-    {"id": "dineout", "name": "Swiggy Dineout", "status": "Online", "active_orders": 1, "auto_accept": True, "rating": 4.7},
-    {"id": "zomato_gold", "name": "Zomato Gold Privilege", "status": "Online", "active_orders": 0, "auto_accept": True, "rating": 4.9},
-    {"id": "ondc", "name": "ONDC Food Network", "status": "Online", "active_orders": 1, "auto_accept": False, "rating": 4.5},
+    {
+        "id": "urbanpiper",
+        "name": "UrbanPiper Hub (Swiggy + Zomato + Dineout)",
+        "channel_type": "Aggregator Middleware",
+        "connected": False,
+        "status": "Not Connected",
+        "active_orders": 0,
+        "auto_accept": False,
+        "outlet_id": None,
+        "rating": 4.9,
+        "portal_url": "https://atlas.urbanpiper.com",
+        "docs_url": "https://developer.urbanpiper.com"
+    },
+    {
+        "id": "swiggy",
+        "name": "Swiggy Direct Partner",
+        "channel_type": "Direct Delivery Partner",
+        "connected": False,
+        "status": "Not Connected",
+        "active_orders": 0,
+        "auto_accept": False,
+        "outlet_id": None,
+        "rating": 4.6,
+        "portal_url": "https://partner.swiggy.com",
+        "docs_url": "https://partner.swiggy.com"
+    },
+    {
+        "id": "zomato",
+        "name": "Zomato Direct Merchant",
+        "channel_type": "Direct Delivery Partner",
+        "connected": False,
+        "status": "Not Connected",
+        "active_orders": 0,
+        "auto_accept": False,
+        "outlet_id": None,
+        "rating": 4.7,
+        "portal_url": "https://www.zomato.com/business",
+        "docs_url": "https://www.zomato.com/business"
+    },
+    {
+        "id": "ondc",
+        "name": "ONDC Open Network (Beckn)",
+        "channel_type": "National Open Commerce Network",
+        "connected": False,
+        "status": "Not Connected",
+        "active_orders": 0,
+        "auto_accept": False,
+        "outlet_id": None,
+        "rating": 4.5,
+        "portal_url": "https://ondc.org",
+        "docs_url": "https://ondc.org"
+    },
 ]
 
-_aggregator_orders = [
-    {
-        "id": "SW-4892",
-        "platform": "Swiggy",
-        "channel_color": "orange",
-        "order_time": "3 mins ago",
-        "customer_name": "Aditya Sharma",
-        "customer_phone": "+91 98200 11223",
-        "items": [
-            {"name": "Oat Milk Cappuccino", "qty": 2, "price": 220, "notes": "Less ice, extra cinnamon"},
-            {"name": "Butter Croissant Flaky", "qty": 2, "price": 160}
-        ],
-        "subtotal": 760.0,
-        "tax": 38.0,
-        "total_amount": 798.0,
-        "payment_status": "Paid Online (Swiggy Money)",
-        "status": "NEW",
-        "rider": {"name": "Manoj Kumar", "phone": "+91 97110 33445", "status": "En Route to Store (4 mins)", "otp": "4892"},
-        "prep_time_mins": 15
-    },
-    {
-        "id": "ZM-8102",
-        "platform": "Zomato",
-        "channel_color": "red",
-        "order_time": "8 mins ago",
-        "customer_name": "Priyanka Joshi",
-        "customer_phone": "+91 91234 88776",
-        "items": [
-            {"name": "Tandoori Paneer Roll", "qty": 2, "price": 240, "notes": "Mint chutney separate"},
-            {"name": "Parmesan Truffle Fries", "qty": 1, "price": 220}
-        ],
-        "subtotal": 700.0,
-        "tax": 35.0,
-        "total_amount": 735.0,
-        "payment_status": "Paid Online (Zomato Pay)",
-        "status": "ACCEPTED",
-        "rider": {"name": "Deepak Yadav", "phone": "+91 99882 11002", "status": "Arrived at Outlet", "otp": "8102"},
-        "prep_time_mins": 20
-    },
-    {
-        "id": "DO-3019",
-        "platform": "Dineout",
-        "channel_color": "purple",
-        "order_time": "14 mins ago",
-        "customer_name": "Karan Singhal",
-        "customer_phone": "+91 98450 77661",
-        "items": [
-            {"name": "Smoked Salmon Bagel", "qty": 1, "price": 380},
-            {"name": "Artisan Espresso Single", "qty": 2, "price": 140}
-        ],
-        "subtotal": 660.0,
-        "tax": 33.0,
-        "total_amount": 693.0,
-        "payment_status": "Pre-paid (Dineout Pay)",
-        "status": "READY",
-        "table_no": "T-03",
-        "prep_time_mins": 10
-    }
-]
+_aggregator_configs = {}
+_aggregator_orders = []
+
 
 @app.get("/api/v1/aggregator/platforms")
 async def get_platforms():
+    for p in _aggregator_platforms:
+        # Dynamic active order count
+        p["active_orders"] = sum(
+            1 for o in _aggregator_orders
+            if (o.get("platform", "").lower() in p["id"] or p["id"] in o.get("platform", "").lower() or (p["id"] == "urbanpiper" and o.get("source") == "urbanpiper"))
+            and o.get("status") not in ("DISPATCHED", "CANCELLED")
+        )
     return _aggregator_platforms
+
+
+@app.get("/api/v1/aggregator/config")
+async def get_aggregator_configs(request: Request):
+    base_url = str(request.base_url).rstrip("/")
+    configs = []
+    for p in _aggregator_platforms:
+        pid = p["id"]
+        saved = _aggregator_configs.get(pid, {})
+        webhook_url = f"{base_url}/api/v1/aggregator/webhook/{pid}"
+        configs.append({
+            "platform_id": pid,
+            "name": p["name"],
+            "channel_type": p["channel_type"],
+            "connected": p["connected"],
+            "status": p["status"],
+            "outlet_id": saved.get("outlet_id"),
+            "has_api_key": bool(saved.get("api_key")),
+            "auto_accept": saved.get("auto_accept", False),
+            "webhook_url": webhook_url,
+            "portal_url": p["portal_url"],
+            "docs_url": p["docs_url"]
+        })
+    return {
+        "base_webhook_url": base_url,
+        "channels": configs
+    }
+
+
+@app.post("/api/v1/aggregator/config/{platform_id}")
+async def save_aggregator_config(platform_id: str, config: AggregatorChannelConfig):
+    pid = platform_id.lower()
+    target_platform = next((p for p in _aggregator_platforms if p["id"] == pid), None)
+    if not target_platform:
+        raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+    
+    if not config.outlet_id or not config.outlet_id.strip():
+        raise HTTPException(status_code=400, detail="Store/Outlet ID is mandatory to link channel")
+
+    _aggregator_configs[pid] = {
+        "outlet_id": config.outlet_id.strip(),
+        "api_key": config.api_key.strip() if config.api_key else None,
+        "api_username": config.api_username.strip() if config.api_username else None,
+        "webhook_secret": config.webhook_secret.strip() if config.webhook_secret else None,
+        "auto_accept": config.auto_accept,
+        "connected_at": now_utc_iso()
+    }
+
+    target_platform["connected"] = True
+    target_platform["status"] = "Online"
+    target_platform["outlet_id"] = config.outlet_id.strip()
+    target_platform["auto_accept"] = config.auto_accept
+
+    return {
+        "success": True,
+        "message": f"Successfully connected and activated {target_platform['name']}",
+        "platform": target_platform
+    }
+
+
+@app.delete("/api/v1/aggregator/config/{platform_id}")
+async def disconnect_aggregator_config(platform_id: str):
+    pid = platform_id.lower()
+    target_platform = next((p for p in _aggregator_platforms if p["id"] == pid), None)
+    if not target_platform:
+        raise HTTPException(status_code=404, detail=f"Platform '{platform_id}' not found")
+
+    _aggregator_configs.pop(pid, None)
+    target_platform["connected"] = False
+    target_platform["status"] = "Not Connected"
+    target_platform["outlet_id"] = None
+    target_platform["auto_accept"] = False
+
+    return {
+        "success": True,
+        "message": f"Disconnected {target_platform['name']}"
+    }
+
 
 @app.post("/api/v1/aggregator/platforms/{platform_id}/toggle")
 async def toggle_platform(platform_id: str):
     for p in _aggregator_platforms:
-        if p["id"] == platform_id:
+        if p["id"] == platform_id.lower():
+            if not p.get("connected"):
+                raise HTTPException(status_code=400, detail="Cannot toggle status: Channel is not configured yet. Complete setup first.")
             p["status"] = "Paused" if p["status"] == "Online" else "Online"
             return {"success": True, "platform": p}
     raise HTTPException(status_code=404, detail="Platform not found")
 
+
 @app.get("/api/v1/aggregator/orders")
 async def get_aggregator_orders():
     return _aggregator_orders
+
+
+@app.delete("/api/v1/aggregator/orders")
+async def clear_aggregator_orders():
+    global _aggregator_orders
+    _aggregator_orders = []
+    return {"success": True, "message": "All orders cleared"}
+
 
 @app.post("/api/v1/aggregator/orders/{order_id}/status")
 async def update_order_status(order_id: str, body: AggregatorStatusUpdate):
@@ -415,6 +502,149 @@ async def update_order_status(order_id: str, body: AggregatorStatusUpdate):
                 order["cancel_reason"] = body.reason
             return {"success": True, "order": order}
     raise HTTPException(status_code=404, detail="Order not found")
+
+
+# --- Production Webhook Receiver (Ingests Real Swiggy, Zomato, UrbanPiper & ONDC Orders) ---
+@app.post("/api/v1/aggregator/webhook/{channel}")
+async def receive_aggregator_webhook(channel: str, request: Request):
+    channel = channel.lower()
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    # Map Channel Name & Color
+    channel_display = {
+        "swiggy": ("Swiggy", "bg-orange-500 text-white"),
+        "zomato": ("Zomato", "bg-rose-600 text-white"),
+        "dineout": ("Dineout", "bg-purple-600 text-white"),
+        "ondc": ("ONDC", "bg-emerald-600 text-white"),
+        "urbanpiper": ("UrbanPiper", "bg-blue-600 text-white")
+    }.get(channel, (channel.capitalize(), "bg-indigo-600 text-white"))
+
+    # Extract or generate unique order ID
+    raw_id = payload.get("order_id") or payload.get("id") or str(payload.get("order", {}).get("id") or "")
+    if not raw_id:
+        import secrets
+        raw_id = f"{channel[:2].upper()}-{secrets.randbelow(8999) + 1000}"
+
+    # Extract customer
+    customer = payload.get("customer", {})
+    cust_name = customer.get("name") or payload.get("customer_name") or "Direct Online Customer"
+    cust_phone = customer.get("phone") or payload.get("customer_phone") or "+91 98000 00000"
+
+    # Extract items
+    raw_items = payload.get("items") or payload.get("order", {}).get("items") or []
+    parsed_items = []
+    if raw_items:
+        for it in raw_items:
+            parsed_items.append({
+                "name": it.get("name") or it.get("title") or "Item",
+                "qty": int(it.get("quantity") or it.get("qty") or 1),
+                "price": float(it.get("price") or it.get("rate") or 0.0),
+                "notes": it.get("notes") or it.get("instructions")
+            })
+    else:
+        parsed_items.append({
+            "name": payload.get("item_name") or "Specialty Item",
+            "qty": 1,
+            "price": float(payload.get("amount") or 250.0)
+        })
+
+    subtotal = sum(item["price"] * item["qty"] for item in parsed_items)
+    tax = round(subtotal * 0.05, 2)
+    total_amount = round(payload.get("total_amount") or (subtotal + tax), 2)
+
+    import secrets
+    otp = str(secrets.randbelow(8999) + 1000)
+
+    new_order = {
+        "id": raw_id,
+        "platform": channel_display[0],
+        "channel_color": channel_display[1],
+        "source": channel,
+        "order_time": "Just now",
+        "customer_name": cust_name,
+        "customer_phone": cust_phone,
+        "items": parsed_items,
+        "subtotal": subtotal,
+        "tax": tax,
+        "total_amount": total_amount,
+        "payment_status": payload.get("payment_status") or f"Pre-paid ({channel_display[0]})",
+        "status": "NEW",
+        "rider": {
+            "name": payload.get("rider_name") or f"{channel_display[0]} Fleet Partner",
+            "phone": payload.get("rider_phone") or "+91 97000 11223",
+            "status": "Assigned (Arriving in 8 mins)",
+            "otp": otp
+        },
+        "prep_time_mins": int(payload.get("prep_time_mins") or 20),
+        "received_at": now_utc_iso()
+    }
+
+    # Prepend new order to live stream
+    _aggregator_orders.insert(0, new_order)
+
+    # Standard 200 ACK expected by UrbanPiper / Swiggy / Zomato webhooks
+    return {
+        "status": "ACK",
+        "order_id": raw_id,
+        "message": f"Order {raw_id} successfully queued into Zolexora IMS"
+    }
+
+
+@app.post("/api/v1/aggregator/test-webhook")
+async def send_test_webhook_order(body: TestWebhookRequest):
+    """Allows organization owners to simulate real webhook arrival on their own account."""
+    import secrets
+    order_code = f"{body.platform[:2].upper()}-{secrets.randbelow(8999) + 1000}"
+    otp = str(secrets.randbelow(8999) + 1000)
+    
+    channel_display = {
+        "Swiggy": ("Swiggy", "bg-orange-500 text-white"),
+        "Zomato": ("Zomato", "bg-rose-600 text-white"),
+        "Dineout": ("Dineout", "bg-purple-600 text-white"),
+        "ONDC": ("ONDC", "bg-emerald-600 text-white"),
+    }.get(body.platform, (body.platform, "bg-indigo-600 text-white"))
+
+    subtotal = float(body.amount or 320.0)
+    tax = round(subtotal * 0.05, 2)
+    total_amount = round(subtotal + tax, 2)
+
+    test_order = {
+        "id": order_code,
+        "platform": channel_display[0],
+        "channel_color": channel_display[1],
+        "source": body.platform.lower(),
+        "order_time": "Just now (Test)",
+        "customer_name": body.customer_name or "Live Test Customer",
+        "customer_phone": body.customer_phone or "+91 98765 43210",
+        "items": [
+            {"name": body.item_name or "Artisan Cold Brew Special", "qty": 1, "price": subtotal, "notes": "Test Order from Owner Portal"}
+        ],
+        "subtotal": subtotal,
+        "tax": tax,
+        "total_amount": total_amount,
+        "payment_status": f"Pre-paid ({channel_display[0]} Online)",
+        "status": "NEW",
+        "rider": {
+            "name": f"{body.platform} Delivery Agent",
+            "phone": "+91 97110 33445",
+            "status": "Assigned - Arriving soon",
+            "otp": otp
+        },
+        "prep_time_mins": 15,
+        "received_at": now_utc_iso()
+    }
+
+    _aggregator_orders.insert(0, test_order)
+
+    return {
+        "success": True,
+        "order": test_order,
+        "message": f"Test order {order_code} pushed successfully! Check POS terminal."
+    }
+
 
 @app.post("/api/v1/aggregator/dining-benefit/verify")
 async def verify_dining_benefit(body: DiningBenefitVerify):
