@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   Printer,
@@ -15,10 +15,75 @@ import {
   Smartphone,
   Cpu,
   Zap,
+  QrCode,
+  CreditCard,
+  Volume2,
+  ExternalLink,
+  Key,
+  Lock,
+  Play,
+  AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
 
 export default function PosSettings() {
+  const { authFetch } = useAuth();
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+
+  // Merchant Payment Handle & Gateway state
+  const [upiHandle, setUpiHandle] = useState<string>('zolexora@icici');
+  const [merchantName, setMerchantName] = useState<string>('Zolexora Retail Operations');
+  const [mcc, setMcc] = useState<string>('5812');
+  const [paymentGateway, setPaymentGateway] = useState<string>('upi_qr');
+  const [edcTerminalId, setEdcTerminalId] = useState<string>('PINE_EDC_01');
+  const [soundboxEnabled, setSoundboxEnabled] = useState<boolean>(true);
+  const [testAmount, setTestAmount] = useState<number>(1.0);
+  const [testQrUrl, setTestQrUrl] = useState<string>('');
+
+  // Razorpay Gateway state
+  const [razorpayKeyId, setRazorpayKeyId] = useState<string>('');
+  const [razorpayKeySecret, setRazorpayKeySecret] = useState<string>('');
+  const [hasRazorpaySecret, setHasRazorpaySecret] = useState<boolean>(false);
+  const [testingRazorpay, setTestingRazorpay] = useState<boolean>(false);
+
+  // Cashfree Gateway state
+  const [cashfreeAppId, setCashfreeAppId] = useState<string>('');
+  const [cashfreeSecretKey, setCashfreeSecretKey] = useState<string>('');
+  const [cashfreeEnv, setCashfreeEnv] = useState<string>('TEST');
+  const [hasCashfreeSecret, setHasCashfreeSecret] = useState<boolean>(false);
+  const [testingCashfree, setTestingCashfree] = useState<boolean>(false);
+
+  // Test feedback banner
+  const [gatewayTestResult, setGatewayTestResult] = useState<{ gateway: string; message: string; ok: boolean } | null>(null);
+
+  // Load existing payment handle from backend
+  useEffect(() => {
+    authFetch('/api/v1/payment/handle')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setUpiHandle(data.upi_handle || 'zolexora@icici');
+          setMerchantName(data.merchant_name || 'Zolexora Retail Operations');
+          setMcc(data.merchant_category_code || '5812');
+          setPaymentGateway(data.payment_gateway || 'upi_qr');
+          setEdcTerminalId(data.edc_terminal_id || 'PINE_EDC_01');
+          setSoundboxEnabled(data.soundbox_enabled ?? true);
+          setRazorpayKeyId(data.razorpay_key_id || '');
+          setHasRazorpaySecret(data.has_razorpay_secret || false);
+          setCashfreeAppId(data.cashfree_app_id || '');
+          setCashfreeEnv(data.cashfree_env || 'TEST');
+          setHasCashfreeSecret(data.has_cashfree_secret || false);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Compute test dynamic QR whenever handle or amount changes
+  useEffect(() => {
+    const encodedName = encodeURIComponent(merchantName);
+    const intentUrl = `upi://pay?pa=${upiHandle}&pn=${encodedName}&mc=${mcc}&am=${testAmount.toFixed(2)}&cu=INR&tn=Handle_Test_1`;
+    setTestQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(intentUrl)}&bgcolor=ffffff&color=090a10&margin=8`);
+  }, [upiHandle, merchantName, mcc, testAmount]);
 
   // Hardware Printer state
   const [printerInterface, setPrinterInterface] = useState<'network' | 'usb' | 'bluetooth' | 'browser'>('network');
@@ -58,8 +123,110 @@ export default function PosSettings() {
     }, 600);
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleTestRazorpay = async () => {
+    setTestingRazorpay(true);
+    setGatewayTestResult(null);
+    try {
+      const res = await authFetch('/api/v1/payment/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: testAmount || 1.0,
+          bill_no: `TEST_${Date.now()}`,
+          customer_phone: '9876543210',
+          customer_email: 'test@zolexora.com',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGatewayTestResult({
+          gateway: 'Razorpay',
+          message: `Order Created: ${data.order_id} (₹${data.amount}, ${data.gateway})`,
+          ok: true,
+        });
+      } else {
+        setGatewayTestResult({
+          gateway: 'Razorpay',
+          message: data.detail || 'Failed to create test order',
+          ok: false,
+        });
+      }
+    } catch (err: any) {
+      setGatewayTestResult({ gateway: 'Razorpay', message: err.message || 'Network error', ok: false });
+    }
+    setTestingRazorpay(false);
+  };
+
+  const handleTestCashfree = async () => {
+    setTestingCashfree(true);
+    setGatewayTestResult(null);
+    try {
+      const res = await authFetch('/api/v1/payment/cashfree/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: testAmount || 1.0,
+          bill_no: `TEST_${Date.now()}`,
+          customer_phone: '9876543210',
+          customer_email: 'test@zolexora.com',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGatewayTestResult({
+          gateway: 'Cashfree',
+          message: `Session Created: ${data.order_id} (${data.gateway}, Env: ${data.environment})`,
+          ok: true,
+        });
+      } else {
+        setGatewayTestResult({
+          gateway: 'Cashfree',
+          message: data.detail || 'Failed to create test order',
+          ok: false,
+        });
+      }
+    } catch (err: any) {
+      setGatewayTestResult({ gateway: 'Cashfree', message: err.message || 'Network error', ok: false });
+    }
+    setTestingCashfree(false);
+  };
+
+  const handleTestSoundbox = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const text = `Received payment of rupees ${Math.round(testAmount || 1)} successfully via UPI.`;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.05;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert(`Voice Soundbox Audio: Received payment of ₹${testAmount} successfully via UPI!`);
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      await authFetch('/api/v1/payment/handle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          upi_handle: upiHandle.trim().toLowerCase(),
+          merchant_name: merchantName.trim(),
+          merchant_category_code: mcc,
+          payment_gateway: paymentGateway,
+          razorpay_key_id: razorpayKeyId.trim() || undefined,
+          razorpay_key_secret: razorpayKeySecret.trim() || undefined,
+          cashfree_app_id: cashfreeAppId.trim() || undefined,
+          cashfree_secret_key: cashfreeSecretKey.trim() || undefined,
+          cashfree_env: cashfreeEnv,
+          edc_terminal_id: edcTerminalId.trim() || undefined,
+          soundbox_enabled: soundboxEnabled,
+          auto_settle: true,
+        }),
+      });
+    } catch {}
+
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -74,7 +241,7 @@ export default function PosSettings() {
             <span>POS Terminal Hardware & Settings</span>
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Configure ESC/POS thermal printers, kitchen KOT routing, cash drawer kick & GST tax metadata
+            Configure UPI payment handles, ESC/POS thermal printers, kitchen KOT routing & GST tax metadata
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -96,7 +263,330 @@ export default function PosSettings() {
 
       {/* Main Settings Form */}
       <form onSubmit={handleSaveSettings} className="flex-1 overflow-y-auto space-y-6 max-w-5xl">
-        {/* Section 1: Thermal Receipt Printer */}
+        {/* Section 1: Merchant Payment Handles & Multi-Rail Gateways (UPI, Razorpay, Cashfree) */}
+        <div className="bg-slate-900/40 border border-emerald-500/20 rounded-2xl p-5 space-y-5 shadow-xl shadow-emerald-500/5">
+          <div className="flex items-center justify-between pb-3 border-b border-white/5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <QrCode className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Merchant Payment Rails & Gateways</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    NPCI UPI • Razorpay • Cashfree
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Configure UPI handles, Razorpay/Cashfree merchant API credentials, voice soundbox, and EDC card terminals
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Test Feedback Banner if any */}
+          {gatewayTestResult && (
+            <div
+              className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                gatewayTestResult.ok
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {gatewayTestResult.ok ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                )}
+                <span>
+                  <strong>[{gatewayTestResult.gateway}]</strong> {gatewayTestResult.message}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGatewayTestResult(null)}
+                className="text-slate-400 hover:text-white text-xs ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Gateway Selector Tabs */}
+          <div>
+            <label className="block text-slate-300 mb-2 font-semibold text-xs">
+              Primary Checkout Payment Gateway
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {[
+                { id: 'upi_qr', name: 'Direct Dynamic UPI QR', desc: '0% MDR, Direct to Bank via NPCI' },
+                { id: 'razorpay', name: 'Razorpay PG', desc: 'Credit/Debit Cards, NetBanking, UPI' },
+                { id: 'cashfree', name: 'Cashfree Payments', desc: 'Drop Checkout, Multi-Rail Auto Settle' },
+              ].map((gw) => (
+                <button
+                  type="button"
+                  key={gw.id}
+                  onClick={() => setPaymentGateway(gw.id)}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    paymentGateway === gw.id
+                      ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-md shadow-emerald-500/10'
+                      : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold text-xs text-white flex items-center justify-between">
+                    <span>{gw.name}</span>
+                    {paymentGateway === gw.id && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{gw.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 text-xs pt-1">
+            {/* Left 2 Cols: Form Inputs */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* UPI Handle & Payee Details */}
+              <div className="p-3.5 bg-black/30 rounded-xl border border-white/5 space-y-3">
+                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>NPCI Unified Payments Interface (UPI) Settings</span>
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Merchant UPI Handle (VPA) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. store@icici, cafe@okhdfcbank"
+                      value={upiHandle}
+                      onChange={(e) => setUpiHandle(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500 text-xs"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Every bill generates a dynamic QR linked directly to this handle.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Legal Payee / Business Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Zolexora Artisan Roasters"
+                      value={merchantName}
+                      onChange={(e) => setMerchantName(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 text-xs"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Appears on customer's GPay, PhonePe, and bank statements.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Merchant Category Code (MCC)
+                    </label>
+                    <select
+                      value={mcc}
+                      onChange={(e) => setMcc(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 text-xs"
+                    >
+                      <option value="5812">5812 - Eating Places & Restaurants</option>
+                      <option value="5814">5814 - Fast Food & Specialty Cafes</option>
+                      <option value="5411">5411 - Grocery Stores & Supermarkets</option>
+                      <option value="5311">5311 - Department & Retail Stores</option>
+                      <option value="5691">5691 - Men's & Women's Apparel</option>
+                      <option value="5912">5912 - Drug Stores & Pharmacies</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      EDC Card Swipe Terminal ID (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. PINE_POS_104"
+                      value={edcTerminalId}
+                      onChange={(e) => setEdcTerminalId(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500 text-xs"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      For automated swipe push to PineLabs / Paytm card machines.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Razorpay Gateway Box */}
+              <div className="p-3.5 bg-black/30 rounded-xl border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Razorpay Merchant Integration</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleTestRazorpay}
+                    disabled={testingRazorpay}
+                    className="px-2.5 py-1 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-[10px] font-bold border border-sky-500/30 flex items-center gap-1 transition"
+                  >
+                    <Play className="w-3 h-3" />
+                    <span>{testingRazorpay ? 'Testing Order...' : 'Test Razorpay Order'}</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Razorpay Key ID
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="rzp_test_... or rzp_live_..."
+                      value={razorpayKeyId}
+                      onChange={(e) => setRazorpayKeyId(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-sky-500 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Razorpay Key Secret
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={hasRazorpaySecret ? '•••••••••••• (Secret Configured)' : 'Enter Razorpay Key Secret'}
+                      value={razorpayKeySecret}
+                      onChange={(e) => setRazorpayKeySecret(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-sky-500 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Cashfree Payments Box */}
+              <div className="p-3.5 bg-black/30 rounded-xl border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Cashfree Payments Integration</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleTestCashfree}
+                    disabled={testingCashfree}
+                    className="px-2.5 py-1 rounded bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30 flex items-center gap-1 transition"
+                  >
+                    <Play className="w-3 h-3" />
+                    <span>{testingCashfree ? 'Testing Session...' : 'Test Cashfree Order'}</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Cashfree App ID
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. TEST101..."
+                      value={cashfreeAppId}
+                      onChange={(e) => setCashfreeAppId(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-purple-500 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Cashfree Secret Key
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={hasCashfreeSecret ? '•••••••••••• (Secret Configured)' : 'Enter Secret Key'}
+                      value={cashfreeSecretKey}
+                      onChange={(e) => setCashfreeSecretKey(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-purple-500 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">
+                      Environment
+                    </label>
+                    <select
+                      value={cashfreeEnv}
+                      onChange={(e) => setCashfreeEnv(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 text-xs"
+                    >
+                      <option value="TEST">Sandbox (TEST)</option>
+                      <option value="PRODUCTION">Live (PRODUCTION)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Soundbox Voice Confirmation Controls */}
+              <div className="p-3.5 bg-black/30 rounded-xl border border-white/5 flex flex-wrap items-center justify-between gap-3">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={soundboxEnabled}
+                    onChange={(e) => setSoundboxEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-0 bg-black/40 border-white/20"
+                  />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-200">
+                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                    <span className="font-semibold">Enable Voice Soundbox Announcement upon Payment Settlement</span>
+                  </div>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleTestSoundbox}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5 transition"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Test Soundbox Voice</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Col: Live Test QR Code Preview & Simulator */}
+            <div className="p-4 bg-black/30 rounded-xl border border-white/5 flex flex-col items-center justify-center text-center space-y-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Live Handle Dynamic QR
+              </span>
+              <div className="p-2.5 bg-white rounded-xl shadow-lg border border-white/20">
+                <img
+                  src={testQrUrl}
+                  alt="Test QR"
+                  className="w-36 h-36 object-contain"
+                />
+              </div>
+              <div className="space-y-1 w-full">
+                <span className="text-xs font-bold text-white block font-mono truncate">
+                  {upiHandle}
+                </span>
+                <span className="text-[10px] text-slate-400 block truncate">
+                  {merchantName}
+                </span>
+                <div className="pt-2 flex items-center justify-center gap-1.5">
+                  <span className="text-[10px] text-slate-400">Test Amount: ₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={testAmount}
+                    onChange={(e) => setTestAmount(parseFloat(e.target.value) || 1)}
+                    className="w-16 bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-xs font-mono text-white text-center focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Thermal Receipt Printer */}
         <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-white/5">
             <div className="flex items-center gap-2.5">

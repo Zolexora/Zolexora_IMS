@@ -125,3 +125,35 @@ class TestWebhookRequest(BaseModel):
     item_name: Optional[str] = "Specialty Artisan Cold Brew"
     amount: Optional[float] = 320.0
 
+
+class PaymentHandleConfig(BaseModel):
+    upi_handle: str = "zolexora@icici"  # Merchant VPA, e.g. merchant@okhdfcbank
+    merchant_name: str = "Zolexora Retail Operations"
+    merchant_category_code: str = "5812"  # MCC (5812: Restaurants, 5411: Groceries)
+    payment_gateway: str = "upi_qr"  # upi_qr, razorpay, cashfree, stripe, paytm_edc, pinelabs
+    razorpay_key_id: Optional[str] = None
+    razorpay_key_secret: Optional[str] = None
+    cashfree_app_id: Optional[str] = None
+    cashfree_secret_key: Optional[str] = None
+    cashfree_env: Optional[str] = "TEST"  # TEST or PRODUCTION
+    stripe_publishable_key: Optional[str] = None
+    edc_terminal_id: Optional[str] = None
+    soundbox_enabled: bool = True
+    auto_settle: bool = True
+
+
+class GenerateDynamicQrRequest(BaseModel):
+    amount: float
+    bill_no: str
+    customer_phone: Optional[str] = None
+    customer_name: Optional[str] = None
+
+
+class PaymentVerifyRequest(BaseModel):
+    bill_no: str
+    amount: float
+    payment_mode: str = "UPI"  # UPI, Card, Netbanking
+    transaction_ref: Optional[str] = None  # Bank UTR / Reference No / Card Auth Code
+    status: str = "SUCCESS"
+
+

@@ -86,6 +86,14 @@
       "headers": {
         "Authorization": "Bearer ${env:RENDER_API_KEY}"
       }
+    },
+    "zolexora-payments": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["scripts/mcp_payments_server.py"],
+      "env": {
+        "PYTHONPATH": "apps/ims-user/backend"
+      }
     }
   },
   "mcpServers": {
@@ -154,6 +162,13 @@
       "url": "https://mcp.render.com/mcp",
       "headers": {
         "Authorization": "Bearer ${env:RENDER_API_KEY}"
+      }
+    },
+    "zolexora-payments": {
+      "command": "python3",
+      "args": ["scripts/mcp_payments_server.py"],
+      "env": {
+        "PYTHONPATH": "apps/ims-user/backend"
       }
     }
   }

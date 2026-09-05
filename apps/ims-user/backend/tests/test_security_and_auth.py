@@ -5,7 +5,7 @@ from starlette.testclient import TestClient
 
 # Add paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend-shared")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../backend-shared")))
 
 from security import hash_password, verify_password, create_jwt_token, decode_jwt_token, get_jwt_secret
 from main import app
