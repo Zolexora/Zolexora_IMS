@@ -41,11 +41,11 @@ export default function PosSidepanal({
   ];
 
   return (
-    <aside className="w-64 border-r border-white/10 bg-[#0f111c] flex flex-col justify-between p-4 flex-shrink-0 select-none">
-      <div className="space-y-4">
-        {/* Brand */}
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center font-black text-white shadow-md text-sm">
+    <aside className="w-64 h-screen sticky top-0 border-r border-white/10 bg-[#0f111c] flex flex-col justify-between flex-shrink-0 select-none overflow-hidden z-30">
+      {/* 1. Fixed Top Header: Brand */}
+      <div className="p-4 pb-3 border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center font-black text-white shadow-md text-sm flex-shrink-0">
             P
           </div>
           <div>
@@ -53,7 +53,10 @@ export default function PosSidepanal({
             <div className="text-[10px] text-emerald-400 font-medium">Front Register Terminal</div>
           </div>
         </div>
+      </div>
 
+      {/* 2. Middle Scrollable Content (Scrollable ONLY between Top & Bottom) */}
+      <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.15)_transparent]">
         {/* Main POS Navigation Links (ALL strictly pointing to /pos/*) */}
         <div className="space-y-1">
           <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -120,8 +123,8 @@ export default function PosSidepanal({
         </div>
       </div>
 
-      {/* Bottom Actions & Footer Info */}
-      <div className="border-t border-white/10 pt-3 space-y-3">
+      {/* 3. Fixed Bottom Section: Switchers Dock & Outlet Footer */}
+      <div className="p-4 pt-3 border-t border-white/10 flex-shrink-0 bg-[#0f111c] space-y-3">
         {/* Compact Workspace Switchers (Side-by-Side at Bottom) */}
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 px-1">
