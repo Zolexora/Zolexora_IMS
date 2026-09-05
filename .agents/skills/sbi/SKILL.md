@@ -29,7 +29,48 @@ State Bank of India provides merchant acquiring and digital collection services 
 
 ---
 
-## 2. How to Get an SBI Bank Merchant QR
+## 2. Personal Current Account (Individual Current Account) Explained
+
+### What is a Personal Current Account?
+In Indian banking (including SBI), a **Personal Current Account** (officially classified as an **Individual Current Account**) is a demand deposit account opened in the name of an individual person (e.g. *Rajesh Kumar* or *Rajesh Kumar trading as ABC Store*) rather than an incorporated entity like a Private Limited Company, LLP, or Partnership.
+
+It is designed specifically for:
+- Sole proprietors and retail shop owners
+- Freelancers, consultants, and independent contractors
+- Professionals (doctors, lawyers, chartered accountants, architects)
+- Small traders, grocery owners, and kiosk operators
+
+### Comparison Matrix: Personal Current vs. Savings vs. Entity Current Account
+
+| Feature / Dimension | Savings Account (P2P) | Personal Current Account (Individual) | Entity / Corporate Current Account |
+| :--- | :--- | :--- | :--- |
+| **Primary Objective** | Personal savings & wealth accumulation | Commercial transactions, business cash flow | Corporate/Institutional treasury & high-volume trade |
+| **Account Name** | Individual's legal name | Individual's legal name OR Individual + Trade Name | Registered entity name (Pvt Ltd, LLP, Partnership) |
+| **KYC & Documents** | Aadhaar + PAN only | Aadhaar + PAN + 1 Business Proof (Shop Act, Udyam MSME, or GSTIN) | Certificate of Incorporation, MOA/AOA, Partnership Deed, Board Resolution |
+| **Interest Rate** | ~2.70% to 3.00% p.a. (subject to IT deduction) | **0.00%** (RBI mandate on demand deposits) | **0.00%** (RBI mandate on demand deposits) |
+| **Transaction Frequency** | Strictly capped (e.g., 20–50 free/month); heavy use flags AML | **Unlimited** debits & credits per month | **Unlimited** debits & credits per month |
+| **SFT Cash Reporting (Sec 285BA)** | Triggers tax notice if cash deposits exceed **₹10 Lakhs/yr** | Triggers tax notice if cash deposits exceed **₹50 Lakhs/yr** | Triggers tax notice if cash deposits exceed **₹50 Lakhs/yr** |
+| **Merchant Category (UPI)** | P2P (Person to Person) | **P2M (Person to Merchant)** | **P2M (Person to Merchant)** |
+| **RuPay Credit Card on UPI** | ❌ **Blocked / Unsupported** | ✅ **Fully Supported** (0% MDR up to ₹2,000) | ✅ **Fully Supported** |
+| **Overdraft (OD) Facility** | Rare (only against FD) | ✅ Available (SOD / Clean Overdraft against turnover) | ✅ High-limit Cash Credit (CC) / Overdraft |
+| **Daily UPI Limit** | Standard ₹1 Lakh/day (capped by NPCI/banks) | Up to ₹5 Lakhs/day or unlimited for verified merchants | Up to ₹5 Lakhs/day or custom enterprise limits |
+
+### Why You Should NOT Use a Savings Account for Retail Business
+1. **Automated Tax Audit Red Flags (SFT/AIS)**: Under Section 285BA of the Income Tax Act, banks automatically submit high-value transaction reports (Form 61A) if cash deposits in a savings account exceed ₹10 Lakhs in a financial year. Commercial transactions in a savings account can trigger scrutiny notices from the Income Tax Department for unexplained cash credits.
+2. **Account Freezing / AML Locks**: When algorithms detect hundreds of small incoming UPI credits (retail billing pattern) in a personal savings account, banks flag it for non-personal commercial usage and freeze the account under RBI AML (Anti-Money Laundering) guidelines.
+3. **Reconciliation Nightmare**: Business revenue and personal household expenses get mixed together, making bookkeeping, GST returns, and profit-and-loss calculations nearly impossible to audit.
+4. **No RuPay Credit Card UPI Payments**: Customers trying to pay with their RuPay credit card will get transaction failures when scanning a savings UPI QR.
+
+### Can You Link an SBI Personal Current Account to Merchant QR?
+**Yes, absolutely 100%!**
+- When opening an Individual Current Account at SBI, you receive account number, cheque book, net banking credentials, and an IFSC (`SBIN00xxxxx`).
+- You can onboard this account immediately onto **YONO SBI Merchant (YONO Vyapar)**, **BHIM SBI Pay**, **Google Pay for Business**, **PhonePe Business**, or **Paytm for Business**.
+- These platforms assign a **Merchant VPA** (e.g. `yourbrand@sbi` or `yourname.merchant@okhdfcbank`) categorized under NPCI Merchant Category Code (MCC).
+- This VPA can be configured directly in Zolexora IMS under **POS Settings -> Payment Settings**, enabling real-time dynamic QR generation at checkout.
+
+---
+
+## 3. How to Get an SBI Bank Merchant QR
 
 Merchants with an SBI Current Account can acquire an official Merchant QR in three ways:
 
@@ -60,7 +101,7 @@ Merchants with an SBI Current Account can acquire an official Merchant QR in thr
 
 ---
 
-## 3. SBI Merchant VPA (UPI ID) Handles & Specs
+## 4. SBI Merchant VPA (UPI ID) Handles & Specs
 
 SBI Merchant accounts are assigned VPAs under standard banking handles:
 
@@ -92,7 +133,7 @@ upi://pay?pa={sbi_vpa}&pn={legal_name}&mc={mcc}&am={amount_2_dec}&cu=INR&tn={tra
 
 ---
 
-## 4. RuPay Credit Card on UPI Acceptance
+## 5. RuPay Credit Card on UPI Acceptance
 
 One of the greatest advantages of an official SBI Merchant VPA over a personal savings UPI ID is **RuPay Credit Card acceptance**:
 - **Personal UPI IDs (`@oksbi`, `@sbi` on savings accounts)**: Customers **CANNOT** pay using their credit cards; transactions fail with *"Payment not supported by payee account"*.
@@ -103,7 +144,7 @@ One of the greatest advantages of an official SBI Merchant VPA over a personal s
 
 ---
 
-## 5. Verification Mechanics in Zolexora IMS
+## 6. Verification Mechanics in Zolexora IMS
 
 Because Direct Dynamic UPI QR is direct-to-bank without an intermediary aggregator holding your funds, verification in Zolexora IMS is optimized through multiple layers:
 
@@ -119,7 +160,7 @@ Because Direct Dynamic UPI QR is direct-to-bank without an intermediary aggregat
 
 ---
 
-## 6. Configuring SBI Merchant QR in Zolexora IMS
+## 7. Configuring SBI Merchant QR in Zolexora IMS
 
 ### Step 1: Open Terminal Settings
 1. Navigate to **POS Settings** (`/pos/settings`) in Zolexora IMS.
@@ -140,7 +181,7 @@ Because Direct Dynamic UPI QR is direct-to-bank without an intermediary aggregat
 
 ---
 
-## 7. Useful SBI Merchant Contact Channels
+## 8. Useful SBI Merchant Contact Channels
 - **SBI Payments Official Portal**: [https://www.sbipayments.com](https://www.sbipayments.com)
 - **SBI ePay Gateway**: [https://www.sbiepay.sbi](https://www.sbiepay.sbi)
 - **SBI Merchant Support Email**: `merchantdesk@sbipayments.com` / `support.sbiepay@sbi.co.in`
