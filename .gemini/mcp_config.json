@@ -78,6 +78,13 @@
     "supabase": {
       "serverUrl": "https://mcp.supabase.com/mcp",
       "url": "https://mcp.supabase.com/mcp"
+    },
+    "render": {
+      "serverUrl": "https://mcp.render.com/mcp",
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RENDER_API_KEY}"
+      }
     }
   }
 }

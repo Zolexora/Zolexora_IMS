@@ -50,6 +50,12 @@
     },
     "cloudflare-blog": {
       "url": "https://blog.mcp.cloudflare.com/mcp"
+    },
+    "render": {
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RENDER_API_KEY}"
+      }
     }
   }
 }

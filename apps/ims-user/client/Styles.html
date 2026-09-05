@@ -133,6 +133,53 @@
     outline: none !important;
   }
 
+  /* ============================================================== */
+  /* UNIFIED EXPANDED SEARCH BARS (Eliminates inner black rectangle) */
+  /* ============================================================== */
+  #appDashboardContainer .search-bar-unified {
+    background-color: #12141c !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 12px !important;
+    transition: all 0.2s ease !important;
+  }
+
+  #appDashboardContainer .search-bar-unified:hover {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    background-color: #161824 !important;
+  }
+
+  #appDashboardContainer .search-bar-unified:focus-within {
+    border-color: #2563eb !important;
+    background-color: #161824 !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22) !important;
+  }
+
+  /* Make search inputs expand 100% and seamlessly match the search bar background */
+  #appDashboardContainer input[type="text"][id*="Search"],
+  #appDashboardContainer input[type="text"][id*="search"],
+  #appDashboardContainer input[id*="SearchInput"],
+  #appDashboardContainer input[id*="searchInput"],
+  #appDashboardContainer .search-input-unified,
+  #appDashboardContainer .search-bar-unified input {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: #f3f4f6 !important;
+    font-size: 13px !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #appDashboardContainer .search-bar-unified button,
+  #appDashboardContainer .search-btn-unified {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
   /* Table styling inside dashboard with medium contrast and thin white borders */
   #appDashboardContainer table {
     border-collapse: separate;

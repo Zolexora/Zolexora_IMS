@@ -79,6 +79,13 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp"
+    },
+    "render": {
+      "type": "http",
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:RENDER_API_KEY}"
+      }
     }
   },
   "mcpServers": {
@@ -142,6 +149,12 @@
     },
     "supabase": {
       "url": "https://mcp.supabase.com/mcp"
+    },
+    "render": {
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:RENDER_API_KEY}"
+      }
     }
   }
 }
