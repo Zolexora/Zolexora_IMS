@@ -87,17 +87,44 @@ Merchants with an SBI Current Account can acquire an official Merchant QR in thr
 3. Select **Enroll as Merchant** and link your SBI Current Account.
 4. Set up your customized VPA handle (e.g., `yourbusiness@sbi`).
 
-### Method C: Home Branch Walk-in / SBI Payments Representative
-1. Visit your SBI home branch where your Current Account is maintained.
-2. Submit the **SBI Merchant Acquiring Application Form** with:
-   - Business Registration Proof (GST Certificate, Udyam Aadhar, or Shop & Establishment Act license).
-   - Business PAN & Signatory KYC (Aadhaar/PAN).
-   - Cancelled cheque of your SBI Current Account.
-3. Request:
-   - **SBI Standee Static QR** (for counter scan).
-   - **Merchant VPA** (for POS dynamic QR integration).
-   - **SBI Soundbox** (optional, monthly rental waived for high-volume accounts).
-   - **SBI POS Terminal** (optional, Pine Labs or Hitachi Android EDC machine).
+### Method C: 100% Offline Branch Walk-in (Without Online / Without Mobile App)
+If the merchant does NOT want to use net banking, smartphones, or mobile apps:
+1. **Visit the nearest SBI Branch** (Commercial / Retail Branch):
+   - Request the physical **"Account Opening Form for Non-Individuals / Sole Proprietorship (Current Account)"**.
+2. **Submit Physical Paper Documents**:
+   - **Personal KYC**: Self-attested physical photocopies of **PAN Card** and **Aadhaar Card** + 2 passport photos.
+   - **Business KYC**: Any **1** physical registration proof:
+     - Municipal Trade License or Shop & Establishment Act Certificate.
+     - Printed Udyam Registration (MSME) certificate.
+     - GST Certificate (Form GST REG-06).
+     - Utility Bill (Electricity/Water) in the name of the proprietor/firm.
+   - **Initial Deposit / MAB**: Deposit initial cheque or cash (₹5,000 for rural/semi-urban, ₹10,000 for metro/urban branches).
+3. **Physical Deliverables Received (No Online / Mobile required)**:
+   - **Welcome Letter** with printed Account Number and IFSC (`SBIN00xxxxx`).
+   - **Physical CTS-2010 Cheque Book** (25/50 leaves for branch and vendor payments).
+   - **SBI Business Debit Card** (RuPay / Visa Business Card for ATM cash and POS swipes).
+   - **Physical Passbook / Printed Monthly Statements** (printed directly at the branch self-service kiosk or counter).
+
+### Operating Merchant Payments Without a Smartphone or Mobile App
+A retail store can accept UPI, QR, and RuPay Credit Card payments **with zero smartphone or mobile app dependency**:
+1. **Physical Printed Standee QR (Static QR)**:
+   - The SBI branch or SBI Payments executive issues an **acrylic standee QR code** with your shop name and SBI VPA (`yourshop@sbi`).
+   - Place this physical board on the billing counter. Customers scan it with their own smartphones. The merchant counter needs NO mobile device.
+2. **Standalone SBI SIM-Based Hardware Soundbox**:
+   - SBI Payments provides a physical **voice soundbox** equipped with an **internal 4G/2G SIM card**.
+   - **100% Independent**: Does NOT pair via Bluetooth, Wi-Fi, or any mobile phone.
+   - Speaks instant audio confirmations in English, Hindi, or regional languages whenever a customer pays (e.g., *"State Bank of India — Received ₹350 on UPI"*).
+3. **Basic SMS on Any Keypad / Feature Phone**:
+   - Link any basic ₹1,000 keypad phone (Nokia, Samsung Guru, etc.) as your registered mobile number.
+   - Receives instant transactional SMS from `SBI-PAY` with the amount and 12-digit UTR for every payment.
+4. **Standalone SBI EDC POS Terminal**:
+   - Handheld terminal with its own built-in SIM card and thermal printer.
+   - Accepts card chip/tap and displays dynamic UPI QR on the terminal screen, printing physical charge slips immediately.
+5. **In Zolexora IMS (Desktop/Laptop)**:
+   - Zolexora IMS runs on your desktop computer or billing POS terminal.
+   - Enter your SBI Merchant VPA in **POS Settings**.
+   - Dynamic QR is displayed on the PC screen or printed on the thermal bill receipt.
+   - Zero smartphone required at the checkout counter!
 
 ---
 
