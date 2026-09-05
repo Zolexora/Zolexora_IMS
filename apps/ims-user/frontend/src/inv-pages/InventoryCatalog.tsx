@@ -10,8 +10,8 @@ import {
   CheckCircle,
   Package,
 } from 'lucide-react';
-import AddItemModal from '../components/AddItemModal';
-import StockAdjustModal from '../components/StockAdjustModal';
+import AddItemModal from './components/AddItemModal';
+import StockAdjustModal from './components/StockAdjustModal';
 
 interface Product {
   item_code: string;
