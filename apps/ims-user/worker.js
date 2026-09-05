@@ -117,6 +117,17 @@ async function handleD1Rpc(request, env, functionName) {
     return jsonResponse({ error: 'RPC endpoints require POST requests' }, 405, request);
   }
 
+  // Stage 2.2: Lock Down Universal RPC Bridge (/api/rpc/:functionName)
+  // Publicly exempt ONLY loginUser and authenticateUser
+  const isPublicRpc = (functionName === 'loginUser' || functionName === 'authenticateUser');
+  let session = null;
+  if (!isPublicRpc) {
+    session = await authenticateRequest(request, env);
+    if (!session) {
+      return jsonResponse({ success: false, error: 'Unauthorized: Active session required.' }, 401, request);
+    }
+  }
+
   let body = {};
   try {
     body = await request.json();
@@ -131,19 +142,21 @@ async function handleD1Rpc(request, env, functionName) {
     return jsonResponse({ success: false, error: 'Database binding env.DB not available.' }, 500, request);
   }
 
+  const orgId = session?.user?.orgId || session?.orgId || 'ORG_ZOLEXORA_001';
+
   try {
     let result;
     switch (functionName) {
       case 'getInitialData':
-        result = await getInitialData(db);
+        result = await getInitialData(db, orgId);
         break;
 
       case 'getInventoryDashboardData':
-        result = await getInventoryDashboardData(db);
+        result = await getInventoryDashboardData(db, orgId);
         break;
 
       case 'getPosDashboardData':
-        result = await getPosDashboardData(db);
+        result = await getPosDashboardData(db, orgId);
         break;
 
       case 'loginUser':
@@ -153,7 +166,7 @@ async function handleD1Rpc(request, env, functionName) {
 
       case 'checkUserSession':
       case 'validateUserSession':
-        result = await checkUserSession(db, args[0], args[1]);
+        result = await checkUserSession(db, args[0], orgId);
         break;
 
       case 'logoutUser':
@@ -161,116 +174,116 @@ async function handleD1Rpc(request, env, functionName) {
         break;
 
       case 'getItems':
-        result = await getProducts(db);
+        result = await getProducts(db, orgId);
         break;
 
       case 'saveItem':
-        result = await saveProduct(db, args[0]);
+        result = await saveProduct(db, args[0], orgId);
         break;
 
       case 'setItemStatus':
       case 'updateItemStatus':
-        result = await setProductStatus(db, args[0], args[1]);
+        result = await setProductStatus(db, args[0], args[1], orgId);
         break;
 
       case 'deleteItem':
-        result = await deleteProduct(db, args[0]);
+        result = await deleteProduct(db, args[0], orgId);
         break;
 
       case 'getSuppliers':
-        result = await getSuppliers(db);
+        result = await getSuppliers(db, orgId);
         break;
 
       case 'saveSupplier':
-        result = await saveSupplier(db, args[0]);
+        result = await saveSupplier(db, args[0], orgId);
         break;
 
       case 'deleteSupplier':
-        result = await deleteSupplier(db, args[0]);
+        result = await deleteSupplier(db, args[0], orgId);
         break;
 
       case 'getStores':
-        result = await getStores(db);
+        result = await getStores(db, orgId);
         break;
 
       case 'saveStore':
-        result = await saveStore(db, args[0]);
+        result = await saveStore(db, args[0], orgId);
         break;
 
       case 'deleteStore':
-        result = await deleteStore(db, args[0]);
+        result = await deleteStore(db, args[0], orgId);
         break;
 
       case 'getSellingPoints':
-        result = await getSellingPoints(db);
+        result = await getSellingPoints(db, orgId);
         break;
 
       case 'saveSellingPoint':
-        result = await saveSellingPoint(db, args[0]);
+        result = await saveSellingPoint(db, args[0], orgId);
         break;
 
       case 'deleteSellingPoint':
-        result = await deleteSellingPoint(db, args[0]);
+        result = await deleteSellingPoint(db, args[0], orgId);
         break;
 
       case 'getUsers':
-        result = await getUsers(db);
+        result = await getUsers(db, orgId);
         break;
 
       case 'saveUser':
-        result = await saveUser(db, args[0]);
+        result = await saveUser(db, args[0], orgId);
         break;
 
       case 'deleteUser':
-        result = await deleteUser(db, args[0]);
+        result = await deleteUser(db, args[0], orgId);
         break;
 
       case 'getSellingPointTransactions':
-        result = await getSellingPointTransactions(db, args[0]);
+        result = await getSellingPointTransactions(db, args[0], orgId);
         break;
 
       case 'recordSellingPointSale':
-        result = await recordSellingPointSale(db, args[0]);
+        result = await recordSellingPointSale(db, args[0], orgId);
         break;
 
       case 'recordSellingPointPurchase':
-        result = await recordSellingPointPurchase(db, args[0]);
+        result = await recordSellingPointPurchase(db, args[0], orgId);
         break;
 
       case 'recordSellingPointExpense':
-        result = await recordSellingPointExpense(db, args[0]);
+        result = await recordSellingPointExpense(db, args[0], orgId);
         break;
 
       case 'getSupplierTransactions':
-        result = await getSupplierTransactions(db, args[0]);
+        result = await getSupplierTransactions(db, args[0], orgId);
         break;
 
       case 'processSupplierPurchase':
       case 'recordPurchaseInvoice':
       case 'processPurchaseInvoice':
-        result = await processSupplierPurchase(db, args[0]);
+        result = await processSupplierPurchase(db, args[0], orgId);
         break;
 
       case 'getIssuanceTransactions':
-        result = await getIssuanceTransactions(db, args[0]);
+        result = await getIssuanceTransactions(db, args[0], orgId);
         break;
 
       case 'processStockIssuance':
       case 'recordTransferInvoice':
       case 'processTransferInvoice':
-        result = await processStockIssuance(db, args[0]);
+        result = await processStockIssuance(db, args[0], orgId);
         break;
 
       case 'getTransactions':
-        result = await getTransactions(db, args[0]);
+        result = await getTransactions(db, args[0], orgId);
         break;
 
       case 'getSettings':
-        result = await getSettings(db);
+        result = await getSettings(db, orgId);
         break;
 
       case 'saveSettings':
-        result = await saveSettings(db, args[0]);
+        result = await saveSettings(db, args[0], orgId);
         break;
 
       case 'listOrganizations':
@@ -297,7 +310,11 @@ async function handleD1Rpc(request, env, functionName) {
         }, 404, request);
     }
 
-    return jsonResponse(result, 200, request);
+    const statusCode = result?.status || (result?.success === false ? 400 : 200);
+    const extraHeaders = result?.sessionId ? {
+      'Set-Cookie': `${COOKIE_NAME}=${result.sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${DEFAULT_SESSION_TTL_SECONDS}`
+    } : {};
+    return jsonResponse(result, statusCode, request, extraHeaders);
   } catch (err) {
     return jsonResponse({
       success: false,
@@ -318,66 +335,82 @@ async function handleRestApi(request, env, url) {
   const method = request.method;
   const isGetOrHead = method === 'GET' || method === 'HEAD';
 
-  if (path === '/api/dashboard' && isGetOrHead) {
-    return jsonResponse(await getInitialData(db), 200, request);
+  // 1. Auth Endpoints
+  if (path === '/api/login' && isGetOrHead) {
+    return jsonResponse({
+      success: true,
+      service: 'Zolexora Auth API'
+    }, 200, request);
   }
 
   if (path === '/api/login' && method === 'POST') {
     const payload = await request.json().catch(() => ({}));
+    if (!payload.email || !payload.password) {
+      return jsonResponse({ success: false, error: 'Email and password are required' }, 400, request);
+    }
     const res = await loginUser(db, env, payload);
-    return jsonResponse(res, res.success ? 200 : 401, request);
+    const status = res.success ? 200 : (res.status || 401);
+    const extraHeaders = res.sessionId ? {
+      'Set-Cookie': `${COOKIE_NAME}=${res.sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${DEFAULT_SESSION_TTL_SECONDS}`
+    } : {};
+    return jsonResponse(res, status, request, extraHeaders);
   }
 
-  if (path === '/api/login' && isGetOrHead) {
-    return jsonResponse({
-      success: true,
-      message: 'Zolexora IMS Edge Auth Service',
-      loginPage: '/login'
-    }, 200, request);
+  // 2. HTML Views (Unauthenticated Dashboard Shells)
+  if (path === '/api/inv-dashboard' && isGetOrHead && prefersHtml(request, url)) {
+    return htmlResponse(APP_HTML);
+  }
+  if (path === '/api/pos-dashboard' && isGetOrHead && prefersHtml(request, url)) {
+    return htmlResponse(APP_HTML);
+  }
+
+  // 3. Protected REST Endpoints (Requires Active Authenticated Session)
+  const session = await authenticateRequest(request, env);
+  if (!session) {
+    return jsonResponse({ success: false, error: 'Unauthorized: Active session required.' }, 401, request);
+  }
+  const orgId = session.user?.orgId || session.orgId || 'ORG_ZOLEXORA_001';
+
+  if (path === '/api/dashboard' && isGetOrHead) {
+    return jsonResponse(await getInitialData(db, orgId), 200, request);
   }
 
   if (path === '/api/inv-dashboard' && isGetOrHead) {
-    if (prefersHtml(request, url)) {
-      return htmlResponse(APP_HTML);
-    }
-    return jsonResponse(await getInventoryDashboardData(db), 200, request);
+    return jsonResponse(await getInventoryDashboardData(db, orgId), 200, request);
   }
 
   if (path === '/api/pos-dashboard' && isGetOrHead) {
-    if (prefersHtml(request, url)) {
-      return htmlResponse(APP_HTML);
-    }
-    return jsonResponse(await getPosDashboardData(db), 200, request);
+    return jsonResponse(await getPosDashboardData(db, orgId), 200, request);
   }
 
   if (path === '/api/products' && isGetOrHead) {
-    return jsonResponse({ success: true, items: await getProducts(db) }, 200, request);
+    return jsonResponse({ success: true, items: await getProducts(db, orgId) }, 200, request);
   }
 
   if (path === '/api/products' && method === 'POST') {
     const payload = await request.json();
-    return jsonResponse(await saveProduct(db, payload), 200, request);
+    return jsonResponse(await saveProduct(db, payload, orgId), 200, request);
   }
 
   if (path === '/api/stores' && isGetOrHead) {
-    return jsonResponse({ success: true, stores: await getStores(db) }, 200, request);
+    return jsonResponse({ success: true, stores: await getStores(db, orgId) }, 200, request);
   }
 
   if (path === '/api/selling-points' && isGetOrHead) {
-    return jsonResponse({ success: true, sellingPoints: await getSellingPoints(db) }, 200, request);
+    return jsonResponse({ success: true, sellingPoints: await getSellingPoints(db, orgId) }, 200, request);
   }
 
   if (path === '/api/suppliers' && isGetOrHead) {
-    return jsonResponse({ success: true, suppliers: await getSuppliers(db) }, 200, request);
+    return jsonResponse({ success: true, suppliers: await getSuppliers(db, orgId) }, 200, request);
   }
 
   if (path === '/api/users' && isGetOrHead) {
-    return jsonResponse({ success: true, users: await getUsers(db) }, 200, request);
+    return jsonResponse({ success: true, users: await getUsers(db, orgId) }, 200, request);
   }
 
   if (path === '/api/sales' && method === 'POST') {
     const payload = await request.json();
-    return jsonResponse(await recordSellingPointSale(db, payload), 200, request);
+    return jsonResponse(await recordSellingPointSale(db, payload, orgId), 200, request);
   }
 
   return null;
@@ -387,18 +420,18 @@ async function handleRestApi(request, env, url) {
 // D1 DATABASE OPERATIONS & QUERIES
 // =====================================================================
 
-async function getInitialData(db) {
+async function getInitialData(db, orgId = 'ORG_ZOLEXORA_001') {
   const [org, stores, sellingPoints, suppliers, users, settingsList, products, supTxns, issTxns, salesTxns] = await Promise.all([
-    db.prepare('SELECT * FROM organizations LIMIT 1;').first(),
-    db.prepare('SELECT * FROM stores ORDER BY code ASC;').all(),
-    db.prepare('SELECT * FROM selling_points ORDER BY code ASC;').all(),
-    db.prepare('SELECT * FROM suppliers ORDER BY code ASC;').all(),
-    db.prepare('SELECT id, email, name, role, scope_type as scopeType, assigned_location as assignedLocation, location_name as locationName, status FROM users;').all(),
-    db.prepare('SELECT key, value FROM settings;').all(),
-    db.prepare('SELECT * FROM products ORDER BY item_code ASC;').all(),
-    db.prepare('SELECT * FROM supplier_transactions ORDER BY timestamp DESC LIMIT 50;').all(),
-    db.prepare('SELECT * FROM issuance_transactions ORDER BY timestamp DESC LIMIT 50;').all(),
-    db.prepare('SELECT * FROM selling_point_sales ORDER BY timestamp DESC LIMIT 50;').all()
+    db.prepare('SELECT * FROM organizations WHERE id = ? LIMIT 1;').bind(orgId).first(),
+    db.prepare('SELECT * FROM stores WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM selling_points WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM suppliers WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all(),
+    db.prepare('SELECT id, email, name, role, scope_type as scopeType, assigned_location as assignedLocation, location_name as locationName, status FROM users WHERE org_id = ?;').bind(orgId).all(),
+    db.prepare('SELECT key, value FROM settings WHERE org_id = ?;').bind(orgId).all(),
+    db.prepare('SELECT * FROM products WHERE org_id = ? ORDER BY item_code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM supplier_transactions WHERE org_id = ? ORDER BY timestamp DESC LIMIT 50;').bind(orgId).all(),
+    db.prepare('SELECT * FROM issuance_transactions WHERE org_id = ? ORDER BY timestamp DESC LIMIT 50;').bind(orgId).all(),
+    db.prepare('SELECT * FROM selling_point_sales WHERE org_id = ? ORDER BY timestamp DESC LIMIT 50;').bind(orgId).all()
   ]);
 
   const settings = {};
@@ -435,12 +468,13 @@ async function getInitialData(db) {
   const allRecent = [...supFormatted, ...issFormatted].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   const metrics = calculateMetrics(items, supFormatted, issFormatted, storesList);
+  const activeOrg = org || { id: orgId, name: `Organization (${orgId})` };
 
   return {
     success: true,
     hasOrganization: Boolean(org),
-    activeOrganization: org || { id: 'ORG_ZOLEXORA_001', name: "Zolexora_1's org" },
-    organizations: [org || { id: 'ORG_ZOLEXORA_001', name: "Zolexora_1's org" }],
+    activeOrganization: activeOrg,
+    organizations: [activeOrg],
     workbooksInfo: {
       databaseType: 'Cloudflare D1 (Serverless SQL)',
       databaseName: 'zolexora-ims-1-db',
@@ -552,14 +586,14 @@ function calculateMetrics(items, supTxns, issTxns, storesList) {
   };
 }
 
-async function getInventoryDashboardData(db) {
+async function getInventoryDashboardData(db, orgId = 'ORG_ZOLEXORA_001') {
   const [org, stores, suppliers, products, supTxns, issTxns] = await Promise.all([
-    db.prepare('SELECT * FROM organizations LIMIT 1;').first(),
-    db.prepare('SELECT * FROM stores ORDER BY code ASC;').all(),
-    db.prepare('SELECT * FROM suppliers ORDER BY code ASC;').all(),
-    db.prepare('SELECT * FROM products ORDER BY item_code ASC;').all(),
-    db.prepare('SELECT * FROM supplier_transactions ORDER BY timestamp DESC LIMIT 25;').all(),
-    db.prepare('SELECT * FROM issuance_transactions ORDER BY timestamp DESC LIMIT 25;').all()
+    db.prepare('SELECT * FROM organizations WHERE id = ? LIMIT 1;').bind(orgId).first(),
+    db.prepare('SELECT * FROM stores WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM suppliers WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM products WHERE org_id = ? ORDER BY item_code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM supplier_transactions WHERE org_id = ? ORDER BY timestamp DESC LIMIT 25;').bind(orgId).all(),
+    db.prepare('SELECT * FROM issuance_transactions WHERE org_id = ? ORDER BY timestamp DESC LIMIT 25;').bind(orgId).all()
   ]);
 
   const items = (products.results || []).map(p => formatProductFromRow(p));
@@ -708,13 +742,13 @@ async function getInventoryDashboardData(db) {
   };
 }
 
-async function getPosDashboardData(db) {
+async function getPosDashboardData(db, orgId = 'ORG_ZOLEXORA_001') {
   const [org, sellingPoints, salesRes, purchasesRes, expensesRes] = await Promise.all([
-    db.prepare('SELECT * FROM organizations LIMIT 1;').first(),
-    db.prepare('SELECT * FROM selling_points ORDER BY code ASC;').all(),
-    db.prepare('SELECT * FROM selling_point_sales ORDER BY timestamp DESC;').all(),
-    db.prepare('SELECT * FROM selling_point_purchases ORDER BY timestamp DESC;').all(),
-    db.prepare('SELECT * FROM selling_point_expenses ORDER BY timestamp DESC;').all()
+    db.prepare('SELECT * FROM organizations WHERE id = ? LIMIT 1;').bind(orgId).first(),
+    db.prepare('SELECT * FROM selling_points WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM selling_point_sales WHERE org_id = ? ORDER BY timestamp DESC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM selling_point_purchases WHERE org_id = ? ORDER BY timestamp DESC;').bind(orgId).all(),
+    db.prepare('SELECT * FROM selling_point_expenses WHERE org_id = ? ORDER BY timestamp DESC;').bind(orgId).all()
   ]);
 
   const sales = (salesRes.results || []).map(s => formatSaleFromRow(s));
@@ -969,12 +1003,12 @@ function formatIssuanceTxn(row) {
   };
 }
 
-async function getProducts(db) {
-  const res = await db.prepare('SELECT * FROM products ORDER BY item_code ASC;').all();
+async function getProducts(db, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT * FROM products WHERE org_id = ? ORDER BY item_code ASC;').bind(orgId).all();
   return (res.results || []).map(p => formatProductFromRow(p));
 }
 
-async function saveProduct(db, item) {
+async function saveProduct(db, item, orgId = 'ORG_ZOLEXORA_001') {
   const code = String(item.code || item.sku || item.id || `ITM_${Date.now().toString().slice(-4)}`).trim().toUpperCase();
   const desc = String(item.name || item.description || '').trim();
   const cat = String(item.category || 'General').trim();
@@ -995,8 +1029,9 @@ async function saveProduct(db, item) {
       item_code, org_id, description, category, category_code, uom, rate, tax_percent,
       min_stock, stock_s_001, stock_s_002, central_stock, total_stock, total_valuation,
       preferred_supplier_code, status, last_updated
-    ) VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(item_code) DO UPDATE SET
+      org_id = excluded.org_id,
       description = excluded.description,
       category = excluded.category,
       uom = excluded.uom,
@@ -1011,31 +1046,31 @@ async function saveProduct(db, item) {
       status = excluded.status,
       last_updated = excluded.last_updated;
   `).bind(
-    code, desc, cat, item.categoryCode || '', uom, rate, tax,
+    code, orgId, desc, cat, item.categoryCode || '', uom, rate, tax,
     minStock, stockS001, stockS002, centralStock, totalStock, totalValuation,
     item.supplierCode || '', status, now
   ).run();
 
-  const allItems = await getProducts(db);
+  const allItems = await getProducts(db, orgId);
   return { success: true, itemCode: code, items: allItems };
 }
 
-async function setProductStatus(db, code, status) {
+async function setProductStatus(db, code, status, orgId = 'ORG_ZOLEXORA_001') {
   const now = new Date().toISOString();
-  await db.prepare('UPDATE products SET status = ?, last_updated = ? WHERE item_code = ?;')
-    .bind(status, now, code).run();
-  const allItems = await getProducts(db);
+  await db.prepare('UPDATE products SET status = ?, last_updated = ? WHERE item_code = ? AND org_id = ?;')
+    .bind(status, now, code, orgId).run();
+  const allItems = await getProducts(db, orgId);
   return { success: true, itemCode: code, status: status, items: allItems };
 }
 
-async function deleteProduct(db, code) {
-  await db.prepare('DELETE FROM products WHERE item_code = ?;').bind(code).run();
-  const allItems = await getProducts(db);
+async function deleteProduct(db, code, orgId = 'ORG_ZOLEXORA_001') {
+  await db.prepare('DELETE FROM products WHERE item_code = ? AND org_id = ?;').bind(code, orgId).run();
+  const allItems = await getProducts(db, orgId);
   return { success: true, items: allItems };
 }
 
-async function getStores(db) {
-  const res = await db.prepare('SELECT * FROM stores ORDER BY code ASC;').all();
+async function getStores(db, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT * FROM stores WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all();
   return (res.results || []).map(s => ({
     code: s.code,
     name: s.name,
@@ -1045,29 +1080,30 @@ async function getStores(db) {
   }));
 }
 
-async function saveStore(db, store) {
+async function saveStore(db, store, orgId = 'ORG_ZOLEXORA_001') {
   const code = String(store.code || `S_${Date.now().toString().slice(-3)}`).trim();
   await db.prepare(`
     INSERT INTO stores (code, org_id, name, type, status, description)
-    VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(code) DO UPDATE SET
+      org_id = excluded.org_id,
       name = excluded.name,
       type = excluded.type,
       status = excluded.status,
       description = excluded.description;
-  `).bind(code, store.name, store.type || 'Store', store.status || 'Active', store.description || '').run();
-  const stores = await getStores(db);
+  `).bind(code, orgId, store.name, store.type || 'Store', store.status || 'Active', store.description || '').run();
+  const stores = await getStores(db, orgId);
   return { success: true, code: code, stores: stores };
 }
 
-async function deleteStore(db, code) {
-  await db.prepare('DELETE FROM stores WHERE code = ?;').bind(code).run();
-  const stores = await getStores(db);
+async function deleteStore(db, code, orgId = 'ORG_ZOLEXORA_001') {
+  await db.prepare('DELETE FROM stores WHERE code = ? AND org_id = ?;').bind(code, orgId).run();
+  const stores = await getStores(db, orgId);
   return { success: true, stores: stores };
 }
 
-async function getSellingPoints(db) {
-  const res = await db.prepare('SELECT * FROM selling_points ORDER BY code ASC;').all();
+async function getSellingPoints(db, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT * FROM selling_points WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all();
   return (res.results || []).map(sp => ({
     code: sp.code,
     name: sp.name,
@@ -1077,29 +1113,30 @@ async function getSellingPoints(db) {
   }));
 }
 
-async function saveSellingPoint(db, sp) {
+async function saveSellingPoint(db, sp, orgId = 'ORG_ZOLEXORA_001') {
   const code = String(sp.code || `SP_${Date.now().toString().slice(-3)}`).trim();
   await db.prepare(`
     INSERT INTO selling_points (code, org_id, name, assigned_store_code, type, status)
-    VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(code) DO UPDATE SET
+      org_id = excluded.org_id,
       name = excluded.name,
       assigned_store_code = excluded.assigned_store_code,
       type = excluded.type,
       status = excluded.status;
-  `).bind(code, sp.name, sp.storeCode || 'S_001', sp.type || 'Selling Point', sp.status || 'Active').run();
-  const sellingPoints = await getSellingPoints(db);
+  `).bind(code, orgId, sp.name, sp.storeCode || 'S_001', sp.type || 'Selling Point', sp.status || 'Active').run();
+  const sellingPoints = await getSellingPoints(db, orgId);
   return { success: true, code: code, sellingPoints: sellingPoints };
 }
 
-async function deleteSellingPoint(db, code) {
-  await db.prepare('DELETE FROM selling_points WHERE code = ?;').bind(code).run();
-  const sellingPoints = await getSellingPoints(db);
+async function deleteSellingPoint(db, code, orgId = 'ORG_ZOLEXORA_001') {
+  await db.prepare('DELETE FROM selling_points WHERE code = ? AND org_id = ?;').bind(code, orgId).run();
+  const sellingPoints = await getSellingPoints(db, orgId);
   return { success: true, sellingPoints: sellingPoints };
 }
 
-async function getSuppliers(db) {
-  const res = await db.prepare('SELECT * FROM suppliers ORDER BY code ASC;').all();
+async function getSuppliers(db, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT * FROM suppliers WHERE org_id = ? ORDER BY code ASC;').bind(orgId).all();
   return (res.results || []).map(sup => ({
     id: sup.code,
     code: sup.code,
@@ -1114,45 +1151,49 @@ async function getSuppliers(db) {
   }));
 }
 
-async function saveSupplier(db, sup) {
+async function saveSupplier(db, sup, orgId = 'ORG_ZOLEXORA_001') {
   const code = String(sup.code || sup.id || `SUP_${Date.now().toString().slice(-3)}`).trim();
   const cat = sup.category || sup.categorySupplied || 'General';
   await db.prepare(`
     INSERT INTO suppliers (code, org_id, name, category, contact_person, phone, email, status)
-    VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(code) DO UPDATE SET
+      org_id = excluded.org_id,
       name = excluded.name,
       category = excluded.category,
       contact_person = excluded.contact_person,
       phone = excluded.phone,
       email = excluded.email,
       status = excluded.status;
-  `).bind(code, sup.name, cat, sup.contactPerson || '', sup.phone || '', sup.email || '', sup.status || 'Active').run();
-  const suppliers = await getSuppliers(db);
+  `).bind(code, orgId, sup.name, cat, sup.contactPerson || '', sup.phone || '', sup.email || '', sup.status || 'Active').run();
+  const suppliers = await getSuppliers(db, orgId);
   return { success: true, code: code, suppliers: suppliers };
 }
 
-async function deleteSupplier(db, code) {
-  await db.prepare('DELETE FROM suppliers WHERE code = ?;').bind(code).run();
-  const suppliers = await getSuppliers(db);
+async function deleteSupplier(db, code, orgId = 'ORG_ZOLEXORA_001') {
+  await db.prepare('DELETE FROM suppliers WHERE code = ? AND org_id = ?;').bind(code, orgId).run();
+  const suppliers = await getSuppliers(db, orgId);
   return { success: true, suppliers: suppliers };
 }
 
-async function getUsers(db) {
+async function getUsers(db, orgId = 'ORG_ZOLEXORA_001') {
   const res = await db.prepare(`
     SELECT id, email, name, role, scope_type as scopeType, assigned_location as assignedLocation, location_name as locationName, status
-    FROM users ORDER BY id ASC;
-  `).all();
+    FROM users WHERE org_id = ? ORDER BY id ASC;
+  `).bind(orgId).all();
   return res.results || [];
 }
 
-async function saveUser(db, user) {
+async function saveUser(db, user, orgId = 'ORG_ZOLEXORA_001') {
   const id = String(user.id || `USR_${Date.now().toString().slice(-4)}`).trim();
   const now = new Date().toISOString();
+  const targetOrgId = user.orgId || orgId;
+  const passwordHash = user.password ? await hashPassword(user.password.trim()) : (user.password_hash || 'managed_by_supabase_auth');
   await db.prepare(`
     INSERT INTO users (id, org_id, email, password_hash, name, role, scope_type, assigned_location, location_name, status, created_at)
-    VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
+      org_id = excluded.org_id,
       name = excluded.name,
       role = excluded.role,
       scope_type = excluded.scope_type,
@@ -1160,26 +1201,26 @@ async function saveUser(db, user) {
       location_name = excluded.location_name,
       status = excluded.status;
   `).bind(
-    id, user.email, user.password_hash || 'managed_by_supabase_auth',
+    id, targetOrgId, user.email, passwordHash,
     user.name, user.role || 'Staff', user.scopeType || 'ALL', user.assignedLocation || 'ALL',
     user.locationName || '', user.status || 'Active', now
   ).run();
 
-  const users = await getUsers(db);
+  const users = await getUsers(db, targetOrgId);
   return { success: true, users: users };
 }
 
-async function deleteUser(db, id) {
-  await db.prepare('DELETE FROM users WHERE id = ?;').bind(id).run();
-  const users = await getUsers(db);
+async function deleteUser(db, id, orgId = 'ORG_ZOLEXORA_001') {
+  await db.prepare('DELETE FROM users WHERE id = ? AND org_id = ?;').bind(id, orgId).run();
+  const users = await getUsers(db, orgId);
   return { success: true, users: users };
 }
 
-async function getSellingPointTransactions(db, limit = 150) {
+async function getSellingPointTransactions(db, limit = 150, orgId = 'ORG_ZOLEXORA_001') {
   const [sales, purchases, expenses] = await Promise.all([
-    db.prepare('SELECT * FROM selling_point_sales ORDER BY timestamp DESC LIMIT ?;').bind(limit).all(),
-    db.prepare('SELECT * FROM selling_point_purchases ORDER BY timestamp DESC LIMIT ?;').bind(limit).all(),
-    db.prepare('SELECT * FROM selling_point_expenses ORDER BY timestamp DESC LIMIT ?;').bind(limit).all()
+    db.prepare('SELECT * FROM selling_point_sales WHERE org_id = ? ORDER BY timestamp DESC LIMIT ?;').bind(orgId, limit).all(),
+    db.prepare('SELECT * FROM selling_point_purchases WHERE org_id = ? ORDER BY timestamp DESC LIMIT ?;').bind(orgId, limit).all(),
+    db.prepare('SELECT * FROM selling_point_expenses WHERE org_id = ? ORDER BY timestamp DESC LIMIT ?;').bind(orgId, limit).all()
   ]);
 
   return {
@@ -1189,7 +1230,7 @@ async function getSellingPointTransactions(db, limit = 150) {
   };
 }
 
-async function recordSellingPointSale(db, sale) {
+async function recordSellingPointSale(db, sale, orgId = 'ORG_ZOLEXORA_001') {
   const now = new Date();
   const saleId = 'SALE_' + now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + Math.floor(1000 + Math.random() * 9000);
   const today = now.toISOString().slice(0, 10);
@@ -1205,9 +1246,9 @@ async function recordSellingPointSale(db, sale) {
       id, org_id, timestamp, date, selling_point_code, selling_point_name, bill_no,
       customer_name, item_code, item_name, category, quantity, uom, rate, tax_percent,
       total_amount, payment_mode, payment_status, cashier, notes
-    ) VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   `).bind(
-    saleId, now.toISOString(), today, spCode, sale.sellingPointName || 'Selling Point',
+    saleId, orgId, now.toISOString(), today, spCode, sale.sellingPointName || 'Selling Point',
     sale.billNo || saleId, sale.customerName || 'Walk-in Guest', sale.itemCode || '',
     sale.itemName || '', sale.category || 'General', qty, sale.unit || 'Pcs',
     rate, tax, total, sale.paymentMode || 'Cash', 'Completed', sale.cashier || 'Cashier',
@@ -1224,8 +1265,8 @@ async function recordSellingPointSale(db, sale) {
           total_stock = MAX(0, total_stock - ?),
           total_valuation = MAX(0, total_stock - ?) * rate,
           last_updated = ?
-        WHERE item_code = ?;
-      `).bind(qty, qty, qty, now.toISOString(), sale.itemCode).run();
+        WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now.toISOString(), sale.itemCode, orgId).run();
     } else {
       await db.prepare(`
         UPDATE products SET
@@ -1233,8 +1274,8 @@ async function recordSellingPointSale(db, sale) {
           total_stock = MAX(0, total_stock - ?),
           total_valuation = MAX(0, total_stock - ?) * rate,
           last_updated = ?
-        WHERE item_code = ?;
-      `).bind(qty, qty, qty, now.toISOString(), sale.itemCode).run();
+        WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now.toISOString(), sale.itemCode, orgId).run();
     }
   }
 
@@ -1246,7 +1287,7 @@ async function recordSellingPointSale(db, sale) {
   };
 }
 
-async function recordSellingPointPurchase(db, pur) {
+async function recordSellingPointPurchase(db, pur, orgId = 'ORG_ZOLEXORA_001') {
   const now = new Date();
   const purId = 'PUR_SP_' + now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + Math.floor(100 + Math.random() * 900);
   const today = now.toISOString().slice(0, 10);
@@ -1261,9 +1302,9 @@ async function recordSellingPointPurchase(db, pur) {
       id, org_id, timestamp, date, selling_point_code, selling_point_name, source,
       item_code, item_name, category, quantity, uom, cost_rate, tax_percent,
       total_cost, invoice_ref, payment_status, received_by, notes
-    ) VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   `).bind(
-    purId, now.toISOString(), today, spCode, pur.sellingPointName || 'Selling Point',
+    purId, orgId, now.toISOString(), today, spCode, pur.sellingPointName || 'Selling Point',
     pur.source || 'Direct Supplier', pur.itemCode || '', pur.itemName || '',
     pur.category || 'General', qty, pur.unit || 'Pcs', costRate, tax, totalCost,
     pur.invoiceRef || '', pur.paymentStatus || 'Paid', pur.receivedBy || 'Staff',
@@ -1280,8 +1321,8 @@ async function recordSellingPointPurchase(db, pur) {
           total_stock = total_stock + ?,
           total_valuation = (total_stock + ?) * rate,
           last_updated = ?
-        WHERE item_code = ?;
-      `).bind(qty, qty, qty, now.toISOString(), pur.itemCode).run();
+        WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now.toISOString(), pur.itemCode, orgId).run();
     } else {
       await db.prepare(`
         UPDATE products SET
@@ -1289,15 +1330,15 @@ async function recordSellingPointPurchase(db, pur) {
           total_stock = total_stock + ?,
           total_valuation = (total_stock + ?) * rate,
           last_updated = ?
-        WHERE item_code = ?;
-      `).bind(qty, qty, qty, now.toISOString(), pur.itemCode).run();
+        WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now.toISOString(), pur.itemCode, orgId).run();
     }
   }
 
   return { success: true, purchaseId: purId, totalCost: totalCost };
 }
 
-async function recordSellingPointExpense(db, exp) {
+async function recordSellingPointExpense(db, exp, orgId = 'ORG_ZOLEXORA_001') {
   const now = new Date();
   const expId = 'EXP_' + now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + Math.floor(1000 + Math.random() * 9000);
   const today = now.toISOString().slice(0, 10);
@@ -1307,9 +1348,9 @@ async function recordSellingPointExpense(db, exp) {
     INSERT INTO selling_point_expenses (
       id, org_id, timestamp, date, selling_point_code, selling_point_name,
       category, amount, payment_mode, paid_to, voucher_ref, recorded_by, status, notes
-    ) VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', ?);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', ?);
   `).bind(
-    expId, now.toISOString(), today, exp.sellingPointCode || 'SP_001',
+    expId, orgId, now.toISOString(), today, exp.sellingPointCode || 'SP_001',
     exp.sellingPointName || 'Selling Point', exp.category || 'Petty Cash',
     amount, exp.paymentMode || 'Cash', exp.paidTo || 'Vendor', exp.voucherRef || '',
     exp.recordedBy || 'Staff', exp.notes || ''
@@ -1318,12 +1359,12 @@ async function recordSellingPointExpense(db, exp) {
   return { success: true, expenseId: expId, amount: amount };
 }
 
-async function getSupplierTransactions(db, limit = 50) {
-  const res = await db.prepare('SELECT * FROM supplier_transactions ORDER BY timestamp DESC LIMIT ?;').bind(limit).all();
+async function getSupplierTransactions(db, limit = 50, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT * FROM supplier_transactions WHERE org_id = ? ORDER BY timestamp DESC LIMIT ?;').bind(orgId, limit).all();
   return (res.results || []).map(r => formatSupplierTxn(r));
 }
 
-async function processSupplierPurchase(db, txn) {
+async function processSupplierPurchase(db, txn, orgId = 'ORG_ZOLEXORA_001') {
   const now = new Date().toISOString();
   const txnId = 'TXN_SUP_' + Date.now().toString().slice(-6);
   const qty = Number(txn.quantity) || 1;
@@ -1337,9 +1378,9 @@ async function processSupplierPurchase(db, txn) {
       id, org_id, timestamp, supplier_code, supplier_name, item_code, item_description,
       category, quantity, uom, rate, tax_percent, total_amount, receiving_store_code,
       receiving_store_name, po_invoice_ref, received_by, notes
-    ) VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   `).bind(
-    txnId, now, txn.supplierCode || '', txn.supplierName || '', txn.itemCode || '',
+    txnId, orgId, now, txn.supplierCode || '', txn.supplierName || '', txn.itemCode || '',
     txn.itemDescription || '', txn.category || 'General', qty, txn.uom || 'Pcs',
     rate, tax, total, storeCode, txn.receivingStoreName || 'Main Store',
     txn.poInvoiceRef || '', txn.receivedBy || 'Store Incharge', txn.notes || ''
@@ -1349,28 +1390,28 @@ async function processSupplierPurchase(db, txn) {
   if (txn.itemCode) {
     if (storeCode === 'S_002') {
       await db.prepare(`
-        UPDATE products SET stock_s_002 = stock_s_002 + ?, total_stock = total_stock + ?, total_valuation = (total_stock + ?) * rate, last_updated = ? WHERE item_code = ?;
-      `).bind(qty, qty, qty, now, txn.itemCode).run();
+        UPDATE products SET stock_s_002 = stock_s_002 + ?, total_stock = total_stock + ?, total_valuation = (total_stock + ?) * rate, last_updated = ? WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now, txn.itemCode, orgId).run();
     } else if (storeCode === 'S_000') {
       await db.prepare(`
-        UPDATE products SET central_stock = central_stock + ?, total_stock = total_stock + ?, total_valuation = (total_stock + ?) * rate, last_updated = ? WHERE item_code = ?;
-      `).bind(qty, qty, qty, now, txn.itemCode).run();
+        UPDATE products SET central_stock = central_stock + ?, total_stock = total_stock + ?, total_valuation = (total_stock + ?) * rate, last_updated = ? WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now, txn.itemCode, orgId).run();
     } else {
       await db.prepare(`
-        UPDATE products SET stock_s_001 = stock_s_001 + ?, total_stock = total_stock + ?, total_valuation = (total_stock + ?) * rate, last_updated = ? WHERE item_code = ?;
-      `).bind(qty, qty, qty, now, txn.itemCode).run();
+        UPDATE products SET stock_s_001 = stock_s_001 + ?, total_stock = total_stock + ?, total_valuation = (total_stock + ?) * rate, last_updated = ? WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, qty, now, txn.itemCode, orgId).run();
     }
   }
 
   return { success: true, txnId: txnId, totalAmount: total };
 }
 
-async function getIssuanceTransactions(db, limit = 50) {
-  const res = await db.prepare('SELECT * FROM issuance_transactions ORDER BY timestamp DESC LIMIT ?;').bind(limit).all();
+async function getIssuanceTransactions(db, limit = 50, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT * FROM issuance_transactions WHERE org_id = ? ORDER BY timestamp DESC LIMIT ?;').bind(orgId, limit).all();
   return (res.results || []).map(r => formatIssuanceTxn(r));
 }
 
-async function processStockIssuance(db, txn) {
+async function processStockIssuance(db, txn, orgId = 'ORG_ZOLEXORA_001') {
   const now = new Date().toISOString();
   const issId = 'ISS_' + Date.now().toString().slice(-6);
   const qty = Number(txn.quantity) || 1;
@@ -1383,9 +1424,9 @@ async function processStockIssuance(db, txn) {
       id, org_id, timestamp, type, item_code, item_description, quantity, uom,
       from_store_code, from_store_name, to_selling_point_code, to_selling_point_name,
       unit_rate, total_value, requisition_ref, issued_by, status, notes
-    ) VALUES (?, 'ORG_ZOLEXORA_001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', ?);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', ?);
   `).bind(
-    issId, now, txn.type || 'DISBURSEMENT', txn.itemCode || '', txn.itemDescription || '',
+    issId, orgId, now, txn.type || 'DISBURSEMENT', txn.itemCode || '', txn.itemDescription || '',
     qty, txn.uom || 'Pcs', fromStore, txn.fromStoreName || 'Main Store',
     txn.toSellingPointCode || 'SP_001', txn.toSellingPointName || 'Selling Point',
     rate, total, txn.requisitionRef || '', txn.issuedBy || 'Store Keeper', txn.notes || ''
@@ -1395,44 +1436,44 @@ async function processStockIssuance(db, txn) {
   if (txn.itemCode) {
     if (fromStore === 'S_002') {
       await db.prepare(`
-        UPDATE products SET stock_s_002 = MAX(0, stock_s_002 - ?), total_stock = MAX(0, stock_s_001 + MAX(0, stock_s_002 - ?) + central_stock), last_updated = ? WHERE item_code = ?;
-      `).bind(qty, qty, now, txn.itemCode).run();
+        UPDATE products SET stock_s_002 = MAX(0, stock_s_002 - ?), total_stock = MAX(0, stock_s_001 + MAX(0, stock_s_002 - ?) + central_stock), last_updated = ? WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, now, txn.itemCode, orgId).run();
     } else if (fromStore === 'S_000') {
       await db.prepare(`
-        UPDATE products SET central_stock = MAX(0, central_stock - ?), total_stock = MAX(0, stock_s_001 + stock_s_002 + MAX(0, central_stock - ?)), last_updated = ? WHERE item_code = ?;
-      `).bind(qty, qty, now, txn.itemCode).run();
+        UPDATE products SET central_stock = MAX(0, central_stock - ?), total_stock = MAX(0, stock_s_001 + stock_s_002 + MAX(0, central_stock - ?)), last_updated = ? WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, now, txn.itemCode, orgId).run();
     } else {
       await db.prepare(`
-        UPDATE products SET stock_s_001 = MAX(0, stock_s_001 - ?), total_stock = MAX(0, MAX(0, stock_s_001 - ?) + stock_s_002 + central_stock), last_updated = ? WHERE item_code = ?;
-      `).bind(qty, qty, now, txn.itemCode).run();
+        UPDATE products SET stock_s_001 = MAX(0, stock_s_001 - ?), total_stock = MAX(0, MAX(0, stock_s_001 - ?) + stock_s_002 + central_stock), last_updated = ? WHERE item_code = ? AND org_id = ?;
+      `).bind(qty, qty, now, txn.itemCode, orgId).run();
     }
   }
 
   return { success: true, issuanceId: issId, totalValue: total };
 }
 
-async function getTransactions(db, limit = 50) {
+async function getTransactions(db, limit = 50, orgId = 'ORG_ZOLEXORA_001') {
   const [sup, iss] = await Promise.all([
-    getSupplierTransactions(db, limit),
-    getIssuanceTransactions(db, limit)
+    getSupplierTransactions(db, limit, orgId),
+    getIssuanceTransactions(db, limit, orgId)
   ]);
   return [...sup, ...iss].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, limit);
 }
 
-async function getSettings(db) {
-  const res = await db.prepare('SELECT key, value FROM settings;').all();
+async function getSettings(db, orgId = 'ORG_ZOLEXORA_001') {
+  const res = await db.prepare('SELECT key, value FROM settings WHERE org_id = ?;').bind(orgId).all();
   const map = {};
   (res.results || []).forEach(r => { map[r.key] = r.value; });
   return map;
 }
 
-async function saveSettings(db, settingsObj) {
+async function saveSettings(db, settingsObj, orgId = 'ORG_ZOLEXORA_001') {
   for (const [k, v] of Object.entries(settingsObj || {})) {
     await db.prepare(`
       INSERT INTO settings (key, org_id, value, description)
-      VALUES (?, 'ORG_ZOLEXORA_001', ?, 'Updated setting')
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value;
-    `).bind(k, String(v)).run();
+      VALUES (?, ?, ?, 'Updated setting')
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, org_id = excluded.org_id;
+    `).bind(k, orgId, String(v)).run();
   }
   return { success: true };
 }
@@ -1471,32 +1512,43 @@ async function createOrganization(db, orgData) {
 // =====================================================================
 
 async function loginUser(db, env, credentials) {
-  const email = String(credentials.email || '').trim().toLowerCase();
-  const password = String(credentials.password || '').trim();
+  const email = String(credentials?.email || '').trim().toLowerCase();
+  const password = String(credentials?.password || '').trim();
 
   if (!email || !password) {
-    return { success: false, error: 'Email and password are required', message: 'Email and password are required' };
+    return { success: false, status: 400, error: 'Email and password are required', message: 'Email and password are required' };
   }
 
   const user = await db.prepare('SELECT * FROM users WHERE LOWER(email) = ?;').bind(email).first();
   if (!user) {
     return { 
       success: false, 
+      status: 401,
       error: 'Invalid email or password', 
       message: 'Invalid email or password' 
     };
   }
 
-  // Verify SHA-256 hash
-  const hash = await hashPassword(password);
-  const passwordMatches = (user.password_hash === hash);
+  // Verify password with PBKDF2 (with legacy SHA-256 fallback)
+  const { verified, needsRehash } = await verifyPassword(password, user.password_hash);
 
-  if (!passwordMatches) {
+  if (!verified) {
     return { 
       success: false, 
+      status: 401,
       error: 'Invalid email or password', 
       message: 'Invalid email or password' 
     };
+  }
+
+  // If authenticated via legacy hash, migrate to PBKDF2
+  if (needsRehash) {
+    try {
+      const newHash = await hashPassword(password);
+      await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?;').bind(newHash, user.id).run();
+    } catch (e) {
+      console.error('Failed to migrate password hash to PBKDF2:', e);
+    }
   }
 
   // Update last_login
@@ -1517,28 +1569,33 @@ async function loginUser(db, env, credentials) {
     orgName: "Zolexora_1's org"
   };
 
+  let sessionId = null;
   // Cache in SESSION_KV if available
   if (env.SESSION_KV) {
-    const sessionId = generateSessionId();
+    sessionId = generateSessionId();
     await env.SESSION_KV.put(`session:${sessionId}`, JSON.stringify({
       sessionId: sessionId,
       user: formattedUser,
+      orgId: formattedUser.orgId,
+      role: formattedUser.role,
       expiresAt: new Date(Date.now() + DEFAULT_SESSION_TTL_SECONDS * 1000).toISOString()
     }), { expirationTtl: DEFAULT_SESSION_TTL_SECONDS });
   }
 
-  const initialData = await getInitialData(db);
+  const initialData = await getInitialData(db, formattedUser.orgId);
 
   return {
     success: true,
+    sessionId: sessionId,
+    token: sessionId,
     user: formattedUser,
     data: initialData
   };
 }
 
-async function checkUserSession(db, email, orgId) {
+async function checkUserSession(db, email, orgId = 'ORG_ZOLEXORA_001') {
   if (!email) return { success: false, error: 'No email provided' };
-  const user = await db.prepare('SELECT * FROM users WHERE LOWER(email) = ?;').bind(email.toLowerCase().trim()).first();
+  const user = await db.prepare('SELECT * FROM users WHERE LOWER(email) = ? AND org_id = ?;').bind(email.toLowerCase().trim(), orgId).first();
   if (!user) return { success: false, error: 'Session expired or user not found' };
 
   const formattedUser = {
@@ -1549,11 +1606,11 @@ async function checkUserSession(db, email, orgId) {
     scopeType: user.scope_type || 'ALL',
     assignedLocation: user.assigned_location || 'ALL',
     locationName: user.location_name || '',
-    orgId: user.org_id || 'ORG_ZOLEXORA_001',
+    orgId: user.org_id || orgId,
     orgName: "Zolexora_1's org"
   };
 
-  const initialData = await getInitialData(db);
+  const initialData = await getInitialData(db, orgId);
   return {
     success: true,
     user: formattedUser,
@@ -1561,11 +1618,69 @@ async function checkUserSession(db, email, orgId) {
   };
 }
 
-async function hashPassword(password) {
+// =====================================================================
+// CRYPTO UTILS (PBKDF2 100,000 iterations + Legacy Migration)
+// =====================================================================
+async function hashPassword(password, saltHex = null) {
   const enc = new TextEncoder();
-  const data = enc.encode(password + SALT);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  let salt;
+  if (saltHex) {
+    salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  } else {
+    salt = new Uint8Array(16);
+    crypto.getRandomValues(salt);
+  }
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256 // 32 bytes
+  );
+  const actualSaltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `pbkdf2:100000:${actualSaltHex}:${hashHex}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  if (!storedHash || !password) return { verified: false, needsRehash: false };
+
+  // 1. Check PBKDF2 format: pbkdf2:iterations:saltHex:hashHex
+  if (storedHash.startsWith('pbkdf2:')) {
+    const parts = storedHash.split(':');
+    if (parts.length === 4) {
+      const iterations = parseInt(parts[1], 10);
+      const saltHex = parts[2];
+      const expectedHashHex = parts[3];
+      if (iterations === 100000) {
+        const computed = await hashPassword(password, saltHex);
+        const computedHashHex = computed.split(':')[3];
+        return { verified: computedHashHex === expectedHashHex, needsRehash: false };
+      }
+    }
+    return { verified: false, needsRehash: false };
+  }
+
+  // 2. Legacy SHA-256 support: password + '_zolexora_salt_2026'
+  const enc = new TextEncoder();
+  const legacyData = enc.encode(password + '_zolexora_salt_2026');
+  const legacyDigest = await crypto.subtle.digest('SHA-256', legacyData);
+  const legacyHex = Array.from(new Uint8Array(legacyDigest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  if (storedHash === legacyHex) {
+    return { verified: true, needsRehash: true };
+  }
+
+  return { verified: false, needsRehash: false };
 }
 
 // =====================================================================
@@ -1590,41 +1705,50 @@ async function handleSessionApi(request, env, url) {
   }
 
   if (method === 'GET') {
-    const token = getSessionToken(request, url);
+    const token = extractSessionToken(request);
     if (!token) {
       return jsonResponse({ success: false, cached: false, error: 'No session token provided.' }, 401, request);
     }
-    const sessionData = await env.SESSION_KV.get(`session:${token}`, { type: 'json' });
-    if (!sessionData) {
+    let raw = await env.SESSION_KV.get(`session:${token}`);
+    if (!raw) {
+      raw = await env.SESSION_KV.get(`admin_session:${token}`);
+    }
+    if (!raw) {
       return jsonResponse({ success: false, cached: false, error: 'Session expired or not found.' }, 404, request);
     }
-    return jsonResponse({ success: true, cached: true, sessionId: token, user: sessionData.user }, 200, request);
+    try {
+      const sessionData = JSON.parse(raw);
+      if (sessionData.expiresAt && new Date(sessionData.expiresAt) < new Date()) {
+        return jsonResponse({ success: false, cached: false, error: 'Session expired.' }, 401, request);
+      }
+      return jsonResponse({
+        success: true,
+        cached: true,
+        sessionId: token,
+        user: sessionData.user,
+        orgId: sessionData.orgId || sessionData.user?.orgId
+      }, 200, request);
+    } catch (e) {
+      return jsonResponse({ success: false, cached: false, error: 'Invalid session data.' }, 500, request);
+    }
   }
 
   if (method === 'POST') {
-    const payload = await request.json();
-    const user = payload.user || payload;
-    const ttl = Number(payload.ttl || env.SESSION_TTL_SECONDS || DEFAULT_SESSION_TTL_SECONDS);
-    const sessionId = payload.sessionId || generateSessionId();
-
-    const record = {
-      sessionId: sessionId,
-      user: user,
-      createdAt: Date.now(),
-      expiresAt: new Date(Date.now() + ttl * 1000).toISOString()
-    };
-
-    await env.SESSION_KV.put(`session:${sessionId}`, JSON.stringify(record), { expirationTtl: ttl });
-    const headers = new Headers();
-    headers.set('Set-Cookie', `${COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${ttl}; HttpOnly; Secure; SameSite=Lax`);
-    return jsonResponse({ success: true, sessionId: sessionId, user: user }, 200, request, headers);
+    return jsonResponse({
+      success: false,
+      error: 'Unauthorized: Direct session forging via POST /api/session is disabled. Authenticate via /api/login.'
+    }, 403, request);
   }
 
   if (method === 'DELETE') {
-    const token = getSessionToken(request, url);
-    if (token) await env.SESSION_KV.delete(`session:${token}`);
-    const headers = new Headers();
-    headers.set('Set-Cookie', `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+    const token = extractSessionToken(request);
+    if (token) {
+      await env.SESSION_KV.delete(`session:${token}`);
+      await env.SESSION_KV.delete(`admin_session:${token}`);
+    }
+    const headers = {
+      'Set-Cookie': `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
+    };
     return jsonResponse({ success: true, message: 'Session logged out' }, 200, request, headers);
   }
 
@@ -1659,12 +1783,17 @@ async function handleProxyRequest(request, env, url) {
 
   const contentType = response.headers.get('content-type') || '';
   const newHeaders = new Headers(response.headers);
-  newHeaders.set('Access-Control-Allow-Origin', '*');
+  const origin = request.headers.get('Origin');
+  if (origin && isAllowedOrigin(origin)) {
+    newHeaders.set('Access-Control-Allow-Origin', origin);
+    newHeaders.set('Access-Control-Allow-Credentials', 'true');
+  } else {
+    newHeaders.set('Access-Control-Allow-Origin', 'null');
+  }
   newHeaders.set('Permissions-Policy', 'camera=*, microphone=*, geolocation=*, clipboard-write=*');
   newHeaders.delete('X-Frame-Options');
   newHeaders.set('x-edge-worker', 'zolexora-ims-d1-proxy');
 
-  // If serving HTML, inject the D1 Bridge script before </head>
   if (contentType.includes('text/html')) {
     let html = await response.text();
     const d1BridgeScript = `
@@ -1723,25 +1852,45 @@ async function handleProxyRequest(request, env, url) {
 }
 
 // =====================================================================
-// UTILITIES
+// UTILITIES & AUTHENTICATION MIDDLEWARE
 // =====================================================================
 
-function getSessionToken(request, url) {
-  const cookieHeader = request.headers.get('Cookie');
-  if (cookieHeader) {
-    const cookies = parseCookies(cookieHeader);
-    if (cookies[COOKIE_NAME]) return cookies[COOKIE_NAME];
+async function authenticateRequest(request, env) {
+  const token = extractSessionToken(request);
+  if (!token || !env.SESSION_KV) return null;
+  let raw = await env.SESSION_KV.get('session:' + token);
+  if (!raw) {
+    raw = await env.SESSION_KV.get('admin_session:' + token);
   }
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
-    return authHeader.slice(7).trim();
+  if (!raw) return null;
+  try {
+    const session = JSON.parse(raw);
+    if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+      return null;
+    }
+    return session;
+  } catch (e) {
+    return null;
   }
+}
+
+function extractSessionToken(request) {
+  const cookieHeader = request.headers.get('Cookie') || '';
+  const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`)) || cookieHeader.match(/zolexora_admin_session=([^;]+)/);
+  if (match) return match[1];
+
+  const auth = request.headers.get('Authorization') || '';
+  if (auth.startsWith('Bearer ')) return auth.replace('Bearer ', '').trim();
+
   const customHeader = request.headers.get('x-session-id') || request.headers.get('x-session-token');
   if (customHeader) return customHeader.trim();
-  if (url) {
+
+  try {
+    const url = new URL(request.url);
     const qToken = url.searchParams.get('sessionId') || url.searchParams.get('sessionToken');
     if (qToken) return qToken.trim();
-  }
+  } catch (e) {}
+
   return null;
 }
 
@@ -1751,40 +1900,59 @@ function generateSessionId() {
   return 'sess_' + Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function parseCookies(header) {
-  const list = {};
-  if (!header) return list;
-  header.split(';').forEach(cookie => {
-    let [name, ...rest] = cookie.split('=');
-    name = name?.trim();
-    if (!name) return;
-    const value = rest.join('=').trim();
-    list[name] = decodeURIComponent(value);
-  });
-  return list;
+const ALLOWED_ORIGINS = new Set([
+  'https://ims.zolexora.com',
+  'https://admin.ims.zolexora.com',
+  'https://ims.zolexora.workers.dev',
+  'https://admin-ims.zolexora.workers.dev'
+]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+  return false;
 }
 
 function handleCorsPreflight(request) {
-  const origin = request.headers.get('Origin') || '*';
+  const origin = request.headers.get('Origin');
+  if (origin && isAllowedOrigin(origin)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-session-id, x-session-token',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400'
+      }
+    });
+  }
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Origin': 'null',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-session-id, x-session-token, x-requested-with',
-      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-session-id, x-session-token',
       'Access-Control-Max-Age': '86400'
     }
   });
 }
 
-function jsonResponse(data, status = 200, request = null, extraHeaders = undefined) {
-  const origin = request?.headers?.get('Origin') || '*';
-  const headers = new Headers(extraHeaders || undefined);
-  headers.set('Content-Type', 'application/json; charset=utf-8');
-  headers.set('Access-Control-Allow-Origin', origin);
-  headers.set('Access-Control-Allow-Credentials', 'true');
-  headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+function jsonResponse(data, status = 200, request = null, extraHeaders = {}) {
+  const origin = request?.headers?.get('Origin');
+  const allowed = isAllowedOrigin(origin);
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    ...extraHeaders
+  };
+  if (allowed) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  } else {
+    headers['Access-Control-Allow-Origin'] = 'null';
+  }
 
   return new Response(JSON.stringify(data, null, 2), {
     status: status,
@@ -1796,7 +1964,7 @@ function htmlResponse(html) {
   return new Response(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
       'x-edge-worker': 'zolexora-ims-edge'
     }
   });

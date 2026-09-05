@@ -45,30 +45,61 @@ export default {
   }
 };
 
+const ALLOWED_ORIGINS = new Set([
+  'https://ims.zolexora.com',
+  'https://admin.ims.zolexora.com',
+  'https://ims.zolexora.workers.dev',
+  'https://admin-ims.zolexora.workers.dev'
+]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+  return false;
+}
+
 function handleCorsPreflight(request) {
-  const origin = request.headers.get('Origin') || '*';
+  const origin = request.headers.get('Origin');
+  if (origin && isAllowedOrigin(origin)) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-session-id, x-session-token',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400'
+      }
+    });
+  }
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Origin': 'null',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-session-id, x-session-token',
       'Access-Control-Max-Age': '86400'
     }
   });
 }
 
 function jsonResponse(data, status = 200, request = null, extraHeaders = {}) {
-  const origin = request?.headers?.get('Origin') || '*';
+  const origin = request?.headers?.get('Origin');
+  const allowed = isAllowedOrigin(origin);
+  const headers = {
+    'Content-Type': 'application/json',
+    ...extraHeaders
+  };
+  if (allowed) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  } else {
+    headers['Access-Control-Allow-Origin'] = 'null';
+  }
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
-      ...extraHeaders
-    }
+    headers
   });
 }
 
@@ -141,9 +172,11 @@ async function handleApiRouter(request, env, url) {
     if (path === '/api/platform/database' && method === 'GET') {
       return jsonResponse(await getDatabaseDiagnostics(db), 200, request);
     }
-    if (path === '/api/platform/database/query' && method === 'POST') {
-      const payload = await request.json();
-      return jsonResponse(await executeSqlConsoleQuery(db, payload.query, session), 200, request);
+    if (path === '/api/platform/database/query') {
+      return jsonResponse({
+        success: false,
+        error: 'Direct SQL execution endpoint /api/platform/database/query has been decommissioned for security reasons. Please use Cloudflare Wrangler CLI (`npx wrangler d1 execute`) to execute database queries.'
+      }, 403, request);
     }
 
     // 5. Audit Logs
@@ -190,8 +223,14 @@ async function handleAdminLogin(request, env) {
   const dbUser = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1;').bind(email).first();
   let user = null;
   if (dbUser && (dbUser.role === 'SuperAdmin' || dbUser.role === 'PlatformAdmin' || dbUser.role === 'Admin')) {
-    const hashed = await hashPassword(password);
-    if (dbUser.password_hash === hashed) {
+    const check = await verifyPassword(password, dbUser.password_hash);
+    if (check.verified) {
+      if (check.needsRehash) {
+        const newHash = await hashPassword(password);
+        try {
+          await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?;').bind(newHash, dbUser.id).run();
+        } catch (e) {}
+      }
       user = {
         id: dbUser.id,
         email: dbUser.email,
@@ -245,7 +284,6 @@ async function handleAdminLogin(request, env) {
 async function handleCheckSession(request, env) {
   const session = await getAdminSession(request, env);
   if (!session) {
-    // Return default session for local dev or when bypassing
     return jsonResponse({
       authenticated: false
     }, 200, request);
@@ -265,19 +303,27 @@ async function handleAdminLogout(request, env) {
   return jsonResponse({ success: true, message: 'Logged out successfully' }, 200, request, { 'Set-Cookie': cookieHeader });
 }
 
-async function getAdminSession(request, env) {
+async function authenticateRequest(request, env) {
   const token = extractSessionToken(request);
-  if (!token) {
+  if (!token || !env.SESSION_KV) return null;
+  let raw = await env.SESSION_KV.get('admin_session:' + token);
+  if (!raw) {
+    raw = await env.SESSION_KV.get('session:' + token);
+  }
+  if (!raw) return null;
+  try {
+    const session = JSON.parse(raw);
+    if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+      return null;
+    }
+    return session;
+  } catch (e) {
     return null;
   }
+}
 
-  if (env.SESSION_KV) {
-    const raw = await env.SESSION_KV.get('admin_session:' + token);
-    if (raw) {
-      try { return JSON.parse(raw); } catch (e) {}
-    }
-  }
-  return null;
+async function getAdminSession(request, env) {
+  return authenticateRequest(request, env);
 }
 
 function extractSessionToken(request) {
@@ -287,6 +333,15 @@ function extractSessionToken(request) {
 
   const auth = request.headers.get('Authorization') || '';
   if (auth.startsWith('Bearer ')) return auth.replace('Bearer ', '').trim();
+
+  const customHeader = request.headers.get('x-session-id') || request.headers.get('x-session-token');
+  if (customHeader) return customHeader.trim();
+
+  try {
+    const url = new URL(request.url);
+    const qToken = url.searchParams.get('sessionId') || url.searchParams.get('sessionToken');
+    if (qToken) return qToken.trim();
+  } catch (e) {}
 
   return null;
 }
@@ -795,12 +850,66 @@ async function savePlatformSettings(db, payload, session) {
 }
 
 // ====================================================================
-// CRYPTO UTILS
+// CRYPTO UTILS (PBKDF2 100,000 iterations + Legacy Migration)
 // ====================================================================
-async function hashPassword(password) {
+async function hashPassword(password, saltHex = null) {
   const enc = new TextEncoder();
-  const data = enc.encode(password + '_zolexora_salt_2026');
-  const hashBuf = await crypto.subtle.digest('SHA-256', data);
-  const hashArr = Array.from(new Uint8Array(hashBuf));
-  return hashArr.map(b => b.toString(16).padStart(2, '0')).join('');
+  let salt;
+  if (saltHex) {
+    salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  } else {
+    salt = new Uint8Array(16);
+    crypto.getRandomValues(salt);
+  }
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256 // 32 bytes
+  );
+  const actualSaltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `pbkdf2:100000:${actualSaltHex}:${hashHex}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  if (!storedHash || !password) return { verified: false, needsRehash: false };
+
+  // 1. Check PBKDF2 format: pbkdf2:iterations:saltHex:hashHex
+  if (storedHash.startsWith('pbkdf2:')) {
+    const parts = storedHash.split(':');
+    if (parts.length === 4) {
+      const iterations = parseInt(parts[1], 10);
+      const saltHex = parts[2];
+      const expectedHashHex = parts[3];
+      if (iterations === 100000) {
+        const computed = await hashPassword(password, saltHex);
+        const computedHashHex = computed.split(':')[3];
+        return { verified: computedHashHex === expectedHashHex, needsRehash: false };
+      }
+    }
+    return { verified: false, needsRehash: false };
+  }
+
+  // 2. Legacy SHA-256 support: password + '_zolexora_salt_2026'
+  const enc = new TextEncoder();
+  const legacyData = enc.encode(password + '_zolexora_salt_2026');
+  const legacyDigest = await crypto.subtle.digest('SHA-256', legacyData);
+  const legacyHex = Array.from(new Uint8Array(legacyDigest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  if (storedHash === legacyHex) {
+    return { verified: true, needsRehash: true };
+  }
+
+  return { verified: false, needsRehash: false };
 }
