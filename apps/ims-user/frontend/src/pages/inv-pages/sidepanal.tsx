@@ -15,6 +15,7 @@ import {
   Database,
   Store,
   ShoppingCart,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function Sidepanal() {
@@ -27,8 +28,9 @@ export default function Sidepanal() {
     { label: 'Suppliers & Vendors', path: '/inv/suppliers', icon: Truck },
     { label: 'Issuance Logs', path: '/inv/issuance-logs', icon: FileSpreadsheet },
     { label: 'Reports & Analytics', path: '/inv/reports', icon: BarChart3 },
-    { label: 'Users & Permissions', path: '/inv/users', icon: UsersIcon },
-    { label: 'Site Management', path: '/inv/site-management', icon: Building2 },
+    { label: 'Users & Permissions', path: '/org/users', icon: UsersIcon },
+    { label: 'Site Management', path: '/org/sites', icon: Building2 },
+    { label: 'Org Admin Setup', path: '/org/dashboard', icon: ShieldCheck },
     { label: 'Profile Settings', path: '/inv/profile', icon: UserCircle },
   ];
 

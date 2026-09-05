@@ -16,7 +16,7 @@ import {
   Zap,
   Loader2,
 } from 'lucide-react';
-import { useAuth } from '../../lib/auth-context';
+import { useAuth } from '../../../lib/auth-context';
 
 interface UpiQrModalProps {
   amount: number;

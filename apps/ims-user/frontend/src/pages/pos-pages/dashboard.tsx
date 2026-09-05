@@ -39,7 +39,7 @@ import HeldOrdersDrawer, { HeldOrder } from './components/held-orders-drawer';
 import UpiQrModal from './components/upi-qr-modal';
 import ShortcutsModal from './components/shortcuts-modal';
 import RegisterSummaryModal from './components/register-summary-modal';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 export interface Product {
   item_code: string;

@@ -16,7 +16,7 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 interface SalesMetric {
   title: string;

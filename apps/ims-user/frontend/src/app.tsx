@@ -1,38 +1,46 @@
 import React from 'react';
 import { Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import Sidepanal from './inv-pages/sidepanal';
-import PosSidepanal from './pos-pages/sidepanal';
-import Dashboard from './inv-pages/dashboard';
-import Products from './inv-pages/products';
-import Requisitions from './inv-pages/requisitions';
-import Suppliers from './inv-pages/suppliers';
-import IssuanceLogs from './inv-pages/issuance-logs';
-import Reports from './inv-pages/reports';
-import Users from './inv-pages/users';
-import SiteManagement from './inv-pages/site-management';
-import Profile from './inv-pages/profile';
-import SKUaddition from './inv-pages/forms/sku-addition';
-import PurchaseEntry from './inv-pages/forms/purchase-entry';
-import IssuanceEntry from './inv-pages/forms/issuance-entry';
-import POSDashboard from './pos-pages/dashboard';
-import POSOrders from './pos-pages/orders';
-import POSTables from './pos-pages/tables';
-import POSMenu from './pos-pages/menu';
-import POSCustomers from './pos-pages/customers';
-import POSCashDrawer from './pos-pages/cash-drawer';
-import POSReports from './pos-pages/reports';
-import POSSettings from './pos-pages/settings';
-import POSOnlineOrders from './pos-pages/online-orders';
+import Sidepanal from './pages/inv-pages/sidepanal';
+import PosSidepanal from './pages/pos-pages/sidepanal';
+import Dashboard from './pages/inv-pages/dashboard';
+import Products from './pages/inv-pages/products';
+import Requisitions from './pages/inv-pages/requisitions';
+import Suppliers from './pages/inv-pages/suppliers';
+import IssuanceLogs from './pages/inv-pages/issuance-logs';
+import Reports from './pages/inv-pages/reports';
+import Users from './pages/inv-pages/users';
+import SiteManagement from './pages/inv-pages/site-management';
+import Profile from './pages/inv-pages/profile';
+import SKUaddition from './pages/inv-pages/forms/sku-addition';
+import PurchaseEntry from './pages/inv-pages/forms/purchase-entry';
+import IssuanceEntry from './pages/inv-pages/forms/issuance-entry';
+import POSDashboard from './pages/pos-pages/dashboard';
+import POSOrders from './pages/pos-pages/orders';
+import POSTables from './pages/pos-pages/tables';
+import POSMenu from './pages/pos-pages/menu';
+import POSCustomers from './pages/pos-pages/customers';
+import POSCashDrawer from './pages/pos-pages/cash-drawer';
+import POSReports from './pages/pos-pages/reports';
+import POSSettings from './pages/pos-pages/settings';
+import POSOnlineOrders from './pages/pos-pages/online-orders';
+
+// Org Admin Pages
+import OrgSidepanal from './pages/org-admin-pages/sidepanal';
+import OrgDashboard from './pages/org-admin-pages/dashboard';
+import OrgPaymentSetup from './pages/org-admin-pages/payment-setup';
+import OrgUsers from './pages/org-admin-pages/users';
+import OrgSiteManagement from './pages/org-admin-pages/site-management';
+import OrgCompanyProfile from './pages/org-admin-pages/company-profile';
 
 // Shared Pages
-import LandingPage from './shared-pages/landing-page';
-import LoginPage from './shared-pages/login-page';
-import OnboardingPage from './shared-pages/onboarding-page';
-import NotFoundPage from './shared-pages/not-found-page';
+import LandingPage from './pages/shared-pages/landing-page';
+import LoginPage from './pages/shared-pages/login-page';
+import OnboardingPage from './pages/shared-pages/onboarding-page';
+import NotFoundPage from './pages/shared-pages/not-found-page';
 
 // Supabase Auth
 import { useAuth } from './lib/auth-context';
-import { LogOut, UserCircle2, Loader2, Store, Boxes } from 'lucide-react';
+import { LogOut, UserCircle2, Loader2, Store, Boxes, ShieldCheck } from 'lucide-react';
 
 /**
  * Route guard enforcing authentic Supabase session.
@@ -66,11 +74,14 @@ export default function App() {
   // Public standalone authentication/onboarding routes
   const isPublicRoute = ['/landing', '/login', '/onboarding'].includes(location.pathname);
   const isPosRoute = location.pathname.startsWith('/pos');
+  const isOrgRoute = location.pathname.startsWith('/org');
 
-  // Track active workspace to eliminate accidental jumps between POS and INV
+  // Track active workspace to eliminate accidental jumps between POS, INV, and ORG
   React.useEffect(() => {
     if (location.pathname.startsWith('/pos')) {
       localStorage.setItem('zolexora_last_app', 'pos');
+    } else if (location.pathname.startsWith('/org')) {
+      localStorage.setItem('zolexora_last_app', 'org');
     } else if (location.pathname.startsWith('/inv')) {
       localStorage.setItem('zolexora_last_app', 'inv');
     }
@@ -83,9 +94,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-[#07080e] text-slate-100 font-sans">
-      {/* Dynamic Sidepanel: PosSidepanal for POS routes, Sidepanal for Inventory routes */}
+      {/* Dynamic Sidepanel: PosSidepanal for POS, OrgSidepanal for Org Admin, Sidepanal for Inventory */}
       {!isPublicRoute && user && (
-        isPosRoute ? <PosSidepanal /> : <Sidepanal />
+        isPosRoute ? <PosSidepanal /> : isOrgRoute ? <OrgSidepanal /> : <Sidepanal />
       )}
 
       {/* Main Viewport */}
@@ -98,6 +109,12 @@ export default function App() {
                   <Store className="w-4 h-4 text-emerald-400" />
                   <span>Workspace:</span>
                   <span className="text-emerald-400 font-medium">POS Register Terminal (Desk SP_001)</span>
+                </>
+              ) : isOrgRoute ? (
+                <>
+                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+                  <span>Workspace:</span>
+                  <span className="text-purple-300 font-medium">Organization Admin (Corporate Governance)</span>
                 </>
               ) : (
                 <>
@@ -114,9 +131,11 @@ export default function App() {
                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border ${
                   isPosRoute
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : isOrgRoute
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
                     : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
                 }`}>
-                  {user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : 'Staff')}
+                  {user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : isOrgRoute ? 'Org Admin' : 'Staff')}
                 </span>
               </div>
               <button
@@ -144,7 +163,13 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Navigate
-                    to={localStorage.getItem('zolexora_last_app') === 'pos' ? '/pos/dashboard' : '/inv/dashboard'}
+                    to={
+                      localStorage.getItem('zolexora_last_app') === 'pos'
+                        ? '/pos/dashboard'
+                        : localStorage.getItem('zolexora_last_app') === 'org'
+                        ? '/org/dashboard'
+                        : '/inv/dashboard'
+                    }
                     replace
                   />
                 </ProtectedRoute>
@@ -237,6 +262,56 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <POSSettings />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Organization Admin Module Core Routes (Sensitive Setup & Governance) */}
+            <Route
+              path="/org"
+              element={
+                <ProtectedRoute>
+                  <Navigate to="/org/dashboard" replace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/dashboard"
+              element={
+                <ProtectedRoute>
+                  <OrgDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/payments"
+              element={
+                <ProtectedRoute>
+                  <OrgPaymentSetup />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/users"
+              element={
+                <ProtectedRoute>
+                  <OrgUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/sites"
+              element={
+                <ProtectedRoute>
+                  <OrgSiteManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/company"
+              element={
+                <ProtectedRoute>
+                  <OrgCompanyProfile />
                 </ProtectedRoute>
               }
             />

@@ -19,7 +19,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 interface Customer {
   id: string;

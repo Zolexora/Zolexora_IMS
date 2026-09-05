@@ -8,7 +8,7 @@ import {
   KeyRound,
   UserPlus,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 export default function LoginPage() {
   const navigate = useNavigate();

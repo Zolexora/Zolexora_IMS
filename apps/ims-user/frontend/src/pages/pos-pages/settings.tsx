@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Settings,
   Printer,
@@ -24,7 +25,7 @@ import {
   Play,
   AlertCircle,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 export default function PosSettings() {
   const { authFetch } = useAuth();
@@ -330,6 +331,30 @@ export default function PosSettings() {
                 </p>
               </div>
             </div>
+            <Link
+              to="/org/payments"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 rounded-xl text-xs font-semibold transition"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+              <span>Org Admin Portal</span>
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {/* Org Admin Notice */}
+          <div className="p-3 bg-purple-950/30 border border-purple-500/20 rounded-xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-purple-200">
+              <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span>
+                <strong>Enterprise Security:</strong> Payment Rails, Bank VPA & API secrets are now centrally managed under Organization Admin.
+              </span>
+            </div>
+            <Link
+              to="/org/payments"
+              className="text-purple-300 hover:text-white font-semibold underline text-[11px] ml-2 flex-shrink-0"
+            >
+              Open Org Admin Setup ➔
+            </Link>
           </div>
 
           {/* Test Feedback Banner if any */}

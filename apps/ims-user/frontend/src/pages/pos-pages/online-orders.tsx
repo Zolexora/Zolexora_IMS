@@ -30,7 +30,7 @@ import {
   PlusCircle,
   Trash2,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 import { useNavigate } from 'react-router-dom';
 
 interface AggregatorOrder {

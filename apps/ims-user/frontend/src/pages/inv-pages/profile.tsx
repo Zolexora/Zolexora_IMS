@@ -10,7 +10,7 @@ import {
   Database,
   Lock,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 export default function Profile() {
   const { user: authUser, authFetch } = useAuth();

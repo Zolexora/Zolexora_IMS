@@ -17,7 +17,7 @@ import {
   IndianRupee,
   Sparkles,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 interface CashTransaction {
   id: string;

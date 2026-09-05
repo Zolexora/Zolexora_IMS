@@ -17,7 +17,7 @@ import {
   IndianRupee,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 interface PosTable {
   id: string;

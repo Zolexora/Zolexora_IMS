@@ -20,7 +20,7 @@ import {
   X,
   IndianRupee,
 } from 'lucide-react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 import { useNavigate } from 'react-router-dom';
 
 interface MenuItem {
