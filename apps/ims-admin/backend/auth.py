@@ -9,27 +9,18 @@ try:
     from security import decode_jwt_token
 except ImportError:
     import jwt
+    import secrets
+    _EPHEMERAL_ADMIN_JWT_SECRET = os.getenv("JWT_SECRET") or secrets.token_hex(32)
     def decode_jwt_token(token, secret_key=None, verify_signature=False):
-        secret = secret_key or os.getenv("JWT_SECRET", "dev_insecure_jwt_secret_change_in_production")
+        secret = secret_key or os.getenv("JWT_SECRET") or _EPHEMERAL_ADMIN_JWT_SECRET
         return jwt.decode(token, secret, algorithms=["HS256"], options={"verify_signature": verify_signature})
 
 security = HTTPBearer(auto_error=False)
 
 
 async def require_superadmin(credentials: Optional[HTTPAuthorizationCredentials] = Security(security)):
-    """Verifies that the caller has SuperAdmin or PlatformAdmin permissions."""
-    env = os.getenv("ENVIRONMENT", "development").lower()
-    allow_dev_bypass = os.getenv("ALLOW_DEV_AUTH_BYPASS", "true" if env != "production" else "false").lower() in ("true", "1")
-    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@zolexora.com")
-
+    """Verifies that the caller has genuine SuperAdmin or PlatformAdmin permissions."""
     if not credentials:
-        if env != "production" and allow_dev_bypass:
-            return {
-                "id": "USR_SUPERADMIN_DEV",
-                "role": "SuperAdmin",
-                "email": superadmin_email,
-                "name": "Zolexora Platform Administrator"
-            }
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="SuperAdmin authorization required"
@@ -37,18 +28,19 @@ async def require_superadmin(credentials: Optional[HTTPAuthorizationCredentials]
 
     token = credentials.credentials
     try:
-        verify_sig = (env == "production")
-        payload = decode_jwt_token(token, verify_signature=verify_sig)
+        # Cryptographic signature verification is strictly enforced
+        payload = decode_jwt_token(token, verify_signature=True)
         role = payload.get("role")
         if role not in ("SuperAdmin", "PlatformAdmin"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient administrative privileges"
             )
+        superadmin_email = os.getenv("SUPERADMIN_EMAIL", "")
         return {
             "id": payload.get("sub") or payload.get("user_id"),
             "role": role,
-            "email": payload.get("email", superadmin_email),
+            "email": payload.get("email") or superadmin_email,
             "name": payload.get("name", "Administrator")
         }
     except HTTPException:

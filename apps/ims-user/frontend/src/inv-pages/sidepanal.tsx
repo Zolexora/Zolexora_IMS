@@ -21,15 +21,15 @@ export default function Sidepanal() {
   const location = useLocation();
 
   const navLinks = [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Products Master', path: '/products', icon: Boxes },
-    { label: 'Requisitions', path: '/requisitions', icon: ClipboardList },
-    { label: 'Suppliers & Vendors', path: '/suppliers', icon: Truck },
-    { label: 'Issuance Logs', path: '/issuance-logs', icon: FileSpreadsheet },
-    { label: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-    { label: 'Users & Permissions', path: '/users', icon: UsersIcon },
-    { label: 'Site Management', path: '/site-management', icon: Building2 },
-    { label: 'Profile Settings', path: '/profile', icon: UserCircle },
+    { label: 'Dashboard', path: '/inv/dashboard', icon: LayoutDashboard },
+    { label: 'Products Master', path: '/inv/products', icon: Boxes },
+    { label: 'Requisitions', path: '/inv/requisitions', icon: ClipboardList },
+    { label: 'Suppliers & Vendors', path: '/inv/suppliers', icon: Truck },
+    { label: 'Issuance Logs', path: '/inv/issuance-logs', icon: FileSpreadsheet },
+    { label: 'Reports & Analytics', path: '/inv/reports', icon: BarChart3 },
+    { label: 'Users & Permissions', path: '/inv/users', icon: UsersIcon },
+    { label: 'Site Management', path: '/inv/site-management', icon: Building2 },
+    { label: 'Profile Settings', path: '/inv/profile', icon: UserCircle },
   ];
 
   return (
@@ -46,6 +46,29 @@ export default function Sidepanal() {
           </div>
         </div>
 
+        {/* POS Terminal Switcher Button (Requested: pos terminal btn on inv) */}
+        <div className="p-3 bg-gradient-to-r from-emerald-950/50 to-teal-950/50 border border-emerald-500/30 rounded-xl space-y-2 shadow-lg">
+          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+            <span className="flex items-center gap-1.5">
+              <Store className="w-3.5 h-3.5 text-emerald-400" />
+              Retail Checkout
+            </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-200 font-mono">
+              ACTIVE
+            </span>
+          </div>
+          <Link
+            to="/pos/dashboard"
+            className="flex items-center justify-between px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-emerald-600/30 group"
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4 text-white" />
+              <span>POS Terminal</span>
+            </div>
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
+          </Link>
+        </div>
+
         {/* Quick Action Forms */}
         <div className="p-3 bg-white/5 border border-white/5 rounded-xl space-y-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -53,21 +76,21 @@ export default function Sidepanal() {
           </div>
           <div className="grid grid-cols-1 gap-1.5">
             <Link
-              to="/forms/sku-addition"
+              to="/inv/forms/sku-addition"
               className="flex items-center gap-2 px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-xs font-semibold transition"
             >
               <PackagePlus className="w-3.5 h-3.5" />
               <span>+ New SKU</span>
             </Link>
             <Link
-              to="/forms/purchase-entry"
+              to="/inv/forms/purchase-entry"
               className="flex items-center gap-2 px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold transition"
             >
               <Truck className="w-3.5 h-3.5" />
               <span>+ Purchase GRN</span>
             </Link>
             <Link
-              to="/forms/issuance-entry"
+              to="/inv/forms/issuance-entry"
               className="flex items-center gap-2 px-2.5 py-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-xs font-semibold transition"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -85,7 +108,10 @@ export default function Sidepanal() {
             {navLinks.map((item) => {
               const active =
                 location.pathname === item.path ||
-                (item.path === '/dashboard' && location.pathname === '/');
+                (item.path === '/inv/dashboard' &&
+                  (location.pathname === '/' ||
+                    location.pathname === '/inv' ||
+                    location.pathname === '/dashboard'));
               const Icon = item.icon;
 
               return (
@@ -104,20 +130,6 @@ export default function Sidepanal() {
               );
             })}
           </nav>
-        </div>
-
-        {/* Cross-Link to POS Terminal */}
-        <div className="pt-1">
-          <Link
-            to="/pos"
-            className="flex items-center justify-between p-2.5 bg-gradient-to-r from-indigo-950/40 to-violet-950/40 border border-indigo-500/30 hover:border-indigo-500/60 rounded-xl text-xs text-indigo-300 hover:text-white transition group"
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-semibold">POS Register Terminal</span>
-            </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-          </Link>
         </div>
       </div>
 

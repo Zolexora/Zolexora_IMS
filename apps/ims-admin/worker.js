@@ -97,7 +97,7 @@ async function handleApiRouter(request, env, url) {
 
     // Protected Platform Endpoints: Check SuperAdmin Session
     const session = await getAdminSession(request, env);
-    if (!session && !url.searchParams.has('devBypass')) {
+    if (!session) {
       return jsonResponse({ success: false, error: 'Unauthorized: Platform SuperAdmin session required.' }, 401, request);
     }
 
@@ -740,7 +740,7 @@ async function createImpersonationToken(env, { tenantId, userId }, session) {
   const token = 'imp_' + crypto.randomUUID().replace(/-/g, '');
   const impUser = {
     id: userId || 'USR_SUPERADMIN_IMPERSONATE',
-    email: session?.user?.email || env.SUPERADMIN_EMAIL || 'admin@zolexora.com',
+    email: session?.user?.email || env.SUPERADMIN_EMAIL || '',
     name: 'SuperAdmin (' + (session?.user?.name || 'Administrator') + ')',
     role: 'SuperAdmin',
     orgId: tenantId,

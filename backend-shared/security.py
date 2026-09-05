@@ -13,7 +13,10 @@ def get_jwt_secret() -> str:
     env = os.getenv("ENVIRONMENT", "development").lower()
     if env == "production":
         raise ValueError("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is not configured.")
-    return "dev_insecure_jwt_secret_change_in_production"
+    import secrets
+    _ephemeral = secrets.token_hex(32)
+    os.environ["JWT_SECRET"] = _ephemeral
+    return _ephemeral
 
 
 def hash_password(password: str) -> str:

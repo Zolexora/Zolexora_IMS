@@ -22,11 +22,14 @@ try:
     from security import create_jwt_token, verify_password
 except ImportError:
     from datetime import datetime, timezone
+    import hashlib, hmac
     def now_utc_iso(): return datetime.now(timezone.utc).isoformat()
     def today_utc_str(): return datetime.now(timezone.utc).strftime("%Y-%m-%d")
     def generate_id(p="ID"): return f"{p}_12345"
-    def create_jwt_token(p): return "dev_token"
-    def verify_password(p, h): return True
+    def create_jwt_token(p): raise RuntimeError("Security module required")
+    def verify_password(p, h):
+        if not p or not h: return False
+        return hmac.compare_digest(hashlib.sha256(p.encode()).hexdigest(), h)
 
 try:
     from .db import db

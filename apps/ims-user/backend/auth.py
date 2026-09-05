@@ -36,41 +36,8 @@ security = HTTPBearer(auto_error=False)
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security)
 ) -> UserProfile:
-    """Authenticates the user via Supabase ES256 JWT, internal HS256 JWT, or dev fallback."""
-    env = os.getenv("ENVIRONMENT", "development").lower()
-    allow_dev_bypass = os.getenv("ALLOW_DEV_AUTH_BYPASS", "true" if env != "production" else "false").lower() in ("true", "1")
-
+    """Authenticates the user via Supabase ES256 JWT or internal HS256 JWT. No bypasses permitted."""
     if not credentials:
-        if env != "production" and allow_dev_bypass:
-            # Dev fallback for local tests and offline dev
-            try:
-                row = await db.fetch_one("SELECT * FROM users WHERE role='SuperAdmin' LIMIT 1;")
-                if row:
-                    return UserProfile(
-                        id=row["id"],
-                        org_id=row["org_id"],
-                        email=row["email"],
-                        name=row["name"],
-                        role=row["role"],
-                        scope_type=row.get("scope_type", "ALL"),
-                        assigned_location=row.get("assigned_location", "ALL"),
-                        location_name=row.get("location_name"),
-                        status=row.get("status", "Active"),
-                        supabase_auth_id=row.get("supabase_auth_id")
-                    )
-            except Exception:
-                pass
-            return UserProfile(
-                id="USR_SUPER_DEV",
-                org_id=os.getenv("DEFAULT_ORG_ID", "ORG_ZOLEXORA_001"),
-                email=os.getenv("SUPERADMIN_EMAIL", "admin@zolexora.com"),
-                name="Zolexora Dev Administrator",
-                role="SuperAdmin",
-                scope_type="ALL",
-                assigned_location="ALL",
-                location_name="All Stores",
-                status="Active"
-            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials required"
@@ -78,11 +45,16 @@ async def get_current_user(
 
     token = credentials.credentials
     try:
-        # In production, verify signature; in development, allow decoding
-        verify_sig = (env == "production")
-        payload = decode_any_jwt_token(token, verify_signature=verify_sig)
+        # Cryptographic signature verification is strictly enforced in all environments
+        payload = decode_any_jwt_token(token, verify_signature=True)
         sub = payload.get("sub") or payload.get("user_id")
         email = payload.get("email")
+
+        if not sub and not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token claims"
+            )
 
         # 1. Lookup user in D1
         row = await db.fetch_one(
@@ -114,8 +86,8 @@ async def get_current_user(
 
         # 2. Auto-provision newly registered Supabase user into D1
         if email and sub:
-            super_email = os.getenv("SUPERADMIN_EMAIL", "aeroma7701@gmail.com").lower()
-            role = "SuperAdmin" if email.lower() == super_email else "Store Incharge"
+            super_email = (os.getenv("SUPERADMIN_EMAIL") or "").strip().lower()
+            role = "SuperAdmin" if (super_email and email.lower() == super_email) else "Store Incharge"
             user_id = f"USR_SB_{str(sub)[:8].upper()}"
             org_id = os.getenv("DEFAULT_ORG_ID", "ORG_ZOLEXORA_002")
             user_meta = payload.get("user_metadata", {})

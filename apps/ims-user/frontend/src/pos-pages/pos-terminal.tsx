@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import ReceiptModal, { CartItem, SaleReceipt } from './components/receipt-modal';
 import RecentSalesDrawer, { RecentTxn } from './components/recent-sales-drawer';
+import { useAuth } from '../lib/auth-context';
 
 interface Product {
   item_code: string;
@@ -49,6 +50,7 @@ const DEFAULT_PRODUCTS: Product[] = [
 ];
 
 export default function POSTerminal() {
+  const { authFetch, user } = useAuth();
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -74,7 +76,7 @@ export default function POSTerminal() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/items');
+      const res = await authFetch('/api/v1/items');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -84,7 +86,7 @@ export default function POSTerminal() {
     } catch {}
 
     try {
-      const txRes = await fetch('/api/v1/transactions?limit=20');
+      const txRes = await authFetch('/api/v1/transactions?limit=20');
       if (txRes.ok) {
         const txData = await txRes.json();
         if (Array.isArray(txData)) {
@@ -221,7 +223,7 @@ export default function POSTerminal() {
     };
 
     try {
-      await fetch('/api/v1/sales', {
+      await authFetch('/api/v1/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(salePayload),
@@ -248,7 +250,7 @@ export default function POSTerminal() {
       bill_no: billNo,
       date: new Date().toLocaleString(),
       selling_point: sellingPoint === 'SP_001' ? 'Counter 1 (Store 1)' : 'Counter 2 (Store 2)',
-      cashier: 'POS Cashier 01',
+      cashier: user?.user_metadata?.name || user?.email || 'POS Cashier 01',
       customer_name: customerName.trim() || 'Walk-in Customer',
       items: [...cart],
       subtotal,
@@ -278,7 +280,7 @@ export default function POSTerminal() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* POS Subheader Bar */}
       <div className="bg-[#121420] border-b border-white/10 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import Sidepanal from './inv-pages/sidepanal';
+import PosSidepanal from './pos-pages/sidepanal';
 import Dashboard from './inv-pages/dashboard';
 import Products from './inv-pages/products';
 import Requisitions from './inv-pages/requisitions';
@@ -23,7 +24,7 @@ import NotFoundPage from './shared-pages/not-found-page';
 
 // Supabase Auth
 import { useAuth } from './lib/auth-context';
-import { LogOut, UserCircle2, Loader2 } from 'lucide-react';
+import { LogOut, UserCircle2, Loader2, Store, Boxes } from 'lucide-react';
 
 /**
  * Route guard enforcing authentic Supabase session.
@@ -54,10 +55,9 @@ export default function App() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
-  // Determine if current route renders full-viewport without the inventory side panel
-  const isStandaloneRoute =
-    ['/landing', '/login', '/onboarding'].includes(location.pathname) ||
-    location.pathname.startsWith('/pos');
+  // Public standalone authentication/onboarding routes
+  const isPublicRoute = ['/landing', '/login', '/onboarding'].includes(location.pathname);
+  const isPosRoute = location.pathname.startsWith('/pos');
 
   const handleSignOut = async () => {
     await signOut();
@@ -66,22 +66,40 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-[#07080e] text-slate-100 font-sans">
-      {/* Sidebar Navigation: Shown on protected inventory module pages */}
-      {!isStandaloneRoute && user && <Sidepanal />}
+      {/* Dynamic Sidepanel: PosSidepanal for POS routes, Sidepanal for Inventory routes */}
+      {!isPublicRoute && user && (
+        isPosRoute ? <PosSidepanal /> : <Sidepanal />
+      )}
 
       {/* Main Viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        {!isStandaloneRoute && user && (
+        {!isPublicRoute && user && (
           <header className="h-14 border-b border-white/10 bg-[#0c0e18]/80 backdrop-blur-sm px-6 flex items-center justify-between sticky top-0 z-20 flex-shrink-0">
-            <div className="text-xs text-slate-400 font-mono">
-              Workspace Scope: <span className="text-white font-medium">Zolexora Retail Operations (D1 Synchronized)</span>
+            <div className="text-xs text-slate-400 font-mono flex items-center gap-2">
+              {isPosRoute ? (
+                <>
+                  <Store className="w-4 h-4 text-emerald-400" />
+                  <span>Workspace:</span>
+                  <span className="text-emerald-400 font-medium">POS Register Terminal (Desk SP_001)</span>
+                </>
+              ) : (
+                <>
+                  <Boxes className="w-4 h-4 text-indigo-400" />
+                  <span>Workspace:</span>
+                  <span className="text-white font-medium">Zolexora Retail Operations (Inventory Master)</span>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-xs">
                 <UserCircle2 className="w-4 h-4 text-indigo-400" />
                 <span className="text-slate-300 font-medium">{user.email}</span>
-                <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-md font-semibold">
-                  {user.user_metadata?.name || 'Staff'}
+                <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border ${
+                  isPosRoute
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                }`}>
+                  {user.user_metadata?.name || (isPosRoute ? 'POS Cashier' : 'Staff')}
                 </span>
               </div>
               <button
@@ -103,19 +121,35 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
 
-            {/* Root: Enforces Auth -> Redirects unauthenticated to /login, authenticated to /dashboard */}
+            {/* Main Application Entry Roots */}
             <Route
               path="/"
               element={
                 <ProtectedRoute>
-                  <Navigate to="/dashboard" replace />
+                  <Navigate to="/inv/dashboard" replace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inv"
+              element={
+                <ProtectedRoute>
+                  <Navigate to="/inv/dashboard" replace />
                 </ProtectedRoute>
               }
             />
 
-            {/* Protected Point of Sale (POS) Module */}
+            {/* POS App Routes */}
             <Route
               path="/pos"
+              element={
+                <ProtectedRoute>
+                  <Navigate to="/pos/dashboard" replace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pos/dashboard"
               element={
                 <ProtectedRoute>
                   <POSTerminal />
@@ -123,9 +157,9 @@ export default function App() {
               }
             />
 
-            {/* Protected Inventory Core Pages */}
+            {/* Inventory Module Core Routes */}
             <Route
-              path="/dashboard"
+              path="/inv/dashboard"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Dashboard /></div>
@@ -133,17 +167,17 @@ export default function App() {
               }
             />
             <Route
-              path="/products"
+              path="/inv/products"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Products /></div>
                 </ProtectedRoute>
               }
             />
-            <Route path="/catalog" element={<Navigate to="/products" replace />} />
-            <Route path="/items" element={<Navigate to="/products" replace />} />
+            <Route path="/inv/catalog" element={<Navigate to="/inv/products" replace />} />
+            <Route path="/inv/items" element={<Navigate to="/inv/products" replace />} />
             <Route
-              path="/requisitions"
+              path="/inv/requisitions"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Requisitions /></div>
@@ -151,7 +185,7 @@ export default function App() {
               }
             />
             <Route
-              path="/suppliers"
+              path="/inv/suppliers"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Suppliers /></div>
@@ -159,7 +193,7 @@ export default function App() {
               }
             />
             <Route
-              path="/issuance-logs"
+              path="/inv/issuance-logs"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><IssuanceLogs /></div>
@@ -167,7 +201,7 @@ export default function App() {
               }
             />
             <Route
-              path="/reports"
+              path="/inv/reports"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Reports /></div>
@@ -175,7 +209,7 @@ export default function App() {
               }
             />
             <Route
-              path="/users"
+              path="/inv/users"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Users /></div>
@@ -183,16 +217,16 @@ export default function App() {
               }
             />
             <Route
-              path="/site-management"
+              path="/inv/site-management"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><SiteManagement /></div>
                 </ProtectedRoute>
               }
             />
-            <Route path="/stores" element={<Navigate to="/site-management" replace />} />
+            <Route path="/inv/stores" element={<Navigate to="/inv/site-management" replace />} />
             <Route
-              path="/profile"
+              path="/inv/profile"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><Profile /></div>
@@ -202,7 +236,7 @@ export default function App() {
 
             {/* Protected Inventory Action Forms */}
             <Route
-              path="/forms/sku-addition"
+              path="/inv/forms/sku-addition"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><SKUaddition /></div>
@@ -210,7 +244,7 @@ export default function App() {
               }
             />
             <Route
-              path="/forms/purchase-entry"
+              path="/inv/forms/purchase-entry"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><PurchaseEntry /></div>
@@ -218,13 +252,30 @@ export default function App() {
               }
             />
             <Route
-              path="/forms/issuance-entry"
+              path="/inv/forms/issuance-entry"
               element={
                 <ProtectedRoute>
                   <div className="p-6 overflow-y-auto flex-1"><IssuanceEntry /></div>
                 </ProtectedRoute>
               }
             />
+
+            {/* Legacy Path Aliases: Seamlessly redirect to /inv/* */}
+            <Route path="/dashboard" element={<Navigate to="/inv/dashboard" replace />} />
+            <Route path="/products" element={<Navigate to="/inv/products" replace />} />
+            <Route path="/catalog" element={<Navigate to="/inv/products" replace />} />
+            <Route path="/items" element={<Navigate to="/inv/products" replace />} />
+            <Route path="/requisitions" element={<Navigate to="/inv/requisitions" replace />} />
+            <Route path="/suppliers" element={<Navigate to="/inv/suppliers" replace />} />
+            <Route path="/issuance-logs" element={<Navigate to="/inv/issuance-logs" replace />} />
+            <Route path="/reports" element={<Navigate to="/inv/reports" replace />} />
+            <Route path="/users" element={<Navigate to="/inv/users" replace />} />
+            <Route path="/site-management" element={<Navigate to="/inv/site-management" replace />} />
+            <Route path="/stores" element={<Navigate to="/inv/site-management" replace />} />
+            <Route path="/profile" element={<Navigate to="/inv/profile" replace />} />
+            <Route path="/forms/sku-addition" element={<Navigate to="/inv/forms/sku-addition" replace />} />
+            <Route path="/forms/purchase-entry" element={<Navigate to="/inv/forms/purchase-entry" replace />} />
+            <Route path="/forms/issuance-entry" element={<Navigate to="/inv/forms/issuance-entry" replace />} />
 
             {/* 404 Route */}
             <Route path="*" element={<NotFoundPage />} />

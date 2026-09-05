@@ -243,11 +243,11 @@ INSERT OR IGNORE INTO selling_points (code, org_id, name, assigned_store_code, t
 ('SP_003', 'ORG_ZOLEXORA_001', 'Main Production / Kitchen', 'S_001', 'Production Unit', 'Active');
 
 INSERT OR IGNORE INTO users (id, org_id, email, password_hash, name, role, scope_type, assigned_location, location_name, status, created_at, last_login) VALUES
-('USR_SUPER_001', 'ORG_ZOLEXORA_001', 'superadmin@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Super Administrator', 'SuperAdmin', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
-('USR_001', 'ORG_ZOLEXORA_001', 'admin@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Zolexora Admin', 'System Administrator & Owner', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
-('USR_002', 'ORG_ZOLEXORA_001', 'store1@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Ramesh Sharma', 'Store Incharge', 'STORE', 'S_001', 'Store 1 - Main Branch', 'Active', '2026-09-04T00:00:00.000Z', NULL),
-('USR_003', 'ORG_ZOLEXORA_001', 'pos1@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Pooja Verma', 'Selling Point Cashier', 'SELLING_POINT', 'SP_001', 'Front Counter / Retail Sales', 'Active', '2026-09-04T00:00:00.000Z', NULL),
-('USR_004', 'ORG_ZOLEXORA_001', 'pos2@zolexora.com', '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2', 'Sunil Kumar', 'Selling Point Cashier', 'SELLING_POINT', 'SP_002', 'Branch Dispenser Counter', 'Active', '2026-09-04T00:00:00.000Z', NULL);
+('USR_SUPER_001', 'ORG_ZOLEXORA_001', 'superadmin@zolexora.com', 'managed_by_supabase_auth', 'Super Administrator', 'SuperAdmin', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
+('USR_001', 'ORG_ZOLEXORA_001', 'admin@zolexora.com', 'managed_by_supabase_auth', 'Zolexora Admin', 'System Administrator & Owner', 'ALL', 'ALL', 'Global Access (All Stores & SPs)', 'Active', '2026-09-04T00:00:00.000Z', '2026-09-04T00:00:00.000Z'),
+('USR_002', 'ORG_ZOLEXORA_001', 'store1@zolexora.com', 'managed_by_supabase_auth', 'Ramesh Sharma', 'Store Incharge', 'STORE', 'S_001', 'Store 1 - Main Branch', 'Active', '2026-09-04T00:00:00.000Z', NULL),
+('USR_003', 'ORG_ZOLEXORA_001', 'pos1@zolexora.com', 'managed_by_supabase_auth', 'Pooja Verma', 'Selling Point Cashier', 'SELLING_POINT', 'SP_001', 'Front Counter / Retail Sales', 'Active', '2026-09-04T00:00:00.000Z', NULL),
+('USR_004', 'ORG_ZOLEXORA_001', 'pos2@zolexora.com', 'managed_by_supabase_auth', 'Sunil Kumar', 'Selling Point Cashier', 'SELLING_POINT', 'SP_002', 'Branch Dispenser Counter', 'Active', '2026-09-04T00:00:00.000Z', NULL);
 
 INSERT OR IGNORE INTO suppliers (code, org_id, name, category, contact_person, phone, email, status) VALUES
 ('SUP_001', 'ORG_ZOLEXORA_001', 'A.T. Overseas', 'Imported Gourmet & Dry Foods', 'Mr. Amit Thapar', '+91 98101 23456', 'sales@atoverseas.com', 'Active'),

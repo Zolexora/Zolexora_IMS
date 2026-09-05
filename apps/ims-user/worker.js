@@ -1160,7 +1160,7 @@ async function saveUser(db, user) {
       location_name = excluded.location_name,
       status = excluded.status;
   `).bind(
-    id, user.email, '8f02b2b66801a212550501082e9441ac1a9bd27705a800ea69d6fe2b2f8822e2',
+    id, user.email, user.password_hash || 'managed_by_supabase_auth',
     user.name, user.role || 'Staff', user.scopeType || 'ALL', user.assignedLocation || 'ALL',
     user.locationName || '', user.status || 'Active', now
   ).run();

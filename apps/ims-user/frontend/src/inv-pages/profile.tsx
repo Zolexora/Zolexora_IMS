@@ -10,14 +10,16 @@ import {
   Database,
   Lock,
 } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
 
 export default function Profile() {
+  const { user: authUser, authFetch } = useAuth();
   const [profile, setProfile] = useState({
-    name: 'Store Incharge',
-    email: 'admin@zolexora.com',
-    role: 'Operations Lead',
-    org_id: 'ORG_ZOLEXORA_001',
-    assigned_location: 'S_001 (Main Central Warehouse)',
+    name: authUser?.user_metadata?.name || authUser?.email?.split('@')[0] || '',
+    email: authUser?.email || '',
+    role: 'Store Staff',
+    org_id: '',
+    assigned_location: 'ALL',
     default_currency: '₹ (INR)',
   });
 
@@ -25,8 +27,16 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch('/api/v1/auth/me')
-      .then((r) => r.json())
+    if (authUser) {
+      setProfile((prev) => ({
+        ...prev,
+        email: authUser.email || prev.email,
+        name: authUser.user_metadata?.name || prev.name || (authUser.email ? authUser.email.split('@')[0] : ''),
+      }));
+    }
+
+    authFetch('/api/v1/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && data.name) {
           setProfile((prev) => ({
@@ -40,7 +50,7 @@ export default function Profile() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [authUser]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
