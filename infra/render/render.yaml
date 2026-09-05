@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: zolexora-ims-api
+    runtime: python
+    region: oregon
+    plan: standard
+    rootDir: apps/ims-user/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: PORT
+        value: 8000
+      - key: ENVIRONMENT
+        value: production
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_D1_DATABASE_ID
+        value: 63b1b80b-ee96-4948-acce-c96d6ac65f61
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+  - type: web
+    name: zolexora-admin-api
+    runtime: python
+    region: oregon
+    plan: starter
+    rootDir: apps/ims-admin/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: PORT
+        value: 8001
+      - key: ENVIRONMENT
+        value: production
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_D1_DATABASE_ID
+        value: 63b1b80b-ee96-4948-acce-c96d6ac65f61
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
