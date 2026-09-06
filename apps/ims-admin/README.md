@@ -77,9 +77,6 @@ cd admin
 # Install dependencies (wrangler)
 npm install
 
-# Build UI bundle (client/Index.html + client/CSS.html + client/JavaScript.html -> ui.js)
-npm run build
-
 # Local development server
 npm run dev
 

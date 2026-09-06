@@ -11,7 +11,18 @@ const DEFAULT_SESSION_TTL_SECONDS = 604800; // 7 days
 const COOKIE_NAME = 'zolexora_session';
 const SALT = '_zolexora_salt_2026';
 
-import { APP_HTML } from './ui.js';
+const APP_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Zolexora IMS — Edge API</title>
+  <style>body{font-family:system-ui,-apple-system,sans-serif;margin:40px;background:#0f172a;color:#f8fafc;text-align:center;}h1{color:#38bdf8;}</style>
+</head>
+<body>
+  <h1>Zolexora IMS Edge API</h1>
+  <p>User Edge API active. Inventory and POS UI is served via the Vite single-page application.</p>
+</body>
+</html>`;
 
 export default {
   async fetch(request, env, ctx) {

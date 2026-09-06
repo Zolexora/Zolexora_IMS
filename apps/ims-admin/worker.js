@@ -3,7 +3,18 @@
  * Service: admin-ims.zolexora.workers.dev / admin.ims.zolexora.com
  */
 
-import { APP_HTML } from './ui.js';
+const APP_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Zolexora IMS — Platform Admin Edge</title>
+  <style>body{font-family:system-ui,-apple-system,sans-serif;margin:40px;background:#0f172a;color:#f8fafc;text-align:center;}h1{color:#38bdf8;}</style>
+</head>
+<body>
+  <h1>Zolexora IMS — Platform Admin Edge API</h1>
+  <p>Admin Edge API active. Platform UI is served via the Vite single-page application.</p>
+</body>
+</html>`;
 
 const COOKIE_NAME = 'zolexora_admin_session';
 const DEFAULT_SESSION_TTL = 604800; // 7 days

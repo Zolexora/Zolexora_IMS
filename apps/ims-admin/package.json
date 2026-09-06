@@ -5,8 +5,7 @@
   "main": "worker.js",
   "type": "module",
   "scripts": {
-    "build": "node build-ui.js",
-    "deploy": "node build-ui.js && npx wrangler deploy",
+    "deploy": "npx wrangler deploy",
     "dev": "npx wrangler dev"
   },
   "dependencies": {},

@@ -10,16 +10,16 @@ Enterprise Multi-Tenant Cloud Inventory Management System (IMS) running on Cloud
 Zolexora_IMS/
 ├── apps/
 │   ├── ims-admin/                # Platform SuperAdmin Control Plane
-│   │   ├── client/               # Control plane UI (Index.html, CSS.html, JavaScript.html)
-│   │   ├── build-ui.js           # Admin UI single-file bundler
+│   │   ├── frontend/             # React + Vite SuperAdmin Dashboard
+│   │   ├── backend/              # FastAPI Control Plane service
 │   │   ├── worker.js             # Platform Admin Worker & API router
 │   │   ├── wrangler.toml         # Cloudflare Worker configuration (service: admin-ims)
 │   │   └── README.md             # Admin plane documentation
 │   │
 │   └── ims-user/                 # Multi-Tenant Business IMS Application
-│       ├── client/               # Business application UI (Index.html, JavaScript.html, Styles.html)
+│       ├── frontend/             # React + Vite POS & Inventory SPA
+│       ├── backend/              # FastAPI Inventory & Multi-tenant backend
 │       ├── migrations/           # Cloudflare D1 relational database schemas
-│       ├── build-ui.js           # Business application UI bundler
 │       ├── worker.js             # Multi-tenant edge worker & D1 relational engine
 │       ├── wrangler.toml         # Cloudflare Worker configuration (service: ims)
 │       └── README.md             # Business application documentation
