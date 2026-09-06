@@ -10,3 +10,4 @@ python-dotenv>=1.0.0
 pytest>=8.0.0
 razorpay>=2.0.0
 cashfree-pg>=6.0.0
+aiosqlite>=0.20.0
